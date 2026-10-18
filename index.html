@@ -249,10 +249,11 @@ footer { padding-top: 6px; }
     </div>
 
     <div class="actions">
-      <button class="btn btn-primary" id="saveBtn" type="button">결과 이미지 저장</button>
+      <button class="btn btn-primary" id="saveBtn" type="button">결과 이미지 저장 (2장)</button>
       <p class="toast" id="toast" aria-live="polite"></p>
       <figure class="shot" id="shot" hidden>
-        <img id="shotImg" alt="빅파이브 결과 이미지">
+        <img id="shotImg1" alt="빅파이브 결과 1장: 다섯 축 점수">
+        <img id="shotImg2" alt="빅파이브 결과 2장: 축별 풀이">
       </figure>
       <button class="btn btn-secondary" id="editBtn" type="button">답 수정하기</button>
       <button class="btn btn-secondary" id="retakeBtn" type="button">다시 하기</button>
@@ -621,7 +622,7 @@ footer { padding-top: 6px; }
     ctx.fillRect(P, yHeadRule, IW, 2);
     ctx.font = "500 25px " + IF.body;
     ctx.textAlign = "left"; ctx.fillText("성격 5요인 검사 · IPIP-50", P, yHeadText);
-    ctx.textAlign = "right"; ctx.fillText("결과지", W - P, yHeadText);
+    ctx.textAlign = "right"; ctx.fillText("결과지 1/2", W - P, yHeadText);
 
     // 제목
     ctx.textAlign = "left";
@@ -750,17 +751,167 @@ footer { padding-top: 6px; }
     return { canvas: cv, date };
   }
 
-  function showShot(canvas, msg) {
-    try { $("shotImg").src = canvas.toDataURL("image/png"); $("shot").hidden = false; } catch (e) {}
+  // 줄바꿈: 띄어쓰기 단위로 끊고, 한 단어가 너무 길면 글자 단위로 끊어요.
+  function wrapLines(ctx, text, maxW) {
+    const lines = [];
+    let line = "";
+    text.split(" ").forEach((w) => {
+      const test = line ? line + " " + w : w;
+      if (!line || ctx.measureText(test).width <= maxW) line = test;
+      else { lines.push(line); line = w; }
+    });
+    if (line) lines.push(line);
+    const out = [];
+    lines.forEach((l) => {
+      if (ctx.measureText(l).width <= maxW) { out.push(l); return; }
+      let cur = "";
+      for (const ch of l) {
+        if (cur && ctx.measureText(cur + ch).width > maxW) { out.push(cur); cur = ch; }
+        else cur += ch;
+      }
+      if (cur) out.push(cur);
+    });
+    return out;
+  }
+
+  // 두 번째 장: 축별 풀이
+  async function makeTextCard() {
+    const sc = scores(state.answers);
+    const date = state.completedAt || today();
+    const W = 1080, P = 72, IW = W - P * 2;
+    const BODY = "400 31px " + IF.body, LH = 48;
+    const NOTE = "400 23px " + IF.body, NLH = 36;
+    const note = "친화성과 개방성은 대부분 사람이 높게 답하는 편이라 3.5 안팎은 평균 근처일 수 있어요. 점수는 1~5 척도의 위치이고 백분위가 아니에요.";
+
+    await loadFonts(["다섯 축 풀이", "결과지 2/2", note].concat(TRAITS.map((t) => t.name + t.t.hi + t.t.mid + t.t.lo)).join(""));
+
+    const m0 = document.createElement("canvas").getContext("2d");
+    m0.font = BODY;
+    const blocks = TRAITS.map((t) => {
+      const m = sc[t.k], lv = level(m);
+      return { t, m, lv, lines: wrapLines(m0, t.t[lv.key], IW) };
+    });
+    m0.font = NOTE;
+    const noteLines = wrapLines(m0, note, IW);
+
+    // 세로 배치
+    const yHeadTop = P, yHeadText = P + 42, yHeadRule = P + 62;
+    const yTitle = yHeadRule + 118;
+    const yDate = yTitle + 52;
+    let y = yDate + 34;
+    const yRows = y;
+    const tops = blocks.map((b) => { const top = y; y += 112 + (b.lines.length - 1) * LH + 34; return top; });
+    const yNote = y + 50;
+    const yFootRule = yNote + (noteLines.length - 1) * NLH + 34;
+    const yFoot = yFootRule + 40;
+    const H = yFoot + P - 28;
+
+    const cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d");
+    ctx.fillStyle = IC.paper; ctx.fillRect(0, 0, W, H);
+
+    // 머리 띠
+    ctx.fillStyle = IC.red;
+    ctx.fillRect(P, yHeadTop, IW, 5);
+    ctx.fillRect(P, yHeadRule, IW, 2);
+    ctx.font = "500 25px " + IF.body;
+    ctx.textAlign = "left"; ctx.fillText("성격 5요인 검사 · IPIP-50", P, yHeadText);
+    ctx.textAlign = "right"; ctx.fillText("결과지 2/2", W - P, yHeadText);
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = IC.ink;
+    ctx.font = "400 92px " + IF.display;
+    ctx.fillText("다섯 축 풀이", P, yTitle);
+    ctx.fillStyle = IC.soft;
+    ctx.font = "400 26px " + IF.body;
+    ctx.fillText(date + " 검사", P, yDate);
+
+    ctx.fillStyle = IC.faint;
+    ctx.fillRect(P, yRows, IW, 2);
+    blocks.forEach((b, i) => {
+      const top = tops[i];
+      const base = top + 60;
+
+      ctx.textAlign = "left";
+      ctx.fillStyle = IC.red;
+      ctx.font = "500 28px " + IF.mono;
+      ctx.fillText(b.t.k, P, base);
+      ctx.fillStyle = IC.ink;
+      ctx.font = "700 40px " + IF.body;
+      const nx = P + 38;
+      ctx.fillText(b.t.name, nx, base);
+      const nameW = ctx.measureText(b.t.name).width;
+
+      ctx.font = "500 22px " + IF.body;
+      const cw = ctx.measureText(b.lv.label).width + 28, ch = 38;
+      const cx = nx + nameW + 16, cy = base - 30;
+      rr(ctx, cx, cy, cw, ch, ch / 2);
+      if (b.lv.key === "hi") { ctx.fillStyle = IC.ink; ctx.fill(); ctx.fillStyle = IC.paper; }
+      else {
+        ctx.lineWidth = 2; ctx.strokeStyle = IC.soft;
+        ctx.setLineDash(b.lv.key === "lo" ? [6, 5] : []);
+        ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = IC.soft;
+      }
+      ctx.textAlign = "center";
+      ctx.fillText(b.lv.label, cx + cw / 2, cy + 27);
+
+      ctx.textAlign = "right";
+      ctx.fillStyle = IC.soft;
+      ctx.font = "500 22px " + IF.mono;
+      ctx.fillText("/5", W - P, base);
+      const sw = ctx.measureText("/5").width;
+      ctx.fillStyle = IC.ink;
+      ctx.font = "400 50px " + IF.display;
+      ctx.fillText(b.m.toFixed(1), W - P - sw - 4, base + 2);
+
+      ctx.textAlign = "left";
+      ctx.fillStyle = IC.ink;
+      ctx.font = BODY;
+      b.lines.forEach((ln, j) => ctx.fillText(ln, P, base + 52 + j * LH));
+
+      ctx.fillStyle = IC.faint;
+      const bottom = i + 1 < tops.length ? tops[i + 1] : y;
+      ctx.fillRect(P, bottom, IW, 2);
+    });
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = IC.soft;
+    ctx.font = NOTE;
+    noteLines.forEach((ln, j) => ctx.fillText(ln, P, yNote + j * NLH));
+
+    ctx.fillStyle = IC.red;
+    ctx.fillRect(P, yFootRule, IW, 2);
+    ctx.fillStyle = IC.soft;
+    ctx.font = "400 21px " + IF.body;
+    ctx.fillText("IPIP Big-Five 50문항 · 비공식 번역", P, yFoot);
+
+    return { canvas: cv, date };
+  }
+
+  function showShot(cards, msg) {
+    try {
+      $("shotImg1").src = cards[0].canvas.toDataURL("image/png");
+      $("shotImg2").src = cards[1].canvas.toDataURL("image/png");
+      $("shot").hidden = false;
+    } catch (e) {}
     $("toast").textContent = msg;
   }
 
   // 결과 화면이 열릴 때 미리 만들어 둬요. 그래야 버튼을 누르자마자 공유 창이 떠요.
+  function toCard({ canvas, date }, suffix) {
+    return new Promise((res, rej) => {
+      canvas.toBlob((blob) => blob ? res({ canvas, blob, filename: "빅파이브-결과-" + date + "-" + suffix + ".png" }) : rej(new Error("no blob")), "image/png");
+    });
+  }
   let cardP = null;
   function prepareCard() {
-    const p = makeCard().then(({ canvas, date }) => new Promise((res, rej) => {
-      canvas.toBlob((blob) => blob ? res({ canvas, blob, filename: "빅파이브-결과-" + date + ".png" }) : rej(new Error("no blob")), "image/png");
-    }));
+    const p = (async () => {
+      const a = await toCard(await makeCard(), "1점수");
+      const b = await toCard(await makeTextCard(), "2풀이");
+      return [a, b];
+    })();
     p.catch(() => {});
     cardP = p;
     return p;
@@ -774,56 +925,61 @@ footer { padding-top: 6px; }
     btn.disabled = true;
     $("shot").hidden = true;
     $("toast").textContent = "이미지를 만드는 중이에요.";
-    const LONGPRESS = "여기서는 바로 저장이 안 돼요. 아래 이미지를 길게 눌러 사진에 저장하세요.";
+    const LONGPRESS = "여기서는 바로 저장이 안 돼요. 아래 이미지 두 장을 하나씩 길게 눌러 사진에 저장하세요.";
     try {
-      const card = await (cardP || prepareCard()).catch(() => prepareCard());
+      const cards = await (cardP || prepareCard()).catch(() => prepareCard());
 
-      // Claude 안에서 열었을 때
+      // Claude 안에서 열었을 때: 한 장씩 확인받아요
       const dl = await dlReady;
       if (dl) {
+        let n = 0;
         try {
-          const r = await dl.save({ filename: card.filename, data: card.blob });
-          $("toast").textContent = r && r.status === "delivered" ? "" : "결과 이미지를 저장했어요.";
+          for (const c of cards) { await dl.save({ filename: c.filename, data: c.blob }); n++; }
+          $("toast").textContent = "결과 이미지 2장을 저장했어요.";
         } catch (e) {
           const code = e && e.code;
-          if (code === "declined") $("toast").textContent = "저장을 취소했어요.";
+          if (code === "declined") $("toast").textContent = n ? "1장만 저장했어요." : "저장을 취소했어요.";
           else if (code === "rate_limited") $("toast").textContent = "저장 창이 이미 열려 있어요. 잠시 뒤에 다시 눌러주세요.";
-          else showShot(card.canvas, LONGPRESS);
+          else showShot(cards, LONGPRESS);
         }
         return;
       }
 
-      // 폰 브라우저: 공유 창 → '이미지 저장'
+      // 폰 브라우저: 공유 창에 두 장을 같이 올려요 → '이미지 저장'
       const mobile = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
-      let file = null;
-      try { file = new File([card.blob], card.filename, { type: "image/png" }); } catch (e) {}
-      if (mobile && file && navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-        $("toast").textContent = "공유 창에서 '이미지 저장'을 고르면 사진에 들어가요.";
+      let files = null;
+      try { files = cards.map((c) => new File([c.blob], c.filename, { type: "image/png" })); } catch (e) {}
+      if (mobile && files && navigator.canShare && navigator.share && navigator.canShare({ files })) {
+        $("toast").textContent = "공유 창에서 '이미지 저장'을 고르면 두 장이 사진에 들어가요.";
         try {
-          await navigator.share({ files: [file] });
+          await navigator.share({ files });
           $("toast").textContent = "";
         } catch (e) {
           if (e && e.name === "AbortError") $("toast").textContent = "저장을 취소했어요.";
           else if (e && e.name === "NotAllowedError") $("toast").textContent = "이미지가 준비됐어요. 한 번 더 눌러주세요.";
-          else showShot(card.canvas, LONGPRESS);
+          else showShot(cards, LONGPRESS);
         }
         return;
       }
 
-      // PC 브라우저: 파일로 내려받기
+      // PC 브라우저: 파일 두 개로 내려받기
       try {
-        const url = URL.createObjectURL(card.blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = card.filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 30000);
-        if (mobile) showShot(card.canvas, "저장이 안 됐으면 아래 이미지를 길게 눌러 사진에 저장하세요.");
-        else $("toast").textContent = "결과 이미지를 내려받았어요.";
+        cards.forEach((c, i) => {
+          setTimeout(() => {
+            const url = URL.createObjectURL(c.blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = c.filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+          }, i * 400);
+        });
+        if (mobile) showShot(cards, "저장이 안 됐으면 아래 이미지 두 장을 하나씩 길게 눌러 사진에 저장하세요.");
+        else $("toast").textContent = "결과 이미지 2장을 내려받았어요. 한 장만 받아졌으면 브라우저의 '여러 파일 다운로드'를 허용해주세요.";
       } catch (e) {
-        showShot(card.canvas, LONGPRESS);
+        showShot(cards, LONGPRESS);
       }
     } catch (e) {
       $("toast").textContent = "이미지를 만들지 못했어요. 한 번 더 눌러주세요.";
