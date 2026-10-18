@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+<title>빅파이브 50문항 검사</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: one OMR answer-sheet column (max 560px) — red printed guides on paper, black pen marks for answers */
+:root {
+  --paper: #fbf8f8;
+  --sheet: #ffffff;
+  --ink: #1d191a;
+  --ink-soft: #6e6265;
+  --red: #c63445;
+  --red-faint: #efcdd2;
+  --red-wash: #fbeef0;
+  --mark: #171314;
+  --font-display: "Black Han Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #141112; --sheet: #1d1819; --ink: #f1ebec; --ink-soft: #a89c9f;
+    --red: #ef6f7d; --red-faint: #4e2a30; --red-wash: #2a1c1f; --mark: #f1ebec;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #141112; --sheet: #1d1819; --ink: #f1ebec; --ink-soft: #a89c9f;
+  --red: #ef6f7d; --red-faint: #4e2a30; --red-wash: #2a1c1f; --mark: #f1ebec;
+  color-scheme: dark;
+}
+
+body { background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.65; }
+.wrap {
+  max-width: 560px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 18px 48px;
+}
+.form-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  border-top: 3px solid var(--red); border-bottom: 1px solid var(--red);
+  padding-block: 7px; color: var(--red);
+  font-size: 12px; font-weight: 500; letter-spacing: 0.04em;
+}
+.form-head .mono { font-family: var(--font-mono); }
+section { display: flex; flex-direction: column; gap: 22px; padding-top: 22px; }
+h1, h2 { font-family: var(--font-display); font-weight: 400; line-height: 1.15; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h1 { font-size: clamp(32px, 9vw, 42px); }
+h2 { font-size: 30px; }
+h3 { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: var(--red); margin: 0; }
+p { margin: 0; }
+.lede { font-size: 16px; max-width: 34em; }
+.muted { color: var(--ink-soft); }
+.small { font-size: 13px; line-height: 1.6; }
+
+.block { display: flex; flex-direction: column; gap: 10px; }
+ul.plain { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 4px; }
+
+.axes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.axis { border: 1px solid var(--red-faint); border-radius: 6px; padding: 8px 4px; text-align: center; background: var(--sheet); }
+.axis b { display: block; font-family: var(--font-mono); color: var(--red); font-size: 15px; }
+.axis span { font-size: 12px; }
+
+/* OMR bubbles */
+.opts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px;
+  background: var(--sheet); border: 1px solid var(--red-faint); border-radius: 8px; padding: 6px 4px; }
+.opt { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 2px 8px;
+  background: none; border: 0; border-radius: 6px; font: inherit; color: var(--ink-soft); cursor: pointer; }
+.oval { width: 26px; height: 42px; border: 1.5px solid var(--red); border-radius: 50%;
+  display: grid; place-items: center; font-family: var(--font-mono); font-size: 13px; color: var(--red);
+  transition: background-color .15s, border-color .15s, color .15s; }
+.opt .lbl { font-size: 12px; line-height: 1.3; text-align: center; word-break: keep-all; }
+.opt:hover .oval { background: var(--red-wash); }
+.opt[aria-pressed="true"] .oval { background: var(--mark); border-color: var(--mark); color: transparent; }
+.opt[aria-pressed="true"] .lbl { color: var(--ink); font-weight: 500; }
+.opts.static .opt { cursor: default; }
+.opts.static .opt:hover .oval { background: none; }
+
+button:focus-visible, .opt:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+.btn { font: inherit; font-weight: 700; font-size: 16px; border-radius: 10px; padding: 14px 18px; cursor: pointer; width: 100%; }
+.btn-primary { background: var(--ink); color: var(--paper); border: 1.5px solid var(--ink); }
+.btn-secondary { background: transparent; color: var(--ink); border: 1.5px solid var(--ink-soft); }
+.btn-quiet { background: none; border: 0; color: var(--ink-soft); font: inherit; font-size: 14px; padding: 6px 2px; cursor: pointer; }
+.actions { display: flex; flex-direction: column; gap: 10px; }
+
+/* Quiz */
+.q-top { display: flex; justify-content: space-between; align-items: center; }
+.q-count { font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.item { display: flex; flex-direction: column; gap: 6px; min-height: 6.6em; }
+.q-num { font-family: var(--font-mono); color: var(--red); font-size: 15px; }
+.q-text { font-size: clamp(20px, 5.6vw, 24px); font-weight: 500; line-height: 1.45; text-wrap: balance; word-break: keep-all; }
+.swap { animation: swap .18s ease-out; }
+@keyframes swap { from { opacity: .35; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+
+.sheet-grid { display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--red-faint); padding-top: 14px; }
+.sheet-grid .row-head { display: flex; justify-content: space-between; align-items: baseline; }
+.marks { display: grid; grid-template-columns: 2.2em repeat(10, minmax(0, 1fr)); gap: 6px 2px; align-items: center; }
+.marks .rn { font-family: var(--font-mono); font-size: 11px; color: var(--red); text-align: right; padding-right: 6px; }
+.cell { height: 26px; border: 0; background: none; padding: 0; display: grid; place-items: center; cursor: pointer; border-radius: 4px; }
+.cell span { width: 11px; height: 18px; border: 1.2px solid var(--red); border-radius: 50%; }
+.cell.done span { background: var(--mark); border-color: var(--mark); }
+.cell.cur span { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--red); }
+
+/* Result */
+.r-head { display: flex; flex-direction: column; gap: 6px; }
+.traits { display: flex; flex-direction: column; }
+.trait { display: flex; flex-direction: column; gap: 10px; padding-block: 18px; border-bottom: 1px solid var(--red-faint); }
+.trait:first-child { border-top: 1px solid var(--red-faint); }
+.t-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.t-name { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.t-name .k { font-family: var(--font-mono); color: var(--red); font-size: 14px; }
+.t-name strong { font-size: 19px; }
+.chip { font-size: 12px; font-weight: 500; padding: 1px 9px; border-radius: 999px; border: 1px solid var(--ink-soft); color: var(--ink-soft); white-space: nowrap; }
+.chip.hi { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.chip.lo { border-style: dashed; }
+.score { font-family: var(--font-display); font-size: 36px; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.score small { font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft); margin-left: 2px; }
+.bar { position: relative; height: 10px; background: var(--red-wash); border-radius: 5px; margin-inline: 2px; }
+.bar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); border-radius: 5px; }
+.bar .mid { position: absolute; left: 50%; top: -5px; bottom: -5px; width: 1.5px; background: var(--red); transform: translateX(-50%); }
+.bar .prev { position: absolute; top: 50%; width: 13px; height: 13px; border: 2px solid var(--red); border-radius: 50%; background: var(--paper); transform: translate(-50%, -50%); }
+.ticks { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); }
+.t-text { font-size: 14.5px; }
+
+.types { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.tile { border: 1.5px solid var(--ink); border-radius: 8px; padding: 12px 4px 8px; text-align: center; display: flex; flex-direction: column; gap: 4px; }
+.tile .L { font-family: var(--font-display); font-size: 30px; line-height: 1.1; }
+.tile .c { font-size: 11px; color: var(--ink-soft); }
+.tile.edge { border-style: dashed; border-color: var(--red); }
+.tile.edge .L { font-size: 22px; color: var(--red); padding-block: 4px; }
+
+.notes { background: var(--sheet); border: 1px solid var(--red-faint); border-radius: 8px; padding: 14px 16px; }
+.confirm { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--red); border-radius: 10px; padding: 14px; }
+.confirm .row { display: flex; gap: 8px; }
+.confirm .row .btn { padding: 11px 12px; font-size: 15px; }
+textarea.fallback { width: 100%; box-sizing: border-box; min-height: 9em; font: inherit; font-size: 13px; padding: 10px; border-radius: 8px; border: 1px solid var(--ink-soft); background: var(--sheet); color: var(--ink); }
+.toast { font-size: 13px; color: var(--red); text-align: center; min-height: 1.4em; }
+footer { padding-top: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .swap { animation: none; }
+  .oval { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="form-head">
+    <span>성격 5요인 검사 · <span class="mono">IPIP-50</span></span>
+    <span>답안지</span>
+  </header>
+
+  <!-- INTRO -->
+  <section id="intro">
+    <h1>빅파이브 50문항 검사</h1>
+    <p class="lede">Big Five 다섯 축을 재는 50문항이에요. 유형 대신 축마다 점수가 나오고, MBTI로 대충 바꾸면 어떻게 되는지, 어느 축이 경계에 걸려 있는지도 보여줘요.</p>
+
+    <div class="axes" aria-label="측정하는 다섯 축">
+      <div class="axis"><b>O</b><span>개방성</span></div>
+      <div class="axis"><b>C</b><span>성실성</span></div>
+      <div class="axis"><b>E</b><span>외향성</span></div>
+      <div class="axis"><b>A</b><span>친화성</span></div>
+      <div class="axis"><b>N</b><span>신경성</span></div>
+    </div>
+
+    <div class="block">
+      <h3>답하는 법</h3>
+      <ul class="plain">
+        <li>되고 싶은 모습 말고, 지금 평소의 나를 기준으로 답하세요.</li>
+        <li>비슷한 나이·성별의 아는 사람들과 비교해서 생각하면 쉬워요.</li>
+        <li>오래 고민하지 말고 첫 느낌으로 고르세요. 7분쯤 걸려요.</li>
+        <li>답은 이 기기에만 저장돼요. 중간에 나가도 이어서 할 수 있어요.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <h3>표기 방법</h3>
+      <div class="opts static" id="legend" aria-hidden="true"></div>
+      <p class="small muted">각 문장이 나에게 얼마나 맞는지 골라 칠하면 다음 문항으로 넘어가요. 키보드 숫자 1~5로도 고를 수 있어요.</p>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="startBtn" type="button">검사 시작</button>
+      <button class="btn btn-secondary" id="restartBtn" type="button" hidden>처음부터</button>
+    </div>
+
+    <footer class="small muted">문항 출처: International Personality Item Pool(IPIP) Big-Five 50문항, 공개 도메인. 한국어 번역은 비공식이라 원판과 점수 기준이 조금 다를 수 있어요.</footer>
+  </section>
+
+  <!-- QUIZ -->
+  <section id="quiz" hidden>
+    <div class="q-top">
+      <button class="btn-quiet" id="backBtn" type="button">← 이전</button>
+      <span class="q-count" id="qCount" aria-live="polite">1 / 50</span>
+    </div>
+
+    <div class="item" id="item">
+      <span class="q-num" id="qNum">1.</span>
+      <p class="q-text" id="qText"></p>
+    </div>
+
+    <div class="opts" id="opts" role="group" aria-label="응답"></div>
+
+    <div class="sheet-grid">
+      <div class="row-head">
+        <h3>답안 표기란</h3>
+        <span class="q-count" id="answered">0개 표기</span>
+      </div>
+      <div class="marks" id="marks"></div>
+      <p class="small muted">칸을 누르면 그 문항으로 이동해요.</p>
+    </div>
+
+    <button class="btn btn-primary" id="toResult" type="button" hidden>결과 보기</button>
+  </section>
+
+  <!-- RESULT -->
+  <section id="result" hidden>
+    <div class="r-head">
+      <h2>내 다섯 축</h2>
+      <p class="small muted" id="rDate"></p>
+      <p class="small muted" id="prevLegend" hidden></p>
+    </div>
+
+    <div class="traits" id="traits"></div>
+
+    <div class="block">
+      <h3>MBTI로 대충 바꾸면</h3>
+      <div class="types" id="types"></div>
+      <p class="small muted">E/I는 외향성, N/S는 개방성, F/T는 친화성, J/P는 성실성 점수로 바꿨어요. 점선 칸은 중간(3.0)에서 0.3 안쪽이라 재검사 때 뒤집힐 수 있는 축이에요. 신경성은 MBTI에 없는 축이라 빠져요.</p>
+    </div>
+
+    <div class="notes block">
+      <h3>읽는 법</h3>
+      <ul class="plain small">
+        <li>점수는 1~5 척도에서의 위치예요. 한국인 기준 백분위가 아니라서 "상위 몇 %"로 읽으면 안 돼요.</li>
+        <li>친화성과 개방성은 대부분 사람이 높게 답하는 경향이 있어서, 3.5 정도는 평균 근처일 수 있어요.</li>
+        <li>몇 주 뒤에 다시 해서 비교해보세요. 다시 하면 지난 점수가 막대 위에 빈 동그라미로 표시돼요.</li>
+      </ul>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="copyBtn" type="button">결과 복사</button>
+      <p class="toast" id="toast" aria-live="polite"></p>
+      <textarea class="fallback" id="fallback" readonly hidden aria-label="복사할 결과"></textarea>
+      <button class="btn btn-secondary" id="editBtn" type="button">답 수정하기</button>
+      <button class="btn btn-secondary" id="retakeBtn" type="button">다시 하기</button>
+      <div class="confirm" id="confirm" hidden>
+        <p class="small">답을 모두 지우고 처음부터 할까요? 지금 결과는 다음 결과에 "지난번"으로 남아요.</p>
+        <div class="row">
+          <button class="btn btn-primary" id="confirmYes" type="button">처음부터 하기</button>
+          <button class="btn btn-secondary" id="confirmNo" type="button">취소</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  // [문장, 축, 방향(+1 정채점 / -1 역채점)] — IPIP Big-Five 50문항 원래 순서
+  const ITEMS = [
+    ["모임에서 분위기를 띄우는 편이다.", "E", 1],
+    ["남들이 어떻게 되든 별로 신경 쓰지 않는다.", "A", -1],
+    ["항상 미리 준비해 두는 편이다.", "C", 1],
+    ["쉽게 스트레스를 받는다.", "N", 1],
+    ["어휘력이 풍부한 편이다.", "O", 1],
+    ["말수가 적은 편이다.", "E", -1],
+    ["사람에게 관심이 많다.", "A", 1],
+    ["물건을 아무 데나 늘어놓는다.", "C", -1],
+    ["대부분의 시간 동안 마음이 편안하다.", "N", -1],
+    ["추상적인 개념은 이해하기 어렵다.", "O", -1],
+    ["사람들과 함께 있으면 편하다.", "E", 1],
+    ["남에게 상처 주는 말을 하는 편이다.", "A", -1],
+    ["세세한 부분까지 신경 쓴다.", "C", 1],
+    ["이런저런 걱정을 많이 한다.", "N", 1],
+    ["상상력이 풍부하다.", "O", 1],
+    ["눈에 띄지 않게 뒤에 있는 편이다.", "E", -1],
+    ["다른 사람의 감정에 공감한다.", "A", 1],
+    ["일을 엉망으로 만들 때가 많다.", "C", -1],
+    ["울적한 기분이 드는 일이 거의 없다.", "N", -1],
+    ["추상적인 생각에는 관심이 없다.", "O", -1],
+    ["먼저 대화를 시작하는 편이다.", "E", 1],
+    ["다른 사람의 고민에는 관심이 없다.", "A", -1],
+    ["해야 할 일을 바로바로 처리한다.", "C", 1],
+    ["작은 일에도 쉽게 동요한다.", "N", 1],
+    ["좋은 아이디어를 잘 낸다.", "O", 1],
+    ["대화할 때 할 말이 별로 없다.", "E", -1],
+    ["마음이 여린 편이다.", "A", 1],
+    ["물건을 제자리에 두는 걸 자주 잊는다.", "C", -1],
+    ["쉽게 속상해한다.", "N", 1],
+    ["상상력이 부족한 편이다.", "O", -1],
+    ["모임에서 여러 사람과 두루 이야기를 나눈다.", "E", 1],
+    ["다른 사람에게 그다지 흥미가 없다.", "A", -1],
+    ["정돈된 상태를 좋아한다.", "C", 1],
+    ["기분이 자주 바뀐다.", "N", 1],
+    ["이해가 빠른 편이다.", "O", 1],
+    ["주목받는 걸 좋아하지 않는다.", "E", -1],
+    ["다른 사람을 위해 시간을 낸다.", "A", 1],
+    ["해야 할 일을 미루거나 피한다.", "C", -1],
+    ["감정 기복이 심하다.", "N", 1],
+    ["어려운 단어를 자주 쓴다.", "O", 1],
+    ["관심의 중심이 되어도 괜찮다.", "E", 1],
+    ["다른 사람의 감정이 나에게도 전해진다.", "A", 1],
+    ["정해둔 일정대로 움직인다.", "C", 1],
+    ["쉽게 짜증이 난다.", "N", 1],
+    ["곰곰이 생각에 잠기는 시간이 많다.", "O", 1],
+    ["처음 보는 사람 앞에서는 조용해진다.", "E", -1],
+    ["사람들을 편안하게 해준다.", "A", 1],
+    ["일을 꼼꼼하고 정확하게 한다.", "C", 1],
+    ["자주 울적하다.", "N", 1],
+    ["아이디어가 넘친다.", "O", 1]
+  ];
+  const SCALE = ["전혀 아니다", "아닌 편이다", "보통이다", "그런 편이다", "매우 그렇다"];
+  const TRAITS = [
+    { k: "O", name: "개방성", t: {
+      hi: "새로운 아이디어와 추상적인 생각에 끌려요. 원리를 파고들고 낯선 분야를 건드려보는 걸 즐기는 편이에요.",
+      mid: "새로운 것도 받아들이지만, 익숙하고 검증된 방식도 편하게 써요.",
+      lo: "실용적이고 구체적인 걸 선호해요. 검증된 방식을 믿고, 쓸모가 분명한 쪽에 힘을 써요." } },
+    { k: "C", name: "성실성", t: {
+      hi: "계획을 세우고 끝까지 해내는 편이에요. 정리와 마감을 잘 지켜요.",
+      mid: "중요한 일은 챙기지만, 모든 걸 체계적으로 관리하지는 않아요.",
+      lo: "즉흥적이고 유연해요. 계획보다 그때그때 대응하는 쪽이 편해요." } },
+    { k: "E", name: "외향성", t: {
+      hi: "사람과 자극에서 에너지를 얻어요. 활기찬 모임이나 새로운 환경에서 살아나는 편이에요.",
+      mid: "상황에 따라 달라요. 사람들과 어울리는 시간도, 혼자 있는 시간도 둘 다 필요해요.",
+      lo: "조용한 환경에서 에너지가 회복돼요. 많은 사람보다 소수와 깊게 지내는 쪽이 편해요." } },
+    { k: "A", name: "친화성", t: {
+      hi: "공감하고 맞춰주는 편이에요. 갈등보다 협력을 택하고, 남의 감정을 잘 알아채요.",
+      mid: "기본적으로 협조적이지만, 필요할 땐 자기 입장을 분명히 해요.",
+      lo: "직설적이고 자기 판단을 우선해요. 맞춰주기보다 옳다고 보는 쪽을 밀고 나가요." } },
+    { k: "N", name: "신경성", t: {
+      hi: "불안, 걱정, 짜증 같은 감정을 쉽고 크게 느끼는 편이에요. 위험 신호에 민감하다는 뜻이기도 해요.",
+      mid: "스트레스를 받으면 흔들리지만, 대체로 금방 회복해요.",
+      lo: "감정이 안정적이고 스트레스에 잘 흔들리지 않아요." } }
+  ];
+  const MBTI = [
+    { a: "E", b: "I", k: "E", name: "외향성" },
+    { a: "N", b: "S", k: "O", name: "개방성" },
+    { a: "F", b: "T", k: "A", name: "친화성" },
+    { a: "J", b: "P", k: "C", name: "성실성" }
+  ];
+  const KEY = "bigfive50.v1";
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let state = { answers: new Array(50).fill(null), idx: 0, prev: null, completedAt: null };
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s && Array.isArray(s.answers) && s.answers.length === 50) state = Object.assign(state, s);
+    }
+  } catch (e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  const $ = (id) => document.getElementById(id);
+  const screens = { intro: $("intro"), quiz: $("quiz"), result: $("result") };
+  let current = "intro";
+  function show(name) {
+    for (const k in screens) screens[k].hidden = k !== name;
+    current = name;
+    window.scrollTo(0, 0);
+  }
+
+  const answeredCount = () => state.answers.filter((v) => v != null).length;
+  const allDone = () => answeredCount() === 50;
+  function today() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function scores(ans) {
+    const acc = {};
+    TRAITS.forEach((t) => (acc[t.k] = { sum: 0, n: 0 }));
+    ITEMS.forEach((it, i) => {
+      const v = ans[i];
+      if (v == null) return;
+      acc[it[1]].sum += it[2] > 0 ? v : 6 - v;
+      acc[it[1]].n += 1;
+    });
+    const out = {};
+    for (const k in acc) out[k] = acc[k].n ? Math.round((acc[k].sum / acc[k].n) * 10) / 10 : null;
+    return out;
+  }
+  function level(m) {
+    if (m > 3.4) return { key: "hi", label: "높은 편" };
+    if (m < 2.6) return { key: "lo", label: "낮은 편" };
+    return { key: "mid", label: "중간" };
+  }
+
+  // Legend + option buttons
+  function ovalMarkup(i) { return '<span class="oval">' + (i + 1) + '</span><span class="lbl">' + SCALE[i] + "</span>"; }
+  SCALE.forEach((_, i) => {
+    const d = document.createElement("div");
+    d.className = "opt";
+    d.innerHTML = ovalMarkup(i);
+    if (i === 3) d.setAttribute("aria-pressed", "true");
+    $("legend").appendChild(d);
+  });
+  const optBtns = SCALE.map((_, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "opt";
+    b.dataset.v = String(i + 1);
+    b.setAttribute("aria-pressed", "false");
+    b.innerHTML = ovalMarkup(i);
+    b.addEventListener("click", () => answer(i + 1));
+    $("opts").appendChild(b);
+    return b;
+  });
+
+  // Answer sheet grid
+  const cells = [];
+  for (let r = 0; r < 5; r++) {
+    const rn = document.createElement("span");
+    rn.className = "rn";
+    rn.textContent = String(r * 10 + 1);
+    $("marks").appendChild(rn);
+    for (let c = 0; c < 10; c++) {
+      const j = r * 10 + c;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "cell";
+      b.setAttribute("aria-label", "문항 " + (j + 1));
+      b.innerHTML = "<span></span>";
+      b.addEventListener("click", () => { state.idx = j; save(); renderQuiz(true); });
+      $("marks").appendChild(b);
+      cells.push(b);
+    }
+  }
+
+  function renderIntro() {
+    const n = answeredCount();
+    const start = $("startBtn"), restart = $("restartBtn");
+    if (allDone()) { start.textContent = "결과 보기"; restart.hidden = false; restart.textContent = "처음부터 다시 하기"; }
+    else if (n > 0) { start.textContent = "이어서 하기 (" + n + "/50)"; restart.hidden = false; restart.textContent = "처음부터"; }
+    else { start.textContent = "검사 시작"; restart.hidden = true; }
+  }
+
+  function renderQuiz(animate) {
+    const i = state.idx;
+    $("qNum").textContent = i + 1 + ".";
+    $("qText").textContent = ITEMS[i][0];
+    $("qCount").textContent = i + 1 + " / 50";
+    optBtns.forEach((b) => b.setAttribute("aria-pressed", String(state.answers[i] === Number(b.dataset.v))));
+    cells.forEach((c, j) => {
+      c.classList.toggle("done", state.answers[j] != null);
+      c.classList.toggle("cur", j === i);
+      if (j === i) c.setAttribute("aria-current", "true"); else c.removeAttribute("aria-current");
+    });
+    $("answered").textContent = answeredCount() + "개 표기";
+    $("toResult").hidden = !allDone();
+    if (animate && !reduce) {
+      const el = $("item");
+      el.classList.remove("swap"); void el.offsetWidth; el.classList.add("swap");
+    }
+  }
+
+  let lock = false;
+  function answer(v) {
+    if (lock) return;
+    lock = true;
+    const wasDone = allDone();
+    const i = state.idx;
+    state.answers[i] = v;
+    const nowDone = allDone();
+    if (nowDone && !wasDone) state.completedAt = today();
+    save();
+    renderQuiz(false);
+    setTimeout(() => {
+      lock = false;
+      if (nowDone && !wasDone) { goResult(); return; }
+      let next = -1;
+      for (let k = 1; k <= 50; k++) {
+        const j = (i + k) % 50;
+        if (state.answers[j] == null) { next = j; break; }
+      }
+      if (next >= 0) state.idx = next;
+      else if (i < 49) state.idx = i + 1;
+      else { goResult(); return; }
+      save();
+      renderQuiz(true);
+    }, reduce ? 120 : 220);
+  }
+
+  function goResult() { renderResult(); show("result"); }
+
+  function renderResult() {
+    const sc = scores(state.answers);
+    const prev = state.prev && state.prev.scores ? state.prev : null;
+    $("rDate").textContent = (state.completedAt || today()) + " 검사 · 1~5 척도, 빨간 선은 중간(3.0)";
+    if (prev) { $("prevLegend").hidden = false; $("prevLegend").textContent = "빈 동그라미는 지난번 결과 (" + prev.date + ")"; }
+    else $("prevLegend").hidden = true;
+
+    const box = $("traits");
+    box.innerHTML = "";
+    TRAITS.forEach((t) => {
+      const m = sc[t.k];
+      const lv = level(m);
+      const pct = ((m - 1) / 4) * 100;
+      const pv = prev ? prev.scores[t.k] : null;
+      const row = document.createElement("div");
+      row.className = "trait";
+      row.innerHTML =
+        '<div class="t-top">' +
+          '<div class="t-name"><span class="k">' + t.k + "</span><strong>" + t.name + '</strong><span class="chip ' + lv.key + '">' + lv.label + "</span></div>" +
+          '<div class="score">' + m.toFixed(1) + "<small>/5</small></div>" +
+        "</div>" +
+        '<div class="bar" role="img" aria-label="' + t.name + " " + m.toFixed(1) + '점">' +
+          '<div class="fill" style="width:' + pct + '%"></div>' +
+          '<div class="mid"></div>' +
+          (pv != null ? '<div class="prev" style="left:' + ((pv - 1) / 4) * 100 + '%" title="지난번 ' + pv.toFixed(1) + '"></div>' : "") +
+        "</div>" +
+        '<div class="ticks" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>' +
+        '<p class="t-text">' + t.t[lv.key] + "</p>";
+      box.appendChild(row);
+    });
+
+    const types = $("types");
+    types.innerHTML = "";
+    MBTI.forEach((p) => {
+      const m = sc[p.k];
+      const edge = Math.abs(m - 3) < 0.3;
+      const letter = m >= 3 ? p.a : p.b;
+      const d = document.createElement("div");
+      d.className = "tile" + (edge ? " edge" : "");
+      d.innerHTML = '<span class="L">' + (edge ? p.a + "/" + p.b : letter) + '</span><span class="c">' + p.name + " " + m.toFixed(1) + (edge ? " · 경계" : "") + "</span>";
+      types.appendChild(d);
+    });
+
+    $("confirm").hidden = true;
+    $("retakeBtn").hidden = false;
+    $("fallback").hidden = true;
+    $("toast").textContent = "";
+  }
+
+  function resultText() {
+    const sc = scores(state.answers);
+    const lines = ["빅파이브 50문항 결과 (" + (state.completedAt || today()) + ")"];
+    TRAITS.forEach((t) => lines.push(t.name + " " + sc[t.k].toFixed(1) + " · " + level(sc[t.k]).label));
+    const letters = MBTI.map((p) => {
+      const m = sc[p.k];
+      return Math.abs(m - 3) < 0.3 ? p.a + "/" + p.b : (m >= 3 ? p.a : p.b);
+    });
+    lines.push("MBTI로 대충: " + letters.join(" "));
+    return lines.join("\n");
+  }
+
+  function retake() {
+    state.prev = { date: state.completedAt || today(), scores: scores(state.answers) };
+    state.answers = new Array(50).fill(null);
+    state.idx = 0;
+    state.completedAt = null;
+    save();
+    renderQuiz(false);
+    show("quiz");
+  }
+
+  // Wiring
+  $("startBtn").addEventListener("click", () => {
+    if (allDone()) { goResult(); return; }
+    const first = state.answers.findIndex((v) => v == null);
+    state.idx = first < 0 ? 0 : first;
+    renderQuiz(false);
+    show("quiz");
+  });
+  $("restartBtn").addEventListener("click", () => {
+    if (allDone()) { retake(); return; }
+    state.answers = new Array(50).fill(null);
+    state.idx = 0;
+    save();
+    renderQuiz(false);
+    show("quiz");
+  });
+  $("backBtn").addEventListener("click", () => {
+    if (state.idx > 0) { state.idx -= 1; save(); renderQuiz(true); }
+    else { renderIntro(); show("intro"); }
+  });
+  $("toResult").addEventListener("click", goResult);
+  $("editBtn").addEventListener("click", () => { state.idx = 0; renderQuiz(false); show("quiz"); });
+  $("retakeBtn").addEventListener("click", () => { $("confirm").hidden = false; $("retakeBtn").hidden = true; $("confirmYes").focus(); });
+  $("confirmNo").addEventListener("click", () => { $("confirm").hidden = true; $("retakeBtn").hidden = false; });
+  $("confirmYes").addEventListener("click", retake);
+  $("copyBtn").addEventListener("click", () => {
+    const text = resultText();
+    const fallback = () => {
+      const ta = $("fallback");
+      ta.value = text; ta.hidden = false; ta.focus(); ta.select();
+      $("toast").textContent = "자동 복사가 막혀 있어요. 아래 글을 길게 눌러 복사하세요.";
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => { $("toast").textContent = "결과를 복사했어요."; }, fallback);
+      } else fallback();
+    } catch (e) { fallback(); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (current !== "quiz" || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key >= "1" && e.key <= "5") { e.preventDefault(); answer(Number(e.key)); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); $("backBtn").click(); }
+  });
+
+  renderIntro();
+  renderQuiz(false);
+  show("intro");
+})();
+</script>
+
+</body>
+</html>
