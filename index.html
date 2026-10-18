@@ -138,6 +138,14 @@ button:focus-visible, .opt:focus-visible { outline: 2px solid var(--red); outlin
 .tile.edge .L { font-size: 22px; color: var(--red); padding-block: 4px; }
 
 .notes { background: var(--sheet); border: 1px solid var(--red-faint); border-radius: 8px; padding: 14px 16px; }
+.sum-head { font-size: 20px; font-weight: 700; line-height: 1.45; word-break: keep-all; text-wrap: balance; }
+.sum-mid { color: var(--red); }
+.combos { display: flex; flex-direction: column; }
+.combo { display: flex; flex-direction: column; gap: 4px; padding-block: 14px; border-bottom: 1px solid var(--red-faint); }
+.combo:first-child { border-top: 1px solid var(--red-faint); }
+.combo .lab { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: var(--red); }
+.combo .nm { font-family: var(--font-display); font-weight: 400; font-size: 22px; line-height: 1.2; }
+.combo p { font-size: 14.5px; word-break: keep-all; }
 .confirm { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--red); border-radius: 10px; padding: 14px; }
 .confirm .row { display: flex; gap: 8px; }
 .confirm .row .btn { padding: 11px 12px; font-size: 15px; }
@@ -231,6 +239,15 @@ footer { padding-top: 6px; }
       <p class="small muted" id="prevLegend" hidden></p>
     </div>
 
+    <div class="block" id="sum">
+      <h3>종합평가</h3>
+      <p class="sum-head" id="sumHead"></p>
+      <p class="small muted" id="sumSub"></p>
+      <p class="small sum-mid" id="sumMid" hidden></p>
+      <div class="combos" id="combos"></div>
+      <p class="small muted">두 축을 묶어 읽는 방식은 성격검사 해석에서 쓰는 방법을 참고했어요. 조합 이름과 설명은 연구로 정해진 유형이 아니라 점수를 읽기 쉽게 풀어 쓴 거예요.</p>
+    </div>
+
     <div class="traits" id="traits"></div>
 
     <div class="block">
@@ -249,12 +266,9 @@ footer { padding-top: 6px; }
     </div>
 
     <div class="actions">
-      <button class="btn btn-primary" id="saveBtn" type="button">결과 이미지 저장 (2장)</button>
+      <button class="btn btn-primary" id="saveBtn" type="button">결과 이미지 저장 (3장)</button>
       <p class="toast" id="toast" aria-live="polite"></p>
-      <figure class="shot" id="shot" hidden>
-        <img id="shotImg1" alt="빅파이브 결과 1장: 다섯 축 점수">
-        <img id="shotImg2" alt="빅파이브 결과 2장: 축별 풀이">
-      </figure>
+      <figure class="shot" id="shot" hidden></figure>
       <button class="btn btn-secondary" id="editBtn" type="button">답 수정하기</button>
       <button class="btn btn-secondary" id="retakeBtn" type="button">다시 하기</button>
       <div class="confirm" id="confirm" hidden>
@@ -352,6 +366,64 @@ footer { padding-top: 6px; }
     { a: "F", b: "T", k: "A", name: "친화성" },
     { a: "J", b: "P", k: "C", name: "성실성" }
   ];
+  // 종합평가: 가장 두드러진 두 축으로 한 줄 요약 + 두 축씩 묶어 읽기
+  const NAME = {};
+  TRAITS.forEach((t) => (NAME[t.k] = t.name));
+  const TAG = {
+    O: { hi: ["새로운 걸 파고들고", "새로운 걸 파고드는"], lo: ["실용적이고", "실용적인"] },
+    C: { hi: ["계획대로 끝까지 해내고", "계획대로 끝까지 해내는"], lo: ["즉흥적이고", "즉흥적인"] },
+    E: { hi: ["사람에게서 에너지를 얻고", "사람에게서 에너지를 얻는"], lo: ["혼자 있을 때 충전되고", "혼자 있을 때 충전되는"] },
+    A: { hi: ["남을 잘 맞춰주고", "남을 잘 맞춰주는"], lo: ["할 말은 분명히 하고", "할 말은 분명히 하는"] },
+    N: { hi: ["감정을 크게 느끼고", "감정을 크게 느끼는"], lo: ["잘 흔들리지 않고", "잘 흔들리지 않는"] }
+  };
+  // q 키: 첫 축, 둘째 축 순서로 3.0 이상이면 +, 아래면 -
+  const COMBOS = [
+    { label: "일하는 방식", a: "O", b: "C", q: {
+      "++": ["탐구형 실행가", "새로운 걸 파고들면서도 끝까지 마무리해요. 배운 걸 실제 결과물로 만드는 데 강해요."],
+      "+-": ["아이디어형", "관심사와 아이디어는 넘치는데 마무리 단계에서 힘이 빠지기 쉬워요. 마감이나 같이 하는 사람이 있으면 훨씬 잘 굴러가요."],
+      "-+": ["정석형", "검증된 방식대로 꼼꼼하게 해내요. 규칙과 절차가 분명한 일에서 믿음직해요."],
+      "--": ["그때그때형", "새 방법을 찾거나 계획을 세우기보다 그때 필요한 만큼 처리해요. 압박이 적은 환경을 편하게 느껴요."] } },
+    { label: "사람 대하는 방식", a: "E", b: "A", q: {
+      "++": ["분위기 메이커", "사람을 좋아하고 잘 맞춰줘서, 모임에서 사람들을 챙기고 반겨주는 역할을 자주 맡아요."],
+      "+-": ["주도형", "앞에 나서서 이끄는 게 편하고 할 말은 분명히 해요. 결정이나 협상이 필요한 자리에서 강해요."],
+      "-+": ["조용한 배려형", "나서진 않지만 상대를 세심하게 챙겨요. 소수의 사람과 깊고 편한 관계를 만들어요."],
+      "--": ["독립형", "혼자 판단하고 움직이는 게 편해요. 남에게 맞추느라 에너지를 쓰지 않는 편이에요."] } },
+    { label: "기분의 기본값", a: "E", b: "N", q: {
+      "+-": ["밝은 낙관형", "기분이 쉽게 꺼지지 않고, 사람과 활동에서 에너지를 얻어요. 일상 만족감이 높게 나오는 조합이에요."],
+      "--": ["잔잔한 안정형", "크게 들뜨지도 가라앉지도 않아요. 차분하고 감정 기복이 적어요."],
+      "++": ["감정 풍부형", "기쁨도 걱정도 크게 느껴요. 감정 표현이 활발하고, 주변 분위기에 영향을 많이 받아요."],
+      "-+": ["혼자 삭이는형", "걱정이나 울적함을 혼자 오래 품는 편이에요. 털어놓을 사람이 한두 명 있으면 회복이 훨씬 빨라요."] } },
+    { label: "스트레스 다루는 방식", a: "N", b: "C", q: {
+      "-+": ["침착한 관리형", "압박이 와도 계획대로 차분하게 처리해요. 급한 상황에서 믿고 맡기기 좋은 타입이에요."],
+      "--": ["느긋한형", "스트레스를 크게 받지 않고 일도 여유롭게 해요. 다만 마감이 몰리면 막판에 바빠지기 쉬워요."],
+      "++": ["긴장한 완벽주의형", "걱정이 많은 만큼 미리 준비하고 꼼꼼히 챙겨요. 대신 스스로를 몰아붙여 지치기 쉬워요."],
+      "+-": ["기분파형", "스트레스를 받으면 계획이 쉽게 흐트러지고 즉흥적으로 반응하기 쉬워요. 할 일을 작게 쪼개두면 훨씬 덜 흔들려요."] } }
+  ];
+  function summary(sc) {
+    const strong = TRAITS.map((t) => ({ t, m: sc[t.k], d: Math.abs(sc[t.k] - 3) }))
+      .filter((x) => level(x.m).key !== "mid")
+      .sort((x, y) => y.d - x.d)
+      .slice(0, 2);
+    const tag = (x) => TAG[x.t.k][x.m > 3 ? "hi" : "lo"];
+    let head;
+    if (!strong.length) head = "다섯 축 모두 중간 근처라, 어느 한쪽으로 크게 치우치지 않은 균형형이에요.";
+    else if (strong.length === 1) head = tag(strong[0])[1] + " 사람이에요.";
+    else head = tag(strong[0])[0] + " " + tag(strong[1])[1] + " 사람이에요.";
+    const sub = strong.length ? "가장 두드러진 축: " + strong.map((x) => x.t.name + " " + x.m.toFixed(1)).join(" · ") : "";
+    const mids = state.answers.filter((v) => v === 3).length;
+    const midNote = mids >= 20 ? "'보통이다'를 50개 중 " + mids + "개 골라서, 점수가 실제보다 중간으로 몰렸을 수 있어요." : "";
+    const combos = COMBOS.map((c) => {
+      const key = (sc[c.a] >= 3 ? "+" : "-") + (sc[c.b] >= 3 ? "+" : "-");
+      const edges = [c.a, c.b].filter((k) => Math.abs(sc[k] - 3) < 0.3).map((k) => NAME[k]);
+      return {
+        label: c.label, pair: NAME[c.a] + " × " + NAME[c.b],
+        name: c.q[key][0], desc: c.q[key][1],
+        edge: edges.length ? edges.join("과 ") + "이 중간이라 다른 칸 성향도 섞여 있어요." : ""
+      };
+    });
+    return { head, sub, midNote, combos };
+  }
+
   const KEY = "bigfive50.v1";
   const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -539,6 +611,35 @@ footer { padding-top: 6px; }
       types.appendChild(d);
     });
 
+    const S = summary(sc);
+    $("sumHead").textContent = S.head;
+    $("sumSub").textContent = S.sub;
+    $("sumSub").hidden = !S.sub;
+    $("sumMid").textContent = S.midNote;
+    $("sumMid").hidden = !S.midNote;
+    const cb = $("combos");
+    cb.innerHTML = "";
+    S.combos.forEach((c) => {
+      const d = document.createElement("div");
+      d.className = "combo";
+      const lab = document.createElement("span");
+      lab.className = "lab";
+      lab.textContent = c.label + " · " + c.pair;
+      const nm = document.createElement("strong");
+      nm.className = "nm";
+      nm.textContent = c.name;
+      const ds = document.createElement("p");
+      ds.textContent = c.desc;
+      d.append(lab, nm, ds);
+      if (c.edge) {
+        const e = document.createElement("p");
+        e.className = "small muted";
+        e.textContent = c.edge;
+        d.append(e);
+      }
+      cb.appendChild(d);
+    });
+
     $("confirm").hidden = true;
     $("retakeBtn").hidden = false;
     $("shot").hidden = true;
@@ -622,7 +723,7 @@ footer { padding-top: 6px; }
     ctx.fillRect(P, yHeadRule, IW, 2);
     ctx.font = "500 25px " + IF.body;
     ctx.textAlign = "left"; ctx.fillText("성격 5요인 검사 · IPIP-50", P, yHeadText);
-    ctx.textAlign = "right"; ctx.fillText("결과지 1/2", W - P, yHeadText);
+    ctx.textAlign = "right"; ctx.fillText("결과지 1/3", W - P, yHeadText);
 
     // 제목
     ctx.textAlign = "left";
@@ -783,7 +884,7 @@ footer { padding-top: 6px; }
     const NOTE = "400 23px " + IF.body, NLH = 36;
     const note = "친화성과 개방성은 대부분 사람이 높게 답하는 편이라 3.5 안팎은 평균 근처일 수 있어요. 점수는 1~5 척도의 위치이고 백분위가 아니에요.";
 
-    await loadFonts(["다섯 축 풀이", "결과지 2/2", note].concat(TRAITS.map((t) => t.name + t.t.hi + t.t.mid + t.t.lo)).join(""));
+    await loadFonts(["다섯 축 풀이", "결과지 3/3", note].concat(TRAITS.map((t) => t.name + t.t.hi + t.t.mid + t.t.lo)).join(""));
 
     const m0 = document.createElement("canvas").getContext("2d");
     m0.font = BODY;
@@ -817,7 +918,7 @@ footer { padding-top: 6px; }
     ctx.fillRect(P, yHeadRule, IW, 2);
     ctx.font = "500 25px " + IF.body;
     ctx.textAlign = "left"; ctx.fillText("성격 5요인 검사 · IPIP-50", P, yHeadText);
-    ctx.textAlign = "right"; ctx.fillText("결과지 2/2", W - P, yHeadText);
+    ctx.textAlign = "right"; ctx.fillText("결과지 3/3", W - P, yHeadText);
 
     ctx.textAlign = "left";
     ctx.fillStyle = IC.ink;
@@ -890,11 +991,141 @@ footer { padding-top: 6px; }
     return { canvas: cv, date };
   }
 
+  // 두 번째 장: 종합평가
+  async function makeSummaryCard() {
+    const sc = scores(state.answers);
+    const date = state.completedAt || today();
+    const S = summary(sc);
+    const W = 1080, P = 72, IW = W - P * 2;
+    const HEADF = "700 46px " + IF.body, HLH = 64;
+    const BODY = "400 30px " + IF.body, LH = 46;
+    const SMALL = "400 23px " + IF.body, SLH = 36;
+    const note = "두 축을 묶어 읽는 방식은 성격검사 해석에서 쓰는 방법을 참고했어요. 조합 이름과 설명은 연구로 정해진 유형이 아니라 점수를 읽기 쉽게 풀어 쓴 거예요.";
+
+    await loadFonts(["종합평가", "결과지 2/3", S.head, S.sub, S.midNote, note]
+      .concat(S.combos.map((c) => c.label + c.pair + c.name + c.desc + c.edge)).join(""));
+
+    const m0 = document.createElement("canvas").getContext("2d");
+    m0.font = HEADF;
+    const headLines = wrapLines(m0, S.head, IW);
+    m0.font = SMALL;
+    const midLines = S.midNote ? wrapLines(m0, S.midNote, IW) : [];
+    const noteLines = wrapLines(m0, note, IW);
+    const blocks = S.combos.map((c) => {
+      m0.font = BODY;
+      const d = wrapLines(m0, c.desc, IW);
+      m0.font = SMALL;
+      const e = c.edge ? wrapLines(m0, c.edge, IW) : [];
+      return { c, d, e };
+    });
+
+    // 세로 배치
+    const yHeadTop = P, yHeadText = P + 42, yHeadRule = P + 62;
+    const yTitle = yHeadRule + 118;
+    const yDate = yTitle + 52;
+    let y = yDate + 96;
+    const yHead = y;
+    y += (headLines.length - 1) * HLH;
+    let ySub = 0;
+    if (S.sub) { y += 52; ySub = y; }
+    let yMid = 0;
+    if (midLines.length) { y += 46; yMid = y; y += (midLines.length - 1) * SLH; }
+    y += 44;
+    const yRows = y;
+    const tops = blocks.map((b) => {
+      const top = y;
+      let h = 160 + (b.d.length - 1) * LH;
+      if (b.e.length) h += 42 + (b.e.length - 1) * SLH;
+      y += h + 34;
+      return top;
+    });
+    const yNote = y + 48;
+    const yFootRule = yNote + (noteLines.length - 1) * SLH + 34;
+    const yFoot = yFootRule + 40;
+    const H = yFoot + P - 28;
+
+    const cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d");
+    ctx.fillStyle = IC.paper; ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = IC.red;
+    ctx.fillRect(P, yHeadTop, IW, 5);
+    ctx.fillRect(P, yHeadRule, IW, 2);
+    ctx.font = "500 25px " + IF.body;
+    ctx.textAlign = "left"; ctx.fillText("성격 5요인 검사 · IPIP-50", P, yHeadText);
+    ctx.textAlign = "right"; ctx.fillText("결과지 2/3", W - P, yHeadText);
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = IC.ink;
+    ctx.font = "400 92px " + IF.display;
+    ctx.fillText("종합평가", P, yTitle);
+    ctx.fillStyle = IC.soft;
+    ctx.font = "400 26px " + IF.body;
+    ctx.fillText(date + " 검사", P, yDate);
+
+    ctx.fillStyle = IC.ink;
+    ctx.font = HEADF;
+    headLines.forEach((ln, j) => ctx.fillText(ln, P, yHead + j * HLH));
+    if (S.sub) {
+      ctx.fillStyle = IC.soft;
+      ctx.font = "400 25px " + IF.body;
+      ctx.fillText(S.sub, P, ySub);
+    }
+    if (midLines.length) {
+      ctx.fillStyle = IC.red;
+      ctx.font = SMALL;
+      midLines.forEach((ln, j) => ctx.fillText(ln, P, yMid + j * SLH));
+    }
+
+    ctx.fillStyle = IC.faint;
+    ctx.fillRect(P, yRows, IW, 2);
+    blocks.forEach((b, i) => {
+      const top = tops[i];
+      ctx.textAlign = "left";
+      ctx.fillStyle = IC.red;
+      ctx.font = "700 23px " + IF.body;
+      ctx.fillText(b.c.label + " · " + b.c.pair, P, top + 46);
+      ctx.fillStyle = IC.ink;
+      ctx.font = "400 52px " + IF.display;
+      ctx.fillText(b.c.name, P, top + 110);
+      ctx.font = BODY;
+      b.d.forEach((ln, j) => ctx.fillText(ln, P, top + 160 + j * LH));
+      if (b.e.length) {
+        ctx.fillStyle = IC.soft;
+        ctx.font = SMALL;
+        const e0 = top + 160 + (b.d.length - 1) * LH + 42;
+        b.e.forEach((ln, j) => ctx.fillText(ln, P, e0 + j * SLH));
+      }
+      ctx.fillStyle = IC.faint;
+      const bottom = i + 1 < tops.length ? tops[i + 1] : y;
+      ctx.fillRect(P, bottom, IW, 2);
+    });
+
+    ctx.fillStyle = IC.soft;
+    ctx.font = SMALL;
+    noteLines.forEach((ln, j) => ctx.fillText(ln, P, yNote + j * SLH));
+
+    ctx.fillStyle = IC.red;
+    ctx.fillRect(P, yFootRule, IW, 2);
+    ctx.fillStyle = IC.soft;
+    ctx.font = "400 21px " + IF.body;
+    ctx.fillText("IPIP Big-Five 50문항 · 비공식 번역", P, yFoot);
+
+    return { canvas: cv, date };
+  }
+
   function showShot(cards, msg) {
     try {
-      $("shotImg1").src = cards[0].canvas.toDataURL("image/png");
-      $("shotImg2").src = cards[1].canvas.toDataURL("image/png");
-      $("shot").hidden = false;
+      const box = $("shot");
+      box.innerHTML = "";
+      cards.forEach((c, i) => {
+        const img = document.createElement("img");
+        img.alt = "빅파이브 결과 " + (i + 1) + "장";
+        img.src = c.canvas.toDataURL("image/png");
+        box.appendChild(img);
+      });
+      box.hidden = false;
     } catch (e) {}
     $("toast").textContent = msg;
   }
@@ -909,8 +1140,9 @@ footer { padding-top: 6px; }
   function prepareCard() {
     const p = (async () => {
       const a = await toCard(await makeCard(), "1점수");
-      const b = await toCard(await makeTextCard(), "2풀이");
-      return [a, b];
+      const b = await toCard(await makeSummaryCard(), "2종합");
+      const c = await toCard(await makeTextCard(), "3풀이");
+      return [a, b, c];
     })();
     p.catch(() => {});
     cardP = p;
@@ -925,9 +1157,10 @@ footer { padding-top: 6px; }
     btn.disabled = true;
     $("shot").hidden = true;
     $("toast").textContent = "이미지를 만드는 중이에요.";
-    const LONGPRESS = "여기서는 바로 저장이 안 돼요. 아래 이미지 두 장을 하나씩 길게 눌러 사진에 저장하세요.";
+    const LONGPRESS = "여기서는 바로 저장이 안 돼요. 아래 이미지를 하나씩 길게 눌러 사진에 저장하세요.";
     try {
       const cards = await (cardP || prepareCard()).catch(() => prepareCard());
+      const N = cards.length;
 
       // Claude 안에서 열었을 때: 한 장씩 확인받아요
       const dl = await dlReady;
@@ -935,22 +1168,22 @@ footer { padding-top: 6px; }
         let n = 0;
         try {
           for (const c of cards) { await dl.save({ filename: c.filename, data: c.blob }); n++; }
-          $("toast").textContent = "결과 이미지 2장을 저장했어요.";
+          $("toast").textContent = "결과 이미지 " + N + "장을 저장했어요.";
         } catch (e) {
           const code = e && e.code;
-          if (code === "declined") $("toast").textContent = n ? "1장만 저장했어요." : "저장을 취소했어요.";
+          if (code === "declined") $("toast").textContent = n ? n + "장만 저장했어요." : "저장을 취소했어요.";
           else if (code === "rate_limited") $("toast").textContent = "저장 창이 이미 열려 있어요. 잠시 뒤에 다시 눌러주세요.";
           else showShot(cards, LONGPRESS);
         }
         return;
       }
 
-      // 폰 브라우저: 공유 창에 두 장을 같이 올려요 → '이미지 저장'
+      // 폰 브라우저: 공유 창에 같이 올려요 → '이미지 저장'
       const mobile = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
       let files = null;
       try { files = cards.map((c) => new File([c.blob], c.filename, { type: "image/png" })); } catch (e) {}
       if (mobile && files && navigator.canShare && navigator.share && navigator.canShare({ files })) {
-        $("toast").textContent = "공유 창에서 '이미지 저장'을 고르면 두 장이 사진에 들어가요.";
+        $("toast").textContent = "공유 창에서 '이미지 저장'을 고르면 " + N + "장이 사진에 들어가요.";
         try {
           await navigator.share({ files });
           $("toast").textContent = "";
@@ -962,7 +1195,7 @@ footer { padding-top: 6px; }
         return;
       }
 
-      // PC 브라우저: 파일 두 개로 내려받기
+      // PC 브라우저: 파일로 내려받기
       try {
         cards.forEach((c, i) => {
           setTimeout(() => {
@@ -976,8 +1209,8 @@ footer { padding-top: 6px; }
             setTimeout(() => URL.revokeObjectURL(url), 30000);
           }, i * 400);
         });
-        if (mobile) showShot(cards, "저장이 안 됐으면 아래 이미지 두 장을 하나씩 길게 눌러 사진에 저장하세요.");
-        else $("toast").textContent = "결과 이미지 2장을 내려받았어요. 한 장만 받아졌으면 브라우저의 '여러 파일 다운로드'를 허용해주세요.";
+        if (mobile) showShot(cards, "저장이 안 됐으면 아래 이미지를 하나씩 길게 눌러 사진에 저장하세요.");
+        else $("toast").textContent = "결과 이미지 " + N + "장을 내려받았어요. 한 장만 받아졌으면 브라우저의 '여러 파일 다운로드'를 허용해주세요.";
       } catch (e) {
         showShot(cards, LONGPRESS);
       }
