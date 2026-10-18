@@ -75,6 +75,15 @@ kbd { font-family: var(--font-ui); background: #fff; border: 2px solid var(--pap
 .code { font-family: var(--font-sign); font-size: clamp(64px, 16vw, 112px); line-height: 1; letter-spacing: 0.12em; color: var(--chili); text-align: center; }
 .waitbox { align-items: center; text-align: center; }
 .waitbox .btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.pick { display: flex; flex-direction: column; gap: 8px; align-items: center; width: 100%; }
+.pick h3 { margin: 0; font-family: var(--font-ui); font-weight: 400; font-size: 20px; color: var(--chili); }
+.chars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 560px; }
+.charbtn { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 6px 4px 8px; background: #fff; border: 3px solid var(--paper-line); border-radius: 12px; cursor: pointer; font-family: var(--font-ui); font-size: 18px; color: var(--ink); }
+.charbtn canvas { width: 88px; height: 88px; max-width: 100%; }
+.charbtn[aria-pressed="true"] { border-color: var(--chili); background: #fff1cc; }
+.charbtn:disabled { opacity: .45; cursor: default; }
+.charbtn small { font-family: var(--font-body); font-size: 11.5px; color: var(--soft); min-height: 1.4em; }
+.crew { display: block; margin: 4px auto 0; width: min(380px, 86%); height: auto; }
 
 /* 게임 화면 */
 #game { max-width: 1240px; margin: 0 auto; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); padding-block: 10px; display: flex; flex-direction: column; gap: 8px; height: 100%; }
@@ -119,6 +128,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   <header class="sign">
     <h1>둘이서 분식집</h1>
     <p>각자 컴퓨터로 접속해서 같이 차리는 분식집. 3분 동안 주문을 최대한 많이 내보내요.</p>
+    <canvas class="crew" id="crew" width="760" height="230" aria-label="고양이, 강아지, 토끼, 곰 요리사"></canvas>
   </header>
 
   <div class="row">
@@ -165,6 +175,11 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     <h2 id="roomTitle">방 코드</h2>
     <div class="code" id="roomCode">----</div>
     <p id="roomStatus" aria-live="polite"></p>
+    <div class="pick">
+      <h3>내 캐릭터 고르기</h3>
+      <div class="chars" id="chars"></div>
+      <p class="note" id="pickNote"></p>
+    </div>
     <div class="btns">
       <button class="btn" id="startBtn" type="button" hidden>영업 시작</button>
       <button class="btn ghost" id="leaveBtn" type="button">나가기</button>
@@ -342,7 +357,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 
   // ===== 게임 상태 (방장 컴퓨터가 진짜 상태를 가짐) =====
   function freshPot() { return { items: [], st: "idle", dish: null, t: 0 }; }
-  function spawn(i) { return { x: i ? 11.5 : 3.5, y: 5.5, fx: 0, fy: -1, hold: null, chop: false, on: i === 0 }; }
+  function spawn(i) { return { x: i ? 11.5 : 3.5, y: 5.5, fx: 0, fy: -1, hold: null, chop: false, on: i === 0, ch: i ? "dog" : "cat", an: 0 }; }
   function newWorld() {
     const pots = {};
     tiles.forEach((t, i) => { if (t.type === "stove") pots[i] = freshPot(); });
@@ -382,7 +397,9 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     W.slots.fill(null);
     Object.keys(W.pots).forEach((k) => (W.pots[k] = freshPot()));
     W.orders = []; W.score = 0; W.served = 0; W.missed = 0; W.left = ROUND;
+    const chs = W.players.map((p) => p.ch);
     W.players = [spawn(0), spawn(1)]; W.players[1].on = keepOn;
+    W.players.forEach((p, i) => (p.ch = chs[i]));
     W.rs++; W.phase = "count"; W.cd = 3;
     me = W.players[0];
   }
@@ -463,6 +480,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     const p = W.players[pi];
     const i = targetIdx(p);
     if (i < 0) return;
+    p.an = (p.an || 0) + 1;
     const t = tiles[i], h = p.hold;
     const say = (m) => ev({ m, to: pi });
     switch (t.type) {
@@ -539,7 +557,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     W.slots.forEach((it, i) => { if (it) sl.push([i, it]); });
     return {
       t: "s", ph: W.phase, rs: W.rs, left: W.left, cd: W.cd, sc: W.score, sv: W.served, ms: W.missed, sl, pots: W.pots, od: W.orders,
-      pl: W.players.map((p) => ({ x: p.x, y: p.y, fx: p.fx, fy: p.fy, hold: p.hold, chop: p.chop, on: p.on })),
+      pl: W.players.map((p) => ({ x: p.x, y: p.y, fx: p.fx, fy: p.fy, hold: p.hold, chop: p.chop, on: p.on, ch: p.ch, an: p.an })),
       ev: pendingGuestEvents.splice(0)
     };
   }
@@ -672,40 +690,198 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     }
   }
 
-  function drawChef(p, isMe, idxP, now) {
-    const cx = p.x * TS, cy = p.y * TS;
-    const body = idxP === 0 ? "#d7372b" : "#2f8f5b";
-    ctx.beginPath(); ctx.ellipse(cx, cy + TS * 0.26, TS * 0.3, TS * 0.1, 0, 0, Math.PI * 2); ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.fill();
-    dot(ctx, cx, cy, TS * 0.32, body);
-    dot(ctx, cx, cy - TS * 0.02, TS * 0.22, "#ffe0c2");
-    // 모자
-    rrect(ctx, cx - TS * 0.18, cy - TS * 0.36, TS * 0.36, TS * 0.14, 3); ctx.fillStyle = "#fff"; ctx.fill();
-    dot(ctx, cx - TS * 0.1, cy - TS * 0.4, TS * 0.1, "#fff"); dot(ctx, cx + TS * 0.08, cy - TS * 0.42, TS * 0.11, "#fff");
-    // 눈 (바라보는 방향)
-    const ex = p.fx * TS * 0.07, ey = p.fy * TS * 0.05;
-    dot(ctx, cx - TS * 0.07 + ex, cy - TS * 0.01 + ey, TS * 0.03, "#241a14"); dot(ctx, cx + TS * 0.07 + ex, cy - TS * 0.01 + ey, TS * 0.03, "#241a14");
-    // 이름표
-    const label = idxP === 0 ? "방장" : "친구";
-    ctx.font = Math.round(TS * 0.2) + "px " + FONT_UI;
-    const tw = ctx.measureText(label).width + 10;
-    rrect(ctx, cx - tw / 2, cy - TS * 0.78, tw, TS * 0.26, 6); ctx.fillStyle = isMe ? body : "rgba(36,26,20,.75)"; ctx.fill();
-    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(label, cx, cy - TS * 0.65);
-    // 든 것
-    if (p.hold) drawItem(ctx, p.hold, cx + p.fx * TS * 0.36, cy + p.fy * TS * 0.3 + TS * 0.08, TS * 0.5);
-    if (p.chop && view.phase === "play") {
-      const i = targetIdx(p);
-      if (i >= 0 && tiles[i].type === "board" && view.slots[i]) { const a = Math.sin(now / 60) * 0.3; ctx.save(); ctx.translate(cx + p.fx * TS * 0.3, cy + p.fy * TS * 0.3); ctx.rotate(a); ctx.fillStyle = "#cfd6da"; ctx.fillRect(-2, -TS * 0.18, 4, TS * 0.2); ctx.restore(); }
+  // ===== 캐릭터: 동물 요리사 4종 =====
+  const CHARS = {
+    cat:    { name: "고양이", fur: "#f2a65a", dark: "#c9752a", ear: "#f7c9a8", nose: "#e8798a" },
+    dog:    { name: "강아지", fur: "#f3e2c6", dark: "#8a5a3b", ear: "#8a5a3b", nose: "#2b1d16" },
+    rabbit: { name: "토끼",   fur: "#fbf8f2", dark: "#cfc6b8", ear: "#f4b6c2", nose: "#e8798a" },
+    bear:   { name: "곰",     fur: "#9a6440", dark: "#5e3a24", ear: "#d1a57c", nose: "#2b1d16" }
+  };
+  const CHAR_KEYS = Object.keys(CHARS);
+  const APRON = ["#d7372b", "#2f8f5b"];
+  const APRON_NAME = ["빨간 앞치마", "초록 앞치마"];
+
+  function drawEars(c, ch, S, back) {
+    const C = CHARS[ch];
+    if (ch === "cat") {
+      [-1, 1].forEach((sd) => {
+        c.beginPath(); c.moveTo(sd * 0.2 * S, -0.27 * S); c.lineTo(sd * 0.16 * S, -0.49 * S); c.lineTo(sd * 0.02 * S, -0.35 * S); c.closePath();
+        c.fillStyle = C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
+        if (!back) { c.beginPath(); c.moveTo(sd * 0.165 * S, -0.31 * S); c.lineTo(sd * 0.15 * S, -0.43 * S); c.lineTo(sd * 0.07 * S, -0.35 * S); c.closePath(); c.fillStyle = C.ear; c.fill(); }
+      });
+    } else if (ch === "dog") {
+      [-1, 1].forEach((sd) => { c.save(); c.translate(sd * 0.19 * S, -0.22 * S); c.rotate(sd * 0.3); c.beginPath(); c.ellipse(0, 0.07 * S, 0.075 * S, 0.15 * S, 0, 0, Math.PI * 2); c.fillStyle = C.ear; c.fill(); c.restore(); });
+    } else if (ch === "rabbit") {
+      [-1, 1].forEach((sd) => {
+        c.save(); c.translate(sd * 0.09 * S, -0.4 * S); c.rotate(sd * 0.16);
+        c.beginPath(); c.ellipse(0, -0.1 * S, 0.065 * S, 0.18 * S, 0, 0, Math.PI * 2); c.fillStyle = C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
+        if (!back) { c.beginPath(); c.ellipse(0, -0.09 * S, 0.032 * S, 0.13 * S, 0, 0, Math.PI * 2); c.fillStyle = C.ear; c.fill(); }
+        c.restore();
+      });
+    } else if (ch === "bear") {
+      [-1, 1].forEach((sd) => { dot(c, sd * 0.16 * S, -0.35 * S, 0.08 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); if (!back) dot(c, sd * 0.16 * S, -0.35 * S, 0.042 * S, C.ear); });
     }
+  }
+
+  function drawFace(c, ch, S, fx) {
+    const C = CHARS[ch];
+    const hy = -0.17 * S, ox = fx * 0.07 * S;
+    if (ch === "bear" || ch === "dog") { c.beginPath(); c.ellipse(ox * 1.25, hy + 0.075 * S, 0.095 * S, 0.068 * S, 0, 0, Math.PI * 2); c.fillStyle = ch === "bear" ? "#d9b38c" : "#fffaf0"; c.fill(); }
+    const eyeY = hy - 0.01 * S;
+    const ex = [ox - 0.075 * S + fx * 0.02 * S, ox + 0.075 * S + fx * 0.02 * S];
+    ex.forEach((x) => { dot(c, x, eyeY, 0.03 * S, "#241a14"); dot(c, x + 0.01 * S, eyeY - 0.011 * S, 0.01 * S, "#ffffff"); });
+    const nx = ox * 1.35, ny = hy + 0.055 * S;
+    if (ch === "cat" || ch === "rabbit") { c.beginPath(); c.moveTo(nx - 0.024 * S, ny - 0.012 * S); c.lineTo(nx + 0.024 * S, ny - 0.012 * S); c.lineTo(nx, ny + 0.016 * S); c.closePath(); c.fillStyle = C.nose; c.fill(); }
+    else { c.beginPath(); c.ellipse(nx, ny, 0.032 * S, 0.023 * S, 0, 0, Math.PI * 2); c.fillStyle = C.nose; c.fill(); }
+    if (ch === "cat") {
+      c.strokeStyle = "rgba(36,26,20,.5)"; c.lineWidth = 1; c.beginPath();
+      [-1, 1].forEach((sd) => { c.moveTo(nx + sd * 0.05 * S, ny); c.lineTo(nx + sd * 0.16 * S, ny - 0.02 * S); c.moveTo(nx + sd * 0.05 * S, ny + 0.02 * S); c.lineTo(nx + sd * 0.16 * S, ny + 0.035 * S); });
+      c.stroke();
+    }
+    c.globalAlpha = 0.35; dot(c, ex[0] - 0.035 * S, eyeY + 0.065 * S, 0.032 * S, "#ff7f8a"); dot(c, ex[1] + 0.035 * S, eyeY + 0.065 * S, 0.032 * S, "#ff7f8a"); c.globalAlpha = 1;
+  }
+
+  function drawTail(c, ch, S, t, moving) {
+    const C = CHARS[ch], y0 = 0.24 * S;
+    if (ch === "cat") {
+      const w = Math.sin(t * 3) * 0.05 * S;
+      c.strokeStyle = C.dark; c.lineWidth = 0.05 * S; c.lineCap = "round";
+      c.beginPath(); c.moveTo(0, y0); c.quadraticCurveTo(0.16 * S + w, y0 + 0.06 * S, 0.12 * S + w, y0 - 0.12 * S); c.stroke();
+    } else if (ch === "dog") {
+      c.save(); c.translate(0, y0); c.rotate(Math.sin(t * (moving ? 22 : 12)) * 0.5);
+      c.beginPath(); c.ellipse(0, 0.05 * S, 0.035 * S, 0.075 * S, 0, 0, Math.PI * 2); c.fillStyle = C.ear; c.fill(); c.restore();
+    } else if (ch === "rabbit") {
+      dot(c, 0, y0, 0.065 * S, "#ffffff"); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
+    } else if (ch === "bear") {
+      dot(c, 0, y0, 0.05 * S, C.dark);
+    }
+  }
+
+  // 캐릭터 한 명. (X, Y) = 발 딛는 자리 중심, S = 칸 크기
+  function drawChar(c, S, X, Y, o) {
+    const C = CHARS[o.ch] || CHARS.cat;
+    const fx = o.fx || 0, fy = o.fy == null ? 1 : o.fy;
+    const back = fy < 0;
+    const t = (o.now || 0) / 1000;
+    const bob = o.moving ? Math.abs(Math.sin(o.phase * Math.PI)) * S * 0.06 : Math.sin(t * 2.4) * S * 0.008;
+    const tilt = o.moving ? Math.sin(o.phase * Math.PI) * 0.07 : 0;
+    const step = o.moving ? Math.sin(o.phase * Math.PI) * S * 0.05 : 0;
+    const reach = o.reach || 0;
+    const by = Y - bob;
+    const perp = { x: -fy, y: fx };
+
+    c.beginPath(); c.ellipse(X, Y + 0.27 * S, 0.26 * S - bob * 0.5, 0.085 * S, 0, 0, Math.PI * 2); c.fillStyle = "rgba(0,0,0,.18)"; c.fill();
+    dot(c, X - 0.1 * S + (fx ? step * fx : 0), Y + 0.24 * S + (fx ? 0 : step), 0.062 * S, C.dark);
+    dot(c, X + 0.1 * S - (fx ? step * fx : 0), Y + 0.24 * S - (fx ? 0 : step), 0.062 * S, C.dark);
+
+    // 손과 들고 있는 것
+    let hold = null, hands, knife = null;
+    if (o.hold) {
+      const f = 0.24 + reach * 0.1;
+      hold = { x: X + fx * S * f, y: by + 0.1 * S + fy * S * (f - 0.08) - (back ? 0.14 * S : 0) };
+      const sp = 0.19 * S;
+      hands = [[hold.x + perp.x * sp, hold.y + perp.y * sp * 0.6 + 0.04 * S], [hold.x - perp.x * sp, hold.y - perp.y * sp * 0.6 + 0.04 * S]];
+    } else if (o.chop) {
+      const k = Math.sin((o.now || 0) / 40);
+      const up = k > 0 ? -0.1 * S * k : 0.015 * S;
+      const kx = X + fx * S * 0.34 + perp.x * 0.05 * S, ky = by + 0.06 * S + fy * S * 0.26 + up;
+      knife = { x: kx, y: ky };
+      hands = [[kx, ky], [X + fx * S * 0.28 - perp.x * 0.16 * S, by + 0.14 * S + fy * S * 0.2 - perp.y * 0.1 * S]];
+    } else {
+      const sw = o.moving ? Math.sin(o.phase * Math.PI) * 0.05 * S : 0;
+      const r = reach * 0.18 * S;
+      hands = [[X - 0.25 * S + fx * r, by + 0.13 * S + sw + fy * r], [X + 0.25 * S + fx * r, by + 0.13 * S - sw + fy * r]];
+    }
+    const front = () => {
+      if (hold) drawItem(c, o.hold, hold.x, hold.y, S * 0.48);
+      if (knife) {
+        c.save(); c.translate(knife.x, knife.y); c.rotate(fx ? fx * 0.9 : 0);
+        rrect(c, -0.025 * S, -0.2 * S, 0.06 * S, 0.15 * S, 0.02 * S); c.fillStyle = "#e3e8eb"; c.fill(); c.strokeStyle = "#8e979c"; c.lineWidth = 1; c.stroke();
+        rrect(c, -0.02 * S, -0.06 * S, 0.05 * S, 0.08 * S, 0.015 * S); c.fillStyle = "#6b4a2b"; c.fill();
+        c.restore();
+      }
+      hands.forEach(([hx, hy]) => { dot(c, hx, hy, 0.064 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); });
+    };
+    if (back) front();
+
+    c.save(); c.translate(X, by); c.rotate(tilt);
+    c.beginPath(); c.ellipse(0, 0.08 * S, 0.24 * S, 0.21 * S, 0, 0, Math.PI * 2); c.fillStyle = C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
+    if (!back) {
+      const ax = fx * 0.05 * S;
+      rrect(c, ax - 0.14 * S, 0.0, 0.28 * S, 0.25 * S, 0.07 * S); c.fillStyle = APRON[o.slot]; c.fill();
+      c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(ax - 0.06 * S, 0.11 * S, 0.12 * S, 0.022 * S);
+    } else {
+      c.strokeStyle = APRON[o.slot]; c.lineWidth = 0.04 * S; c.lineCap = "round";
+      c.beginPath(); c.moveTo(-0.15 * S, -0.03 * S); c.lineTo(0.12 * S, 0.16 * S); c.moveTo(0.15 * S, -0.03 * S); c.lineTo(-0.12 * S, 0.16 * S); c.stroke();
+      dot(c, -0.045 * S, 0.17 * S, 0.04 * S, APRON[o.slot]); dot(c, 0.045 * S, 0.17 * S, 0.04 * S, APRON[o.slot]);
+      drawTail(c, o.ch, S, t, o.moving);
+    }
+    if (o.ch !== "dog") drawEars(c, o.ch, S, back);
+    dot(c, 0, -0.17 * S, 0.21 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
+    if (o.ch === "dog") drawEars(c, o.ch, S, back);
+    if (o.ch === "cat") {
+      c.strokeStyle = C.dark; c.lineWidth = 0.025 * S; c.lineCap = "round"; c.beginPath();
+      [-0.05, 0, 0.05].forEach((dx) => { c.moveTo(dx * S, -0.36 * S); c.lineTo(dx * S, (back ? -0.24 : -0.3) * S); }); c.stroke();
+    }
+    if (!back) drawFace(c, o.ch, S, fx);
+    c.restore();
+
+    if (!back) front();
+
+    if (o.label) {
+      const tagY = by - (o.ch === "rabbit" ? 0.9 : 0.68) * S;
+      c.font = Math.round(S * 0.19) + "px " + FONT_UI;
+      const tw = c.measureText(o.label).width + 12;
+      rrect(c, X - tw / 2, tagY - S * 0.13, tw, S * 0.25, 6); c.fillStyle = o.isMe ? APRON[o.slot] : "rgba(36,26,20,.75)"; c.fill();
+      c.fillStyle = "#fff"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(o.label, X, tagY);
+    }
+  }
+
+  // 움직임 상태 (두 화면 각자 계산)
+  const anim = [0, 1].map(() => ({ lx: null, ly: null, phase: 0, moving: false, reach: 0, an: 0 }));
+  const REACH = 0.22;
+  function stepAnim(i, x, y, dt) {
+    const a = anim[i];
+    if (a.lx == null) { a.lx = x; a.ly = y; }
+    const d = Math.hypot(x - a.lx, y - a.ly);
+    a.lx = x; a.ly = y;
+    if (d > 1) { a.moving = false; return; }
+    a.moving = d / Math.max(dt, 1e-3) > 0.8;
+    if (a.moving) a.phase += d * 2.4;
+    if (a.reach > 0) a.reach = Math.max(0, a.reach - dt);
+  }
+  const reachAmt = (i) => (anim[i].reach > 0 ? Math.sin((1 - anim[i].reach / REACH) * Math.PI) : 0);
+
+  // 썰 때 튀는 조각
+  const bits = [];
+  const BIT_COLOR = { eomuk: "#dca65e", pa: "#3f9b4a", danmuji: "#f7d84a" };
+  function choppingOn(p) {
+    if (!p.chop || !view || view.phase !== "play") return null;
+    const i = targetIdx(p);
+    if (i < 0 || tiles[i].type !== "board") return null;
+    const it = view.slots[i];
+    if (!it || it.k === "plate" || !ING[it.k].chop || it.cut) return null;
+    return { i, it };
   }
 
   function render(now) {
     if (!view) return;
     ctx.clearRect(0, 0, TS * COLS, TS * ROWS);
     tiles.forEach((t) => drawTile(t, now));
+    // 지금 그릴 캐릭터 상태
+    const chopKey = keys.has("ShiftLeft") || keys.has("ShiftRight");
+    const list = [];
+    view.players.forEach((p, i) => {
+      if (!p.on) return;
+      const mine = i === myIdx;
+      const q = mine ? { ...p, x: me.x, y: me.y, fx: me.fx, fy: me.fy, chop: chopKey } : { ...p, x: remote.x, y: remote.y };
+      list.push({ q, i, mine, ch: choppingOn(q) });
+    });
+    const chopBoards = new Set(list.filter((o) => o.ch).map((o) => o.ch.i));
     // 조리대 위 물건
     view.slots.forEach((it, i) => {
       if (!it) return;
-      const t = tiles[i], cx = t.x * TS + TS / 2, cy = t.y * TS + TS / 2;
+      const t = tiles[i], cx = t.x * TS + TS / 2 + (chopBoards.has(i) ? Math.sin(now / 25) * TS * 0.025 : 0), cy = t.y * TS + TS / 2;
       drawItem(ctx, it, cx, cy, TS * 0.62);
       if (it.pr) bar(ctx, cx - TS * 0.38, cy - TS * 0.56, TS * 0.76, TS * 0.15, it.pr, "#4bc06a");
     });
@@ -715,14 +891,22 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       const i = targetIdx(me);
       if (i >= 0) { const t = tiles[i]; ctx.save(); ctx.setLineDash([6, 4]); rrect(ctx, t.x * TS + 2, t.y * TS + 2, TS - 4, TS - 4, 6); ctx.strokeStyle = "rgba(255,255,255,.95)"; ctx.lineWidth = 3; ctx.stroke(); ctx.restore(); }
     }
-    // 캐릭터
-    const list = [];
-    view.players.forEach((p, i) => {
-      if (!p.on) return;
-      if (i === myIdx) list.push({ p: { ...p, x: me.x, y: me.y, fx: me.fx, fy: me.fy, chop: keys.has("ShiftLeft") || keys.has("ShiftRight") }, i, mine: true });
-      else list.push({ p: { ...p, x: remote.x, y: remote.y }, i, mine: false });
+    // 캐릭터 (아래쪽에 선 사람이 앞에 오게)
+    list.sort((a, b) => a.q.y - b.q.y).forEach(({ q, i, mine, ch }) => {
+      if (ch && now - (anim[i].lastBit || 0) > 55) {
+        anim[i].lastBit = now;
+        const t = tiles[ch.i];
+        for (let n = 0; n < 2; n++) bits.push({ x: t.x + 0.5 + (Math.random() - 0.5) * 0.3, y: t.y + 0.45, vx: (Math.random() - 0.5) * 2.6, vy: -1.2 - Math.random() * 1.4, t0: now, col: BIT_COLOR[ch.it.k] || "#fff" });
+      }
+      drawChar(ctx, TS * 1.15, q.x * TS, q.y * TS, { ch: q.ch, slot: i, fx: q.fx, fy: q.fy, hold: q.hold, chop: !!ch, moving: anim[i].moving, phase: anim[i].phase, reach: reachAmt(i), now, label: i === 0 ? "방장" : "친구", isMe: mine });
     });
-    list.sort((a, b) => a.p.y - b.p.y).forEach((o) => drawChef(o.p, o.mine, o.i, now));
+    // 썰 때 튀는 조각
+    for (let j = bits.length - 1; j >= 0; j--) {
+      const b = bits[j], age = (now - b.t0) / 1000;
+      if (age > 0.45) { bits.splice(j, 1); continue; }
+      const x = (b.x + b.vx * age) * TS, y = (b.y + b.vy * age + 4.5 * age * age) * TS;
+      ctx.globalAlpha = 1 - age / 0.45; ctx.fillStyle = b.col; ctx.fillRect(x - TS * 0.03, y - TS * 0.03, TS * 0.06, TS * 0.06); ctx.globalAlpha = 1;
+    }
     // 매출 팝업
     for (let j = pops.length - 1; j >= 0; j--) {
       const q = pops[j], age = (now - q.t0) / 1300;
@@ -822,6 +1006,39 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     shownPhase = view.phase;
   }
 
+  let pickKey = "";
+  const iyeyo = (w) => w + (hasBatchim(w) ? "이에요" : "예요");
+  function renderPicker() {
+    const st = role === "host" ? W : view;
+    if (!st || !st.players) return;
+    const mine = st.players[myIdx], other = st.players[1 - myIdx];
+    const otherOn = !!(other && other.on);
+    const key = myIdx + ":" + mine.ch + ":" + (otherOn ? other.ch : "-");
+    if (key === pickKey) return;
+    pickKey = key;
+    const box = $("chars");
+    box.innerHTML = "";
+    CHAR_KEYS.forEach((k) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "charbtn";
+      const taken = otherOn && other.ch === k;
+      b.disabled = taken;
+      b.setAttribute("aria-pressed", String(mine.ch === k));
+      const c2 = document.createElement("canvas"); c2.width = c2.height = 176;
+      drawChar(c2.getContext("2d"), 150, 88, 116, { ch: k, slot: myIdx, fx: 0, fy: 1, now: 0 });
+      const nm = document.createElement("span"); nm.textContent = CHARS[k].name;
+      const sm = document.createElement("small"); sm.textContent = taken ? (myIdx === 0 ? "친구가 골랐어요" : "방장이 골랐어요") : mine.ch === k ? "내 캐릭터" : "";
+      b.append(c2, nm, sm);
+      b.addEventListener("click", () => pickChar(k));
+      box.appendChild(b);
+    });
+    $("pickNote").textContent = "내 앞치마는 " + iyeyo(APRON_NAME[myIdx]) + "." + (otherOn ? " " + (myIdx === 0 ? "친구는 " : "방장은 ") + iyeyo(CHARS[other.ch].name) + "." : "");
+  }
+  function pickChar(k) {
+    if (role === "host") { if (guestOn && W.players[1].ch === k) return; W.players[0].ch = k; renderPicker(); }
+    else if (net) net.send({ t: "ch", c: k });
+  }
+
   function showScreen(name) {
     $("lobby").hidden = name !== "lobby";
     $("room").hidden = name !== "room";
@@ -890,6 +1107,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   function clearTimers() { timers.forEach((t) => clearInterval(t)); timers = []; }
 
   function leave() {
+    pickKey = "";
     if (net) { try { net.close(); } catch (e) {} }
     net = null; role = null; W = null; view = null; me = null; guestOn = false; remote.init = false;
     clearTimers(); orderKey = ""; shownPhase = "";
@@ -911,16 +1129,22 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         $("startBtn").hidden = false; $("startBtn").textContent = "혼자 시작";
         $("hostStatus").textContent = "";
         showScreen("room");
+        renderPicker();
       },
       data(d) {
         if (!d || !d.t) return;
         if (d.t === "hi") {
           if (d.v !== VERSION) { net.send({ t: "ver" }); return; }
           guestOn = true; W.players[1] = spawn(1); W.players[1].on = true; remote.init = false;
+          W.players[1].ch = ["dog", "cat", "rabbit", "bear"].find((k) => k !== W.players[0].ch);
           net.send({ t: "welcome" });
           $("roomStatus").textContent = "친구가 들어왔어요!";
           $("startBtn").textContent = "영업 시작";
           ev({ m: "친구가 들어왔어요", to: 0 });
+          renderPicker();
+        } else if (d.t === "ch") {
+          if (CHARS[d.c] && d.c !== W.players[0].ch) W.players[1].ch = d.c;
+          renderPicker();
         } else if (d.t === "p") {
           const p = W.players[1]; p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; p.chop = !!d.ch;
         } else if (d.t === "a") {
@@ -933,6 +1157,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         $("roomStatus").textContent = "친구가 나갔어요. 다시 들어오길 기다리는 중이에요.";
         $("startBtn").textContent = "혼자 시작";
         toast("친구 연결이 끊겼어요", true);
+        renderPicker();
       },
       error(type) {
         if (type === "unavailable-id" && (tries || 0) < 3) { try { net.close(); } catch (e) {} host((tries || 0) + 1); return; }
@@ -982,7 +1207,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
           remote.tx = other.x; remote.ty = other.y;
           if (d.rs !== lastRs) { lastRs = d.rs; const mine = view.players[1]; me.x = mine.x; me.y = mine.y; me.fx = mine.fx; me.fy = mine.fy; }
           (d.ev || []).forEach(showEvent);
-          if (view.phase === "wait") { if ($("room").hidden) showScreen("room"); }
+          if (view.phase === "wait") { if ($("room").hidden) showScreen("room"); renderPicker(); }
           else if ($("game").hidden) showScreen("game");
         }
       },
@@ -1010,6 +1235,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     e.preventDefault();
     keys.add(e.code);
     if (e.code === "Space" && !e.repeat && view && view.phase === "play") {
+      anim[myIdx].reach = REACH;
       if (role === "host") { act(0); }
       else if (net) net.send({ t: "a", x: me.x, y: me.y, fx: me.fx, fy: me.fy });
     }
@@ -1045,6 +1271,12 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     tx.append(b, sm); el.append(c, tx); $("menu").appendChild(el);
   });
 
+  // 간판 아래 직원 소개
+  (function crew() {
+    const c = $("crew").getContext("2d");
+    CHAR_KEYS.forEach((k, i) => drawChar(c, 150, 95 + i * 190, 150, { ch: k, slot: i % 2, fx: 0, fy: 1, now: 0 }));
+  })();
+
   // ===== 메인 루프 =====
   let lastFrame = performance.now();
   function frame(now) {
@@ -1060,9 +1292,15 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
           const k = Math.min(1, dt * 14); remote.x += (tx - remote.x) * k; remote.y += (ty - remote.y) * k;
         }
       }
+      view.players.forEach((p, i) => {
+        if (!p.on) return;
+        stepAnim(i, i === myIdx ? me.x : remote.x, i === myIdx ? me.y : remote.y, dt);
+        if (i !== myIdx && p.an != null && p.an !== anim[i].an) { anim[i].an = p.an; anim[i].reach = REACH; }
+      });
       render(now); hud(); phaseUI();
       $("peerTag").textContent = role === "host" ? (guestOn ? "친구 연결됨" : "혼자 하는 중") : "방장과 연결됨";
-      $("whoami").textContent = role === "host" ? "나는 빨간 모자(방장)" : "나는 초록 모자(친구)";
+      const mc = CHARS[view.players[myIdx].ch] || CHARS.cat;
+      $("whoami").textContent = "나는 " + mc.name + " · " + APRON_NAME[myIdx] + (role === "host" ? " (방장)" : " (친구)");
     }
     requestAnimationFrame(frame);
   }
