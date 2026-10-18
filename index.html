@@ -272,7 +272,7 @@ footer { padding-top: 6px; }
     </div>
 
     <div class="actions">
-      <button class="btn btn-primary" id="saveBtn" type="button">결과 이미지 저장 (3장)</button>
+      <button class="btn btn-primary" id="saveBtn" type="button">결과 이미지 저장 (2장)</button>
       <p class="toast" id="toast" aria-live="polite"></p>
       <figure class="shot" id="shot" hidden></figure>
       <button class="btn btn-secondary" id="editBtn" type="button">답 수정하기</button>
@@ -897,25 +897,32 @@ footer { padding-top: 6px; }
     const cells = mbtiCells(sc);
     const anyEdge = cells.some((c) => c.edge);
 
-    const W = 1080, P = 72, IW = W - P * 2, ROW = 152, TH = 150, GAP = 20;
-    // 세로 배치
+    const W = 1080, P = 72, IW = W - P * 2, TH = 150, GAP = 20;
+    const DESC = "400 29px " + IF.body, DLH = 46;
+    const strings = ["성격 5요인 검사 · IPIP-50", "결과지 1/2", "내 다섯 축", date + " 검사 · 1~5 척도 · 빨간 선은 중간(3.0)",
+      "MBTI로 대충 바꾸면", "점선 칸은 중간에서 0.3 안쪽이라 재검사 때 뒤집힐 수 있어요.",
+      "IPIP Big-Five 50문항 · 비공식 번역 · 백분위가 아닌 1~5 척도 점수", "높은 편중간낮은편/5 12345 OCEANSFTJPI○ 지난번 ()"]
+      .concat(TRAITS.map((t) => t.name + t.t[level(sc[t.k]).key]), cells.map((c) => c.cap)).join("");
+    await loadFonts(strings);
+    const m0 = document.createElement("canvas").getContext("2d");
+    m0.font = DESC;
+    const descLines = TRAITS.map((t) => wrapLines(m0, t.t[level(sc[t.k]).key], IW));
+
+    // 세로 배치: 축마다 점수 줄, 막대, 눈금, 풀이 문장
     const yHeadTop = P, yHeadText = P + 42, yHeadRule = P + 62;
     const yTitle = yHeadRule + 118;
     const yDate = yTitle + 52;
     const yLegend = prev ? yDate + 40 : yDate;
     const yRows = yLegend + 34;
-    const yMbti = yRows + ROW * 5 + 58;
+    let yy = yRows;
+    const rowTops = descLines.map((lines) => { const top = yy; yy += 218 + (lines.length - 1) * DLH; return top; });
+    const yRowsEnd = yy;
+    const yMbti = yRowsEnd + 58;
     const yTiles = yMbti + 24;
     const yEdgeNote = yTiles + TH + 44;
     const yFootRule = (anyEdge ? yEdgeNote : yTiles + TH) + 34;
     const yFoot = yFootRule + 40;
     const H = yFoot + P - 28;
-
-    const strings = ["성격 5요인 검사 · IPIP-50", "결과지", "내 다섯 축", date + " 검사 · 1~5 척도 · 빨간 선은 중간(3.0)",
-      "MBTI로 대충 바꾸면", "점선 칸은 중간에서 0.3 안쪽이라 재검사 때 뒤집힐 수 있어요.",
-      "IPIP Big-Five 50문항 · 비공식 번역 · 백분위가 아닌 1~5 척도 점수", "높은 편중간낮은편/5 12345 OCEANSFTJPI○ 지난번 ()"]
-      .concat(TRAITS.map((t) => t.name), cells.map((c) => c.cap)).join("");
-    await loadFonts(strings);
 
     const cv = document.createElement("canvas");
     cv.width = W; cv.height = H;
@@ -929,7 +936,7 @@ footer { padding-top: 6px; }
     ctx.fillRect(P, yHeadRule, IW, 2);
     ctx.font = "500 25px " + IF.body;
     ctx.textAlign = "left"; ctx.fillText("성격 5요인 검사 · IPIP-50", P, yHeadText);
-    ctx.textAlign = "right"; ctx.fillText("결과지 1/3", W - P, yHeadText);
+    ctx.textAlign = "right"; ctx.fillText("결과지 1/2", W - P, yHeadText);
 
     // 제목
     ctx.textAlign = "left";
@@ -952,7 +959,7 @@ footer { padding-top: 6px; }
     ctx.fillStyle = IC.faint;
     ctx.fillRect(P, yRows, IW, 2);
     TRAITS.forEach((t, i) => {
-      const top = yRows + i * ROW;
+      const top = rowTops[i];
       const m = sc[t.k];
       const lv = level(m);
       const base = top + 64;
@@ -1015,8 +1022,14 @@ footer { padding-top: 6px; }
         ctx.fillText(String(v), P + ((v - 1) / 4) * IW, by + bh + 30);
       }
 
+      // 풀이
+      ctx.textAlign = "left";
+      ctx.fillStyle = IC.ink;
+      ctx.font = DESC;
+      descLines[i].forEach((ln, j) => ctx.fillText(ln, P, top + 184 + j * DLH));
+
       ctx.fillStyle = IC.faint;
-      ctx.fillRect(P, top + ROW, IW, 2);
+      ctx.fillRect(P, i + 1 < rowTops.length ? rowTops[i + 1] : yRowsEnd, IW, 2);
     });
 
     // MBTI
@@ -1081,122 +1094,6 @@ footer { padding-top: 6px; }
     return out;
   }
 
-  // 두 번째 장: 축별 풀이
-  async function makeTextCard() {
-    const sc = scores(state.answers);
-    const date = state.completedAt || today();
-    const W = 1080, P = 72, IW = W - P * 2;
-    const BODY = "400 31px " + IF.body, LH = 48;
-    const NOTE = "400 23px " + IF.body, NLH = 36;
-    const note = "친화성과 개방성은 대부분 사람이 높게 답하는 편이라 3.5 안팎은 평균 근처일 수 있어요. 점수는 1~5 척도의 위치이고 백분위가 아니에요.";
-
-    await loadFonts(["다섯 축 풀이", "결과지 3/3", note].concat(TRAITS.map((t) => t.name + t.t.hi + t.t.mid + t.t.lo)).join(""));
-
-    const m0 = document.createElement("canvas").getContext("2d");
-    m0.font = BODY;
-    const blocks = TRAITS.map((t) => {
-      const m = sc[t.k], lv = level(m);
-      return { t, m, lv, lines: wrapLines(m0, t.t[lv.key], IW) };
-    });
-    m0.font = NOTE;
-    const noteLines = wrapLines(m0, note, IW);
-
-    // 세로 배치
-    const yHeadTop = P, yHeadText = P + 42, yHeadRule = P + 62;
-    const yTitle = yHeadRule + 118;
-    const yDate = yTitle + 52;
-    let y = yDate + 34;
-    const yRows = y;
-    const tops = blocks.map((b) => { const top = y; y += 112 + (b.lines.length - 1) * LH + 34; return top; });
-    const yNote = y + 50;
-    const yFootRule = yNote + (noteLines.length - 1) * NLH + 34;
-    const yFoot = yFootRule + 40;
-    const H = yFoot + P - 28;
-
-    const cv = document.createElement("canvas");
-    cv.width = W; cv.height = H;
-    const ctx = cv.getContext("2d");
-    ctx.fillStyle = IC.paper; ctx.fillRect(0, 0, W, H);
-
-    // 머리 띠
-    ctx.fillStyle = IC.red;
-    ctx.fillRect(P, yHeadTop, IW, 5);
-    ctx.fillRect(P, yHeadRule, IW, 2);
-    ctx.font = "500 25px " + IF.body;
-    ctx.textAlign = "left"; ctx.fillText("성격 5요인 검사 · IPIP-50", P, yHeadText);
-    ctx.textAlign = "right"; ctx.fillText("결과지 3/3", W - P, yHeadText);
-
-    ctx.textAlign = "left";
-    ctx.fillStyle = IC.ink;
-    ctx.font = "400 92px " + IF.display;
-    ctx.fillText("다섯 축 풀이", P, yTitle);
-    ctx.fillStyle = IC.soft;
-    ctx.font = "400 26px " + IF.body;
-    ctx.fillText(date + " 검사", P, yDate);
-
-    ctx.fillStyle = IC.faint;
-    ctx.fillRect(P, yRows, IW, 2);
-    blocks.forEach((b, i) => {
-      const top = tops[i];
-      const base = top + 60;
-
-      ctx.textAlign = "left";
-      ctx.fillStyle = IC.red;
-      ctx.font = "500 28px " + IF.mono;
-      ctx.fillText(b.t.k, P, base);
-      ctx.fillStyle = IC.ink;
-      ctx.font = "700 40px " + IF.body;
-      const nx = P + 38;
-      ctx.fillText(b.t.name, nx, base);
-      const nameW = ctx.measureText(b.t.name).width;
-
-      ctx.font = "500 22px " + IF.body;
-      const cw = ctx.measureText(b.lv.label).width + 28, ch = 38;
-      const cx = nx + nameW + 16, cy = base - 30;
-      rr(ctx, cx, cy, cw, ch, ch / 2);
-      if (b.lv.key === "hi") { ctx.fillStyle = IC.ink; ctx.fill(); ctx.fillStyle = IC.paper; }
-      else {
-        ctx.lineWidth = 2; ctx.strokeStyle = IC.soft;
-        ctx.setLineDash(b.lv.key === "lo" ? [6, 5] : []);
-        ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = IC.soft;
-      }
-      ctx.textAlign = "center";
-      ctx.fillText(b.lv.label, cx + cw / 2, cy + 27);
-
-      ctx.textAlign = "right";
-      ctx.fillStyle = IC.soft;
-      ctx.font = "500 22px " + IF.mono;
-      ctx.fillText("/5", W - P, base);
-      const sw = ctx.measureText("/5").width;
-      ctx.fillStyle = IC.ink;
-      ctx.font = "400 50px " + IF.display;
-      ctx.fillText(b.m.toFixed(1), W - P - sw - 4, base + 2);
-
-      ctx.textAlign = "left";
-      ctx.fillStyle = IC.ink;
-      ctx.font = BODY;
-      b.lines.forEach((ln, j) => ctx.fillText(ln, P, base + 52 + j * LH));
-
-      ctx.fillStyle = IC.faint;
-      const bottom = i + 1 < tops.length ? tops[i + 1] : y;
-      ctx.fillRect(P, bottom, IW, 2);
-    });
-
-    ctx.textAlign = "left";
-    ctx.fillStyle = IC.soft;
-    ctx.font = NOTE;
-    noteLines.forEach((ln, j) => ctx.fillText(ln, P, yNote + j * NLH));
-
-    ctx.fillStyle = IC.red;
-    ctx.fillRect(P, yFootRule, IW, 2);
-    ctx.fillStyle = IC.soft;
-    ctx.font = "400 21px " + IF.body;
-    ctx.fillText("IPIP Big-Five 50문항 · 비공식 번역", P, yFoot);
-
-    return { canvas: cv, date };
-  }
-
   // 두 번째 장: 종합평가
   async function makeSummaryCard() {
     const sc = scores(state.answers);
@@ -1211,7 +1108,7 @@ footer { padding-top: 6px; }
       ? S.near.map((n) => n.axis + "이 경계라 가까운 유형도 같이 읽어보세요: " + n.code + " " + n.name).join(" / ")
       : "";
 
-    await loadFonts(["종합평가", "결과지 2/3", S.code, S.name, S.sub, S.midNote, nearText, note].concat(S.paras).join(""));
+    await loadFonts(["종합평가", "결과지 2/2", S.code, S.name, S.sub, S.midNote, nearText, note].concat(S.paras).join(""));
 
     const m0 = document.createElement("canvas").getContext("2d");
     m0.font = NAMEF;
@@ -1268,7 +1165,7 @@ footer { padding-top: 6px; }
     ctx.fillRect(P, yHeadRule, IW, 2);
     ctx.font = "500 25px " + IF.body;
     ctx.textAlign = "left"; ctx.fillText("성격 5요인 검사 · IPIP-50", P, yHeadText);
-    ctx.textAlign = "right"; ctx.fillText("결과지 2/3", W - P, yHeadText);
+    ctx.textAlign = "right"; ctx.fillText("결과지 2/2", W - P, yHeadText);
 
     ctx.textAlign = "left";
     ctx.fillStyle = IC.ink;
@@ -1349,10 +1246,9 @@ footer { padding-top: 6px; }
   let cardP = null;
   function prepareCard() {
     const p = (async () => {
-      const a = await toCard(await makeCard(), "1점수");
+      const a = await toCard(await makeCard(), "1다섯축");
       const b = await toCard(await makeSummaryCard(), "2종합");
-      const c = await toCard(await makeTextCard(), "3풀이");
-      return [a, b, c];
+      return [a, b];
     })();
     p.catch(() => {});
     cardP = p;
