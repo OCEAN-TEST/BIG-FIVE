@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>둘이서 분식집</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -86,7 +86,41 @@ kbd { font-family: var(--font-ui); background: #fff; border: 2px solid var(--pap
 .crew { display: block; margin: 4px auto 0; width: min(380px, 86%); height: auto; }
 
 /* 게임 화면 */
-#game { max-width: 1240px; margin: 0 auto; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); padding-block: 10px; display: flex; flex-direction: column; gap: 8px; height: 100%; }
+#game { max-width: 1240px; margin: 0 auto; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); padding-block: max(10px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; height: 100vh; height: 100dvh; }
+body.ingame { overflow: hidden; overscroll-behavior: none; }
+body.ingame #game { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
+
+/* 폰 조작 */
+.pad { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+.zone { position: absolute; left: 0; bottom: 0; width: 50%; top: 80px; pointer-events: auto; touch-action: none; }
+.stick { position: absolute; width: 124px; height: 124px; margin: -62px 0 0 -62px; border-radius: 50%; background: rgba(255,248,230,.14); border: 3px solid rgba(255,248,230,.45); opacity: .7; transition: opacity .15s; }
+.stick.active { opacity: 1; transition: none; }
+.knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: rgba(255,207,51,.92); box-shadow: 0 4px 0 #c99a12; }
+.pbtns { position: absolute; right: max(18px, env(safe-area-inset-right, 0px)); bottom: max(18px, env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; align-items: center; pointer-events: auto; touch-action: none; }
+.pbtn { border-radius: 50%; border: 0; font-family: var(--font-ui); cursor: pointer; display: grid; place-items: center; -webkit-tap-highlight-color: transparent; }
+.pbtn.grab { width: 94px; height: 94px; background: var(--sign); color: var(--ink); font-size: 25px; box-shadow: 0 6px 0 #c99a12; }
+.pbtn.chop { width: 76px; height: 76px; background: var(--chili); color: #fff; font-size: 20px; box-shadow: 0 6px 0 var(--chili-dark); }
+#game.portrait .pbtns { flex-direction: row; align-items: flex-end; }
+#game.portrait .pbtn.chop { margin-bottom: 54px; }
+.pbtn.on { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
+#game.touch .foot { display: none; }
+#game.touch .hud { gap: 8px; }
+#game.touch .meter { min-width: 82px; padding: 2px 10px; border-radius: 8px; }
+#game.touch .meter span { font-size: 10.5px; }
+#game.touch .meter b { font-size: 20px; }
+#game.touch .ticket { flex-basis: 132px; min-width: 96px; padding: 4px 6px 10px; gap: 6px; }
+#game.touch .ticket img { width: 30px; height: 30px; }
+#game.touch .ticket b { font-size: 15px; }
+#game.touch .ticket small { display: none; }
+#game.touch .toast { font-size: 16px; bottom: 8px; }
+#game.touch.portrait .hud { grid-template-columns: 1fr 1fr; }
+#game.touch.portrait .hud > .meter:first-child { grid-column: 1; grid-row: 1; }
+#game.touch.portrait #timeBox { grid-column: 2; grid-row: 1; }
+#game.touch.portrait .orders { grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; }
+#game.touch.portrait .ticket { flex: 1 1 40%; }
+#game.touch.portrait .stage { align-items: flex-start; }
+#game.touch.portrait .peer { top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: 236px; }
+.rotate-tip { position: absolute; left: 50%; transform: translateX(-50%); bottom: 270px; background: rgba(36,26,20,.8); color: #fff; font-family: var(--font-ui); font-size: 14px; padding: 3px 12px; border-radius: 999px; white-space: nowrap; pointer-events: none; }
 .hud { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: stretch; }
 .meter { background: var(--sign); border-radius: 10px; padding: 4px 14px; display: flex; flex-direction: column; justify-content: center; min-width: 120px; }
 .meter span { font-size: 12px; font-weight: 700; color: var(--chili-dark); }
@@ -107,7 +141,16 @@ kbd { font-family: var(--font-ui); background: #fff; border: 2px solid var(--pap
 canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
 .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .overlay .count { font-family: var(--font-sign); font-size: 160px; color: var(--sign); text-shadow: 0 6px 0 var(--chili); }
-.result { pointer-events: auto; background: var(--paper); border-radius: 14px; padding: 22px 28px; min-width: min(420px, 90vw); display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
+.result { pointer-events: auto; background: var(--paper); border-radius: 14px; padding: 22px 28px; min-width: min(420px, 90vw); max-height: calc(100% - 12px); overflow-y: auto; display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
+@media (max-height: 560px) {
+  .result { padding: 12px 20px; gap: 4px; }
+  .result h2 { font-size: 30px; }
+  .result .stars { font-size: 26px; }
+  .result .big { font-size: 26px; }
+  .result p { margin: 0; }
+  .result .note { display: none; }
+  .result .btn { font-size: 18px; padding: 8px 16px; }
+}
 .result h2 { margin: 0; font-family: var(--font-sign); font-weight: 400; font-size: 44px; color: var(--chili); }
 .result .stars { font-size: 40px; letter-spacing: 6px; color: var(--sign); -webkit-text-stroke: 2px var(--chili-dark); }
 .result .big { font-family: var(--font-ui); font-size: 34px; }
@@ -161,8 +204,9 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 또는 <kbd>방향키</kbd></dt><dd>이동</dd>
       <dt><kbd>스페이스</kbd></dt><dd>집기 · 놓기 · 넣기 · 담기 · 내기 (바라보는 칸에)</dd>
       <dt><kbd>시프트</kbd> 꾹</dt><dd>도마 앞에서 썰기</dd>
+      <dt>폰</dt><dd>왼쪽 화면을 누른 채 끌어서 이동, 오른쪽 <b>집기</b> 버튼, <b>썰기</b> 버튼은 꾹</dd>
     </dl>
-    <p class="note">키보드로 하는 게임이라 컴퓨터에서 열어주세요. 한/영 상태와 상관없이 움직여요.</p>
+    <p class="note">컴퓨터는 키보드로, 폰은 화면 버튼으로 해요. 폰이랑 컴퓨터끼리도 같이 할 수 있어요. 폰은 가로로 돌리면 더 크게 보여요.</p>
   </section>
 </div>
 
@@ -199,6 +243,14 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     <span class="peer" id="peerTag"></span>
     <div class="toast hide" id="toast"></div>
     <div class="overlay" id="overlay" hidden></div>
+    <span class="rotate-tip" id="rotateTip" hidden>폰을 가로로 돌리면 더 크게 보여요</span>
+  </div>
+  <div class="pad" id="pad" hidden>
+    <div class="zone" id="zone" aria-label="이동 조이스틱"><div class="stick" id="stick"><div class="knob" id="knob"></div></div></div>
+    <div class="pbtns">
+      <button class="pbtn chop" id="chopBtn" type="button">썰기</button>
+      <button class="pbtn grab" id="grabBtn" type="button">집기</button>
+    </div>
   </div>
   <div class="foot">
     <span><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동 · <kbd>스페이스</kbd> 집기·놓기 · <kbd>시프트</kbd> 꾹 썰기</span>
@@ -266,7 +318,8 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 
   // ===== 그림 =====
   function rrect(c, x, y, w, h, r) {
-    r = Math.min(r, w / 2, h / 2);
+    w = Math.max(0, w); h = Math.max(0, h);
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
     c.beginPath(); c.moveTo(x + r, y);
     c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
     c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
@@ -351,6 +404,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     drawIcon(c, it.k, cx, cy, s, it.cut);
   }
   function bar(c, x, y, w, h, f, col) {
+    h = Math.max(7, h);
     rrect(c, x, y, w, h, h / 2); c.fillStyle = "rgba(36,26,20,.75)"; c.fill();
     rrect(c, x + 2, y + 2, Math.max(0, (w - 4) * Math.min(1, f)), h - 4, (h - 4) / 2); c.fillStyle = col; c.fill();
   }
@@ -569,7 +623,11 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 
   // ===== 이동 =====
   const keys = new Set();
+  const touchIn = { x: 0, y: 0, m: 0, chop: false };
+  const chopHeld = () => keys.has("ShiftLeft") || keys.has("ShiftRight") || touchIn.chop;
+  function syncChop() { if (role === "host" && W) W.players[0].chop = chopHeld(); }
   function inputVec() {
+    if (touchIn.m > 0) { const f = touchIn.m >= 0.55 ? 1 : 0.45 + touchIn.m; return { x: touchIn.x * f, y: touchIn.y * f }; }
     let x = 0, y = 0;
     if (keys.has("KeyA") || keys.has("ArrowLeft")) x -= 1;
     if (keys.has("KeyD") || keys.has("ArrowRight")) x += 1;
@@ -616,8 +674,12 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 
   function fit() {
     const stage = $("stage");
-    const w = stage.clientWidth, h = stage.clientHeight;
-    TS = Math.max(26, Math.floor(Math.min(w / COLS, h / ROWS)));
+    let w = stage.clientWidth, h = stage.clientHeight;
+    if (touchMode) {
+      if (window.innerHeight > window.innerWidth) h = Math.min(h, h - 210);
+      else w -= 2 * Math.min(190, Math.max(130, w * 0.18));
+    }
+    TS = Math.max(16, Math.floor(Math.min(w / COLS, h / ROWS)));
     const dpr = window.devicePixelRatio || 1;
     cv.style.width = TS * COLS + "px"; cv.style.height = TS * ROWS + "px";
     cv.width = Math.round(TS * COLS * dpr); cv.height = Math.round(TS * ROWS * dpr);
@@ -869,7 +931,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     ctx.clearRect(0, 0, TS * COLS, TS * ROWS);
     tiles.forEach((t) => drawTile(t, now));
     // 지금 그릴 캐릭터 상태
-    const chopKey = keys.has("ShiftLeft") || keys.has("ShiftRight");
+    const chopKey = chopHeld();
     const list = [];
     view.players.forEach((p, i) => {
       if (!p.on) return;
@@ -1043,7 +1105,10 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     $("lobby").hidden = name !== "lobby";
     $("room").hidden = name !== "room";
     $("game").hidden = name !== "game";
-    if (name === "game") { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); requestAnimationFrame(fit); }
+    document.body.classList.toggle("ingame", name === "game");
+    if (name !== "game") { touchIn.chop = false; endStick(); }
+    if (name === "game") { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); requestAnimationFrame(layout); }
+    else $("pad").hidden = true;
   }
 
   // ===== 연결 =====
@@ -1220,7 +1285,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     });
     timers.push(setInterval(() => {
       if (!net || !view || role !== "guest") return;
-      net.send({ t: "p", x: me.x, y: me.y, fx: me.fx, fy: me.fy, ch: keys.has("ShiftLeft") || keys.has("ShiftRight") });
+      net.send({ t: "p", x: me.x, y: me.y, fx: me.fx, fy: me.fy, ch: chopHeld() });
     }, 50));
   }
   function failJoin(msg) {
@@ -1234,18 +1299,88 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     if ($("game").hidden || !GAME_KEYS.has(e.code)) return;
     e.preventDefault();
     keys.add(e.code);
-    if (e.code === "Space" && !e.repeat && view && view.phase === "play") {
-      anim[myIdx].reach = REACH;
-      if (role === "host") { act(0); }
-      else if (net) net.send({ t: "a", x: me.x, y: me.y, fx: me.fx, fy: me.fy });
+    if (e.code === "Space" && !e.repeat) doAct(false);
+    syncChop();
+  });
+  window.addEventListener("keyup", (e) => { keys.delete(e.code); syncChop(); });
+  window.addEventListener("blur", () => { keys.clear(); touchIn.chop = false; endStick(); syncChop(); });
+
+  function doAct(buzz) {
+    if (!view || view.phase !== "play" || !me) return;
+    anim[myIdx].reach = REACH;
+    if (role === "host") act(0);
+    else if (net) net.send({ t: "a", x: me.x, y: me.y, fx: me.fx, fy: me.fy });
+    if (buzz && navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+  }
+
+  // 폰 조작: 왼쪽은 누른 자리에 생기는 조이스틱, 오른쪽은 버튼
+  let touchMode = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+  const stick = { id: null, ox: 0, oy: 0 };
+  const STICK_R = 52;
+  function placeStick(x, y, kx, ky, active) {
+    const st = $("stick");
+    st.style.left = x + "px"; st.style.top = y + "px";
+    st.classList.toggle("active", active);
+    $("knob").style.transform = "translate(" + kx + "px, " + ky + "px)";
+  }
+  function stickRest() {
+    const z = $("zone").getBoundingClientRect();
+    if (!z.width) return;
+    placeStick(Math.max(86, z.width * 0.22), z.height - 92, 0, 0, false);
+  }
+  function endStick(e) {
+    if (e && e.pointerId !== stick.id) return;
+    stick.id = null; touchIn.x = 0; touchIn.y = 0; touchIn.m = 0;
+    stickRest();
+  }
+  const zone = $("zone");
+  zone.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    if (stick.id !== null) return;
+    stick.id = e.pointerId;
+    try { zone.setPointerCapture(e.pointerId); } catch (err) {}
+    const z = zone.getBoundingClientRect();
+    stick.ox = e.clientX - z.left; stick.oy = e.clientY - z.top;
+    placeStick(stick.ox, stick.oy, 0, 0, true);
+  });
+  zone.addEventListener("pointermove", (e) => {
+    if (e.pointerId !== stick.id) return;
+    const z = zone.getBoundingClientRect();
+    let dx = e.clientX - z.left - stick.ox, dy = e.clientY - z.top - stick.oy;
+    const d = Math.hypot(dx, dy);
+    if (d > STICK_R) { dx *= STICK_R / d; dy *= STICK_R / d; }
+    placeStick(stick.ox, stick.oy, dx, dy, true);
+    const m = Math.min(1, d / STICK_R);
+    if (m < 0.18) { touchIn.x = 0; touchIn.y = 0; touchIn.m = 0; }
+    else { const l = Math.hypot(dx, dy); touchIn.x = dx / l; touchIn.y = dy / l; touchIn.m = m; }
+  });
+  zone.addEventListener("pointerup", endStick);
+  zone.addEventListener("pointercancel", endStick);
+  const grab = $("grabBtn"), chopB = $("chopBtn");
+  grab.addEventListener("pointerdown", (e) => { e.preventDefault(); grab.classList.add("on"); doAct(true); });
+  ["pointerup", "pointercancel", "pointerleave"].forEach((t) => grab.addEventListener(t, () => grab.classList.remove("on")));
+  chopB.addEventListener("pointerdown", (e) => { e.preventDefault(); try { chopB.setPointerCapture(e.pointerId); } catch (err) {} chopB.classList.add("on"); touchIn.chop = true; syncChop(); });
+  ["pointerup", "pointercancel"].forEach((t) => chopB.addEventListener(t, () => { chopB.classList.remove("on"); touchIn.chop = false; syncChop(); }));
+  [grab, chopB, zone].forEach((el) => el.addEventListener("contextmenu", (e) => e.preventDefault()));
+  window.addEventListener("pointerdown", (e) => { if (e.pointerType === "touch" && !touchMode) { touchMode = true; layout(); } }, true);
+
+  const padHidden = () => !touchMode || $("game").hidden || !!(view && view.phase === "end");
+  document.addEventListener("touchmove", (e) => { if (document.body.classList.contains("ingame")) e.preventDefault(); }, { passive: false });
+  ["gesturestart", "dblclick"].forEach((t) => document.addEventListener(t, (e) => { if (document.body.classList.contains("ingame")) e.preventDefault(); }));
+  function layout() {
+    const g = $("game");
+    const portrait = window.innerHeight > window.innerWidth;
+    g.classList.toggle("touch", touchMode);
+    g.classList.toggle("portrait", portrait);
+    $("pad").hidden = padHidden();
+    $("rotateTip").hidden = !(touchMode && portrait);
+    if (!g.hidden) {
+      const hudB = document.querySelector("#game .hud").getBoundingClientRect().bottom;
+      zone.style.top = Math.round(hudB + 4) + "px";
+      fit();
+      stickRest();
     }
-    if (role === "host" && W) W.players[0].chop = keys.has("ShiftLeft") || keys.has("ShiftRight");
-  });
-  window.addEventListener("keyup", (e) => {
-    keys.delete(e.code);
-    if (role === "host" && W) W.players[0].chop = keys.has("ShiftLeft") || keys.has("ShiftRight");
-  });
-  window.addEventListener("blur", () => { keys.clear(); if (role === "host" && W) W.players[0].chop = false; });
+  }
 
   $("hostBtn").addEventListener("click", () => host(0));
   $("joinForm").addEventListener("submit", (e) => {
@@ -1257,7 +1392,8 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   $("codeInput").addEventListener("input", (e) => { e.target.value = e.target.value.replace(/\D/g, "").slice(0, 4); });
   $("startBtn").addEventListener("click", () => { if (role === "host" && W) { startRound(); showScreen("game"); } });
   $("leaveBtn").addEventListener("click", leave);
-  window.addEventListener("resize", () => { if (!$("game").hidden) fit(); });
+  window.addEventListener("resize", () => { if (!$("game").hidden) layout(); });
+  window.addEventListener("orientationchange", () => setTimeout(() => { if (!$("game").hidden) layout(); }, 250));
   window.addEventListener("beforeunload", () => { if (net) try { net.close(); } catch (e) {} });
 
   // 메뉴판
@@ -1298,6 +1434,8 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         if (i !== myIdx && p.an != null && p.an !== anim[i].an) { anim[i].an = p.an; anim[i].reach = REACH; }
       });
       render(now); hud(); phaseUI();
+      const ph = padHidden();
+      if ($("pad").hidden !== ph) { $("pad").hidden = ph; if (ph) { touchIn.chop = false; endStick(); } else stickRest(); }
       $("peerTag").textContent = role === "host" ? (guestOn ? "친구 연결됨" : "혼자 하는 중") : "방장과 연결됨";
       const mc = CHARS[view.players[myIdx].ch] || CHARS.cat;
       $("whoami").textContent = "나는 " + mc.name + " · " + APRON_NAME[myIdx] + (role === "host" ? " (방장)" : " (친구)");
