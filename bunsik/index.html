@@ -1,0 +1,1075 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>둘이서 분식집</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Gothic+A1:wght@400;700&display=swap">
+<style>
+/* Layout: 분식집 간판(노랑 바탕, 빨강 글씨) 로비 → 위쪽 주문 전표 줄 + 가운데 주방 캔버스 */
+:root {
+  --wall: #2a201a;
+  --wall-2: #33271f;
+  --sign: #ffcf33;
+  --chili: #d7372b;
+  --chili-dark: #a8261d;
+  --paper: #fff8e6;
+  --paper-line: #e9d9b8;
+  --ink: #241a14;
+  --soft: #74604f;
+  --mint: #2f8f5b;
+  --font-sign: "Black Han Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-ui: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-body: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--wall);
+  background-image: repeating-linear-gradient(0deg, var(--wall) 0 38px, var(--wall-2) 38px 40px), repeating-linear-gradient(90deg, transparent 0 78px, rgba(0,0,0,.18) 78px 80px);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+}
+button, input { font: inherit; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--sign); outline-offset: 2px; }
+
+.wrap { max-width: 980px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 40px; display: flex; flex-direction: column; gap: 18px; }
+
+/* 간판 */
+.sign { background: var(--sign); border: 6px solid var(--chili); border-radius: 10px; padding: 14px 20px 12px; text-align: center; box-shadow: 0 8px 0 rgba(0,0,0,.35); }
+.sign h1 { margin: 0; font-family: var(--font-sign); font-weight: 400; color: var(--chili); font-size: clamp(40px, 9vw, 76px); line-height: 1.05; letter-spacing: 0.02em; }
+.sign p { margin: 4px 0 0; font-family: var(--font-ui); color: var(--ink); font-size: clamp(15px, 2.6vw, 19px); }
+
+.card { background: var(--paper); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.card h2 { margin: 0; font-family: var(--font-ui); font-weight: 400; font-size: 22px; color: var(--chili); }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+
+.btn { font-family: var(--font-ui); font-size: 21px; padding: 12px 18px; border-radius: 10px; border: 0; cursor: pointer; background: var(--chili); color: #fff; box-shadow: 0 4px 0 var(--chili-dark); }
+.btn:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--chili-dark); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.alt { background: var(--sign); color: var(--ink); box-shadow: 0 4px 0 #c99a12; }
+.btn.ghost { background: transparent; color: var(--soft); box-shadow: none; font-size: 17px; padding: 6px 4px; text-decoration: underline; }
+.join { display: flex; gap: 8px; }
+.join input { flex: 1; min-width: 0; font-family: var(--font-ui); font-size: 28px; letter-spacing: 0.3em; text-align: center; padding: 6px 8px; border: 3px solid var(--paper-line); border-radius: 10px; background: #fff; color: var(--ink); }
+.status { font-size: 14px; color: var(--soft); min-height: 1.6em; }
+.status.bad { color: var(--chili); font-weight: 700; }
+
+.recipes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.recipe { display: flex; gap: 10px; align-items: center; background: #fff; border: 2px dashed var(--paper-line); border-radius: 10px; padding: 8px 10px; }
+.recipe canvas { flex: none; width: 52px; height: 52px; }
+.recipe b { font-family: var(--font-ui); font-weight: 400; font-size: 19px; display: block; }
+.recipe small { color: var(--soft); font-size: 13px; line-height: 1.45; display: block; }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; margin: 0; }
+.keys dt { white-space: nowrap; }
+.keys dd { margin: 0; color: var(--soft); }
+kbd { font-family: var(--font-ui); background: #fff; border: 2px solid var(--paper-line); border-bottom-width: 4px; border-radius: 6px; padding: 0 7px; font-size: 15px; }
+.note { font-size: 13px; color: var(--soft); }
+
+/* 대기실 */
+.code { font-family: var(--font-sign); font-size: clamp(64px, 16vw, 112px); line-height: 1; letter-spacing: 0.12em; color: var(--chili); text-align: center; }
+.waitbox { align-items: center; text-align: center; }
+.waitbox .btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* 게임 화면 */
+#game { max-width: 1240px; margin: 0 auto; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); padding-block: 10px; display: flex; flex-direction: column; gap: 8px; height: 100%; }
+.hud { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: stretch; }
+.meter { background: var(--sign); border-radius: 10px; padding: 4px 14px; display: flex; flex-direction: column; justify-content: center; min-width: 120px; }
+.meter span { font-size: 12px; font-weight: 700; color: var(--chili-dark); }
+.meter b { font-family: var(--font-ui); font-weight: 400; font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.meter.time.low { background: var(--chili); }
+.meter.time.low span, .meter.time.low b { color: #fff; }
+.orders { display: flex; gap: 8px; min-width: 0; overflow: hidden; }
+.ticket { position: relative; flex: 0 1 220px; min-width: 150px; background: var(--paper); border-radius: 8px; padding: 6px 8px 12px; display: flex; gap: 8px; align-items: center; animation: drop .25s ease-out; }
+.ticket canvas { flex: none; width: 40px; height: 40px; }
+.ticket b { font-family: var(--font-ui); font-weight: 400; font-size: 18px; display: block; line-height: 1.2; }
+.ticket small { display: block; font-size: 11.5px; color: var(--soft); line-height: 1.35; }
+.ticket i { position: absolute; left: 8px; right: 8px; bottom: 5px; height: 4px; background: var(--paper-line); border-radius: 2px; overflow: hidden; }
+.ticket i span { display: block; height: 100%; background: var(--mint); }
+.ticket.hurry i span { background: var(--chili); }
+@keyframes drop { from { transform: translateY(-14px); opacity: 0; } to { transform: none; opacity: 1; } }
+.empty-orders { color: #cdbca8; font-family: var(--font-ui); align-self: center; }
+.stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
+.overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.overlay .count { font-family: var(--font-sign); font-size: 160px; color: var(--sign); text-shadow: 0 6px 0 var(--chili); }
+.result { pointer-events: auto; background: var(--paper); border-radius: 14px; padding: 22px 28px; min-width: min(420px, 90vw); display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
+.result h2 { margin: 0; font-family: var(--font-sign); font-weight: 400; font-size: 44px; color: var(--chili); }
+.result .stars { font-size: 40px; letter-spacing: 6px; color: var(--sign); -webkit-text-stroke: 2px var(--chili-dark); }
+.result .big { font-family: var(--font-ui); font-size: 34px; }
+.result .btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.foot { display: flex; justify-content: space-between; gap: 12px; color: #cdbca8; font-size: 13px; flex-wrap: wrap; }
+.foot kbd { color: var(--ink); }
+.toast { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); background: rgba(36,26,20,.92); color: #fff; font-family: var(--font-ui); font-size: 19px; padding: 6px 16px; border-radius: 999px; white-space: nowrap; pointer-events: none; transition: opacity .2s; }
+.toast.bad { background: var(--chili); }
+.toast.hide { opacity: 0; }
+.peer { position: absolute; top: 8px; right: 10px; font-size: 12px; color: #fff; background: rgba(36,26,20,.7); padding: 2px 10px; border-radius: 999px; }
+@media (prefers-reduced-motion: reduce) { .ticket { animation: none; } }
+</style>
+</head>
+<body>
+
+<!-- 로비 -->
+<div class="wrap" id="lobby">
+  <header class="sign">
+    <h1>둘이서 분식집</h1>
+    <p>각자 컴퓨터로 접속해서 같이 차리는 분식집. 3분 동안 주문을 최대한 많이 내보내요.</p>
+  </header>
+
+  <div class="row">
+    <section class="card">
+      <h2>방 만들기</h2>
+      <p>방을 만들면 4자리 코드가 나와요. 친구한테 코드를 알려주세요.</p>
+      <button class="btn" id="hostBtn" type="button">방 만들기</button>
+      <p class="status" id="hostStatus" aria-live="polite"></p>
+    </section>
+    <section class="card">
+      <h2>방 들어가기</h2>
+      <p>친구한테 받은 코드를 넣어주세요.</p>
+      <form class="join" id="joinForm">
+        <input id="codeInput" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="0000" aria-label="방 코드 4자리">
+        <button class="btn alt" id="joinBtn" type="submit">들어가기</button>
+      </form>
+      <p class="status" id="joinStatus" aria-live="polite"></p>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>메뉴판</h2>
+    <div class="recipes" id="menu"></div>
+    <p class="note">어묵, 파, 단무지는 도마에서 먼저 썰어야 해요. 떡볶이와 라면은 다 끓고 나서 오래 두면 타요.</p>
+  </section>
+
+  <section class="card">
+    <h2>조작법</h2>
+    <dl class="keys">
+      <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 또는 <kbd>방향키</kbd></dt><dd>이동</dd>
+      <dt><kbd>스페이스</kbd></dt><dd>집기 · 놓기 · 넣기 · 담기 · 내기 (바라보는 칸에)</dd>
+      <dt><kbd>시프트</kbd> 꾹</dt><dd>도마 앞에서 썰기</dd>
+    </dl>
+    <p class="note">키보드로 하는 게임이라 컴퓨터에서 열어주세요. 한/영 상태와 상관없이 움직여요.</p>
+  </section>
+</div>
+
+<!-- 대기실 -->
+<div class="wrap" id="room" hidden>
+  <header class="sign">
+    <h1>둘이서 분식집</h1>
+  </header>
+  <section class="card waitbox">
+    <h2 id="roomTitle">방 코드</h2>
+    <div class="code" id="roomCode">----</div>
+    <p id="roomStatus" aria-live="polite"></p>
+    <div class="btns">
+      <button class="btn" id="startBtn" type="button" hidden>영업 시작</button>
+      <button class="btn ghost" id="leaveBtn" type="button">나가기</button>
+    </div>
+  </section>
+</div>
+
+<!-- 게임 -->
+<div id="game" hidden>
+  <div class="hud">
+    <div class="meter"><span>오늘 매출</span><b id="score">0원</b></div>
+    <div class="orders" id="orders"></div>
+    <div class="meter time" id="timeBox"><span>남은 시간</span><b id="time">3:00</b></div>
+  </div>
+  <div class="stage" id="stage">
+    <canvas id="kitchen" aria-label="주방"></canvas>
+    <span class="peer" id="peerTag"></span>
+    <div class="toast hide" id="toast"></div>
+    <div class="overlay" id="overlay" hidden></div>
+  </div>
+  <div class="foot">
+    <span><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동 · <kbd>스페이스</kbd> 집기·놓기 · <kbd>시프트</kbd> 꾹 썰기</span>
+    <span id="whoami"></span>
+  </div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ===== 기본 설정 =====
+  const VERSION = 1;
+  const PREFIX = "oceantest-bunsik-v1-";
+  const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
+  const ROUND = 180, CHOP_TIME = 1.2, BURN = 9, SPEED = 4.3, R = 0.3;
+  const MISS = 1000, TIP = 1000;
+  const COLS = 15, ROWS = 9;
+  const MAP = [
+    "CCabcdCCSSCCWWC",
+    "C.............C",
+    "e.............C",
+    "f....XXXXX....K",
+    "g....XXXXX....K",
+    "C.............C",
+    "P.............T",
+    "C.............C",
+    "CCCCCCCCCCCCCCC"
+  ];
+  const CRATE = { a: "tteok", b: "eomuk", c: "pa", d: "ramyeon", e: "bap", f: "gim", g: "danmuji" };
+  const ING = {
+    tteok:   { name: "떡", chop: false },
+    eomuk:   { name: "어묵", chop: true },
+    pa:      { name: "파", chop: true },
+    ramyeon: { name: "라면 사리", chop: false },
+    bap:     { name: "밥", chop: false },
+    gim:     { name: "김", chop: false },
+    danmuji: { name: "단무지", chop: true }
+  };
+  const DISH = {
+    tteokbokki: { name: "떡볶이", where: "pot", need: ["tteok", "eomuk"], cook: 7, pts: 4000, limit: 70, how: "떡 + 썬 어묵 → 냄비" },
+    ramen:      { name: "라면", where: "pot", need: ["ramyeon", "pa"], cook: 6, pts: 3500, limit: 65, how: "라면 사리 + 썬 파 → 냄비" },
+    gimbap:     { name: "김밥", where: "plate", need: ["bap", "gim", "danmuji"], pts: 3000, limit: 60, how: "밥 + 김 + 썬 단무지 → 접시" }
+  };
+  Object.keys(DISH).forEach((k) => (DISH[k].id = k));
+  const POT_DISHES = Object.values(DISH).filter((d) => d.where === "pot");
+  const POT_INGS = new Set(POT_DISHES.flatMap((d) => d.need));
+  const STARS = [20000, 40000, 60000];
+
+  const TYPE = { ".": "floor", C: "counter", X: "counter", S: "stove", W: "serve", K: "board", P: "plates", T: "trash" };
+  const tiles = [];
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    const ch = MAP[y][x];
+    tiles.push({ x, y, type: CRATE[ch] ? "crate" : TYPE[ch], ing: CRATE[ch] || null, island: ch === "X" });
+  }
+  const idx = (x, y) => y * COLS + x;
+  const solid = (x, y) => x < 0 || y < 0 || x >= COLS || y >= ROWS || tiles[idx(x, y)].type !== "floor";
+
+  const $ = (id) => document.getElementById(id);
+  const FONT_UI = '"Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+  const won = (n) => (n < 0 ? "−" : "") + Math.abs(n).toLocaleString("ko-KR") + "원";
+  const hasBatchim = (w) => { const c = w.charCodeAt(w.length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0; };
+  const eunneun = (w) => w + (hasBatchim(w) ? "은" : "는");
+
+  // ===== 그림 =====
+  function rrect(c, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    c.beginPath(); c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+  function dot(c, x, y, r, fill) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fillStyle = fill; c.fill(); }
+
+  // 재료·음식 아이콘. s = 아이콘 지름(px)
+  function drawIcon(c, k, cx, cy, s, cut) {
+    const u = s / 10;
+    c.save(); c.translate(cx, cy); c.lineJoin = "round"; c.lineCap = "round";
+    switch (k) {
+      case "tteok":
+        for (let i = -1; i <= 1; i++) { rrect(c, -4 * u, i * 2.5 * u - u, 8 * u, 2 * u, u); c.fillStyle = "#fbf7ee"; c.fill(); c.lineWidth = 0.5 * u; c.strokeStyle = "#bfb197"; c.stroke(); }
+        break;
+      case "eomuk":
+        c.strokeStyle = "#9c6a33"; c.lineWidth = 0.5 * u;
+        if (!cut) {
+          rrect(c, -4 * u, -3 * u, 8 * u, 6 * u, u); c.fillStyle = "#dca65e"; c.fill(); c.stroke();
+          c.beginPath(); for (let i = -1.6; i <= 1.7; i += 1.6) { c.moveTo(-3 * u, i * u); c.lineTo(3 * u, i * u); } c.stroke();
+        } else {
+          [[-2.4, -1.8], [1.6, -2.2], [-0.8, 2], [2.8, 1.4]].forEach(([x, y]) => { rrect(c, (x - 1.4) * u, (y - 1) * u, 2.8 * u, 2 * u, 0.5 * u); c.fillStyle = "#dca65e"; c.fill(); c.stroke(); });
+        }
+        break;
+      case "pa":
+        if (!cut) {
+          c.lineWidth = 1.7 * u; c.strokeStyle = "#3f9b4a"; c.beginPath(); c.moveTo(-1.6 * u, 1.2 * u); c.lineTo(3.6 * u, -3.6 * u); c.stroke();
+          c.lineWidth = 1.1 * u; c.beginPath(); c.moveTo(0.8 * u, -1 * u); c.lineTo(4 * u, -1 * u); c.stroke();
+          c.lineWidth = 1.9 * u; c.strokeStyle = "#f3f1e2"; c.beginPath(); c.moveTo(-4 * u, 3.4 * u); c.lineTo(-1.6 * u, 1.2 * u); c.stroke();
+        } else {
+          [[-2.4, -1.8], [1.6, -2.4], [-1.2, 1.8], [2.6, 1.6], [0.2, -0.2]].forEach(([x, y]) => { c.beginPath(); c.arc(x * u, y * u, 1.1 * u, 0, Math.PI * 2); c.strokeStyle = "#3f9b4a"; c.lineWidth = 0.75 * u; c.stroke(); });
+        }
+        break;
+      case "ramyeon":
+        rrect(c, -4 * u, -3.2 * u, 8 * u, 6.4 * u, 1.2 * u); c.fillStyle = "#f2c94c"; c.fill(); c.strokeStyle = "#c99a1f"; c.lineWidth = 0.5 * u; c.stroke();
+        c.beginPath(); for (let r = -1.6; r <= 1.7; r += 1.6) { for (let x = -3.2; x <= 3.21; x += 0.4) { const yy = r + Math.sin(x * 3) * 0.45; if (x === -3.2) c.moveTo(x * u, yy * u); else c.lineTo(x * u, yy * u); } } c.stroke();
+        break;
+      case "bap":
+        c.beginPath(); c.ellipse(0, 0.4 * u, 4.2 * u, 3.4 * u, 0, 0, Math.PI * 2); c.fillStyle = "#fdfcf6"; c.fill(); c.strokeStyle = "#cfc8b6"; c.lineWidth = 0.5 * u; c.stroke();
+        [[-1.8, -0.6], [0.6, -1.4], [1.8, 0.8], [-0.6, 1.4], [-2.4, 1]].forEach(([x, y]) => { c.beginPath(); c.ellipse(x * u, y * u, 0.5 * u, 0.25 * u, 0.6, 0, Math.PI * 2); c.fillStyle = "#e4dfcf"; c.fill(); });
+        break;
+      case "gim":
+        rrect(c, -3.8 * u, -3.8 * u, 7.6 * u, 7.6 * u, 0.5 * u); c.fillStyle = "#1e3a2b"; c.fill();
+        c.strokeStyle = "#2f5a43"; c.lineWidth = 0.4 * u; c.beginPath(); c.moveTo(-3 * u, -1 * u); c.lineTo(2 * u, -3 * u); c.moveTo(-3 * u, 2 * u); c.lineTo(3 * u, -1 * u); c.stroke();
+        break;
+      case "danmuji":
+        c.fillStyle = "#f7d84a"; c.strokeStyle = "#c9a71b"; c.lineWidth = 0.5 * u;
+        if (!cut) { rrect(c, -4.6 * u, -1.3 * u, 9.2 * u, 2.6 * u, 1.1 * u); c.fill(); c.stroke(); }
+        else { [[-2.4, -1.6], [1.4, -1.8], [-0.8, 1.8], [2.6, 1.6]].forEach(([x, y]) => { c.beginPath(); c.arc(x * u, y * u, 1.3 * u, Math.PI, 0); c.closePath(); c.fill(); c.stroke(); }); }
+        break;
+      case "plate":
+        dot(c, 0, 0, 4.8 * u, "#ffffff"); c.strokeStyle = "#cfc7b6"; c.lineWidth = 0.6 * u; c.stroke();
+        c.beginPath(); c.arc(0, 0, 3.4 * u, 0, Math.PI * 2); c.strokeStyle = "#ece6da"; c.lineWidth = 0.4 * u; c.stroke();
+        break;
+      case "tteokbokki":
+        drawIcon(c, "plate", 0, 0, s);
+        dot(c, 0, 0, 3.6 * u, "#d7372b");
+        [[-1.6, -1.2, 0.5], [1.2, -1.8, -0.4], [0.6, 1.2, 0.3], [-1.4, 1.6, -0.6]].forEach(([x, y, a]) => { c.save(); c.translate(x * u, y * u); c.rotate(a); rrect(c, -1.4 * u, -0.5 * u, 2.8 * u, u, 0.5 * u); c.fillStyle = "#fff4e4"; c.fill(); c.restore(); });
+        rrect(c, 1.4 * u, -0.2 * u, 1.6 * u, 1.2 * u, 0.3 * u); c.fillStyle = "#dca65e"; c.fill();
+        break;
+      case "ramen":
+        dot(c, 0, 0, 4.8 * u, "#b8322a"); dot(c, 0, 0, 3.9 * u, "#e9883a");
+        c.strokeStyle = "#f6d36b"; c.lineWidth = 0.6 * u; c.beginPath();
+        for (let r = -2; r <= 2.1; r += 1) { for (let x = -3; x <= 3.01; x += 0.3) { const yy = r + Math.sin(x * 3.2 + r) * 0.35; if (x === -3) c.moveTo(x * u, yy * u); else c.lineTo(x * u, yy * u); } } c.stroke();
+        [[-1.6, -1.6], [1.8, 0.6], [0.2, 2]].forEach(([x, y]) => dot(c, x * u, y * u, 0.55 * u, "#3f9b4a"));
+        break;
+      case "gimbap":
+        drawIcon(c, "plate", 0, 0, s);
+        [[-1.7, -1.6], [1.7, -1.6], [-1.7, 1.7], [1.7, 1.7]].forEach(([x, y]) => { dot(c, x * u, y * u, 1.55 * u, "#1e3a2b"); dot(c, x * u, y * u, 1.15 * u, "#fdfcf6"); dot(c, x * u, y * u, 0.45 * u, "#f7d84a"); dot(c, (x + 0.45) * u, (y + 0.2) * u, 0.25 * u, "#e9883a"); });
+        break;
+    }
+    c.restore();
+  }
+  function drawItem(c, it, cx, cy, s) {
+    if (!it) return;
+    if (it.k === "plate") {
+      if (it.dish) { drawIcon(c, it.dish, cx, cy, s); return; }
+      drawIcon(c, "plate", cx, cy, s);
+      const n = it.items.length;
+      it.items.forEach((k, i) => { const a = (i / Math.max(1, n)) * Math.PI * 2 - Math.PI / 2; const d = n > 1 ? s * 0.18 : 0; drawIcon(c, k, cx + Math.cos(a) * d, cy + Math.sin(a) * d, s * 0.45, ING[k].chop); });
+      return;
+    }
+    drawIcon(c, it.k, cx, cy, s, it.cut);
+  }
+  function bar(c, x, y, w, h, f, col) {
+    rrect(c, x, y, w, h, h / 2); c.fillStyle = "rgba(36,26,20,.75)"; c.fill();
+    rrect(c, x + 2, y + 2, Math.max(0, (w - 4) * Math.min(1, f)), h - 4, (h - 4) / 2); c.fillStyle = col; c.fill();
+  }
+
+  // ===== 게임 상태 (방장 컴퓨터가 진짜 상태를 가짐) =====
+  function freshPot() { return { items: [], st: "idle", dish: null, t: 0 }; }
+  function spawn(i) { return { x: i ? 11.5 : 3.5, y: 5.5, fx: 0, fy: -1, hold: null, chop: false, on: i === 0 }; }
+  function newWorld() {
+    const pots = {};
+    tiles.forEach((t, i) => { if (t.type === "stove") pots[i] = freshPot(); });
+    return { phase: "wait", rs: 0, left: ROUND, cd: 0, score: 0, served: 0, missed: 0, slots: new Array(COLS * ROWS).fill(null), pots, orders: [], oid: 1, nextOrder: 0, players: [spawn(0), spawn(1)] };
+  }
+
+  let role = null;        // "host" | "guest"
+  let net = null;         // 연결
+  let W = null;           // 방장: 실제 세계
+  let view = null;        // 화면에 그릴 상태 (방장은 W, 친구는 받은 스냅샷)
+  let me = null;          // 내 캐릭터 (내 컴퓨터가 위치를 정함)
+  let myIdx = 0;
+  let guestOn = false;
+  const remote = { x: 0, y: 0, init: false };
+  let pendingGuestEvents = [];
+
+  function targetIdx(p) {
+    const tx = Math.floor(p.x + p.fx * 0.75), ty = Math.floor(p.y + p.fy * 0.75);
+    if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return -1;
+    const i = idx(tx, ty);
+    return tiles[i].type === "floor" ? -1 : i;
+  }
+
+  function ev(e) {
+    if (e.to == null || e.to === 0) showEvent(e);
+    if (guestOn && (e.to == null || e.to === 1)) pendingGuestEvents.push(e);
+  }
+
+  function addOrder() {
+    const keys = Object.keys(DISH);
+    const d = keys[Math.floor(Math.random() * keys.length)];
+    W.orders.push({ id: W.oid++, dish: d, left: DISH[d].limit, limit: DISH[d].limit });
+  }
+
+  function startRound() {
+    const keepOn = W.players[1].on;
+    W.slots.fill(null);
+    Object.keys(W.pots).forEach((k) => (W.pots[k] = freshPot()));
+    W.orders = []; W.score = 0; W.served = 0; W.missed = 0; W.left = ROUND;
+    W.players = [spawn(0), spawn(1)]; W.players[1].on = keepOn;
+    W.rs++; W.phase = "count"; W.cd = 3;
+    me = W.players[0];
+  }
+
+  function tick(dt) {
+    if (W.phase === "count") {
+      W.cd -= dt;
+      if (W.cd <= 0) { W.phase = "play"; addOrder(); W.nextOrder = 7; }
+      return;
+    }
+    if (W.phase !== "play") return;
+    W.left -= dt;
+
+    W.players.forEach((p) => {
+      if (!p.on || !p.chop) return;
+      const i = targetIdx(p);
+      if (i < 0 || tiles[i].type !== "board") return;
+      const it = W.slots[i];
+      if (!it || it.k === "plate" || !ING[it.k].chop || it.cut) return;
+      it.pr = (it.pr || 0) + dt / CHOP_TIME;
+      if (it.pr >= 1) { it.cut = true; delete it.pr; }
+    });
+
+    for (const k in W.pots) {
+      const pot = W.pots[k];
+      if (pot.st === "cook") {
+        pot.t += dt;
+        if (pot.t >= DISH[pot.dish].cook) { pot.st = "done"; pot.t = 0; ev({ m: DISH[pot.dish].name + " 다 끓었어요! 빈 접시로 담아요" }); }
+      } else if (pot.st === "done") {
+        pot.t += dt;
+        if (pot.t >= BURN) { pot.st = "burnt"; ev({ m: "냄비가 탔어요! 빈손으로 냄비를 비워요", bad: true }); }
+      }
+    }
+
+    W.orders.forEach((o) => (o.left -= dt));
+    const gone = W.orders.filter((o) => o.left <= 0);
+    if (gone.length) {
+      W.orders = W.orders.filter((o) => o.left > 0);
+      gone.forEach((o) => { W.score -= MISS; W.missed++; ev({ m: DISH[o.dish].name + " 주문을 놓쳤어요 " + won(-MISS), bad: true }); });
+    }
+    W.nextOrder -= dt;
+    if (!W.orders.length && W.nextOrder > 3) W.nextOrder = 3;
+    if (W.nextOrder <= 0) { if (W.orders.length < 4) addOrder(); W.nextOrder = 12 + Math.random() * 5; }
+
+    if (W.left <= 0) { W.left = 0; W.phase = "end"; }
+  }
+
+  function plateCheck(plate, k, cut) {
+    if (plate.dish) return "접시에 이미 음식이 담겨 있어요";
+    if (!DISH.gimbap.need.includes(k)) return eunneun(ING[k].name) + " 냄비에 넣는 재료예요";
+    if (ING[k].chop && !cut) return eunneun(ING[k].name) + " 먼저 도마에서 썰어요";
+    if (plate.items.includes(k)) return "이미 올라가 있어요";
+    return true;
+  }
+  function plateAdd(plate, k) {
+    plate.items.push(k);
+    if (DISH.gimbap.need.every((n) => plate.items.includes(n))) { plate.dish = "gimbap"; plate.items = []; }
+  }
+  function potCheck(pot, k, cut) {
+    if (pot.st === "cook") return "지금 끓는 중이에요";
+    if (pot.st === "done") return "다 된 음식부터 빈 접시로 담아요";
+    if (pot.st === "burnt") return "탄 냄비는 빈손으로 비워요";
+    if (!POT_INGS.has(k)) return eunneun(ING[k].name) + " 접시에 바로 올리는 김밥 재료예요";
+    if (ING[k].chop && !cut) return eunneun(ING[k].name) + " 먼저 도마에서 썰어요";
+    const next = pot.items.concat(k);
+    if (new Set(next).size !== next.length) return "이미 들어가 있어요";
+    if (!POT_DISHES.some((d) => next.every((n) => d.need.includes(n)))) return "같은 냄비에 섞을 수 없는 재료예요";
+    return true;
+  }
+  function potAdd(pot, k) {
+    pot.items.push(k);
+    const d = POT_DISHES.find((d) => d.need.length === pot.items.length && d.need.every((n) => pot.items.includes(n)));
+    if (d) { pot.st = "cook"; pot.dish = d.id; pot.t = 0; }
+  }
+
+  function act(pi) {
+    if (W.phase !== "play") return;
+    const p = W.players[pi];
+    const i = targetIdx(p);
+    if (i < 0) return;
+    const t = tiles[i], h = p.hold;
+    const say = (m) => ev({ m, to: pi });
+    switch (t.type) {
+      case "crate": {
+        if (!h) { p.hold = { k: t.ing }; return; }
+        if (h.k === t.ing && !h.cut) { p.hold = null; return; }
+        if (h.k === "plate") { const r = plateCheck(h, t.ing, false); if (r === true) plateAdd(h, t.ing); else say(r); return; }
+        say("손이 차 있어요");
+        return;
+      }
+      case "counter":
+      case "board": {
+        const s = W.slots[i];
+        if (!h && !s) return;
+        if (!h) { p.hold = s; W.slots[i] = null; return; }
+        if (!s) {
+          if (t.type === "board" && h.k === "plate") { say("도마에는 재료만 올려요"); return; }
+          W.slots[i] = h; p.hold = null; return;
+        }
+        if (h.k === "plate" && s.k !== "plate") { const r = plateCheck(h, s.k, s.cut); if (r === true) { plateAdd(h, s.k); W.slots[i] = null; } else say(r); return; }
+        if (h.k !== "plate" && s.k === "plate") { const r = plateCheck(s, h.k, h.cut); if (r === true) { plateAdd(s, h.k); p.hold = null; } else say(r); return; }
+        say("자리가 차 있어요");
+        return;
+      }
+      case "stove": {
+        const pot = W.pots[i];
+        if (!h) {
+          if (pot.st === "burnt") { W.pots[i] = freshPot(); say("냄비를 비웠어요"); }
+          else if (pot.st === "idle" && pot.items.length) { const k = pot.items.pop(); p.hold = { k, cut: ING[k].chop }; }
+          else if (pot.st === "cook") say("끓는 중이에요. 다 되면 빈 접시로 담아요");
+          else if (pot.st === "done") say("빈 접시를 들고 오면 담을 수 있어요");
+          return;
+        }
+        if (h.k === "plate") {
+          if (pot.st === "done") {
+            if (h.dish || h.items.length) { say("빈 접시로 담아야 해요"); return; }
+            h.dish = pot.dish; W.pots[i] = freshPot(); return;
+          }
+          say(pot.st === "cook" ? "아직 끓는 중이에요" : pot.st === "burnt" ? "탄 냄비는 빈손으로 비워요" : "냄비가 비어 있어요");
+          return;
+        }
+        const r = potCheck(pot, h.k, h.cut);
+        if (r === true) { potAdd(pot, h.k); p.hold = null; } else say(r);
+        return;
+      }
+      case "plates":
+        if (!h) p.hold = { k: "plate", items: [], dish: null };
+        else if (h.k === "plate" && !h.dish && !h.items.length) p.hold = null;
+        else say("손이 차 있어요");
+        return;
+      case "serve": {
+        if (!h) { say("완성된 음식을 들고 와요"); return; }
+        if (h.k !== "plate" || !h.dish) { say("완성된 음식만 낼 수 있어요"); return; }
+        const cands = W.orders.filter((o) => o.dish === h.dish).sort((a, b) => a.left - b.left);
+        if (!cands.length) { say("지금 주문에 없는 메뉴예요"); return; }
+        const o = cands[0];
+        const pts = DISH[h.dish].pts + Math.round((TIP * o.left) / o.limit / 100) * 100;
+        W.score += pts; W.served++;
+        W.orders = W.orders.filter((x) => x !== o);
+        p.hold = null;
+        ev({ pop: { i, text: "+" + won(pts) } });
+        return;
+      }
+      case "trash":
+        if (!h) return;
+        if (h.k === "plate") { if (h.dish || h.items.length) { h.dish = null; h.items = []; say("접시를 비웠어요"); } }
+        else p.hold = null;
+        return;
+    }
+  }
+
+  function snapshot() {
+    const sl = [];
+    W.slots.forEach((it, i) => { if (it) sl.push([i, it]); });
+    return {
+      t: "s", ph: W.phase, rs: W.rs, left: W.left, cd: W.cd, sc: W.score, sv: W.served, ms: W.missed, sl, pots: W.pots, od: W.orders,
+      pl: W.players.map((p) => ({ x: p.x, y: p.y, fx: p.fx, fy: p.fy, hold: p.hold, chop: p.chop, on: p.on })),
+      ev: pendingGuestEvents.splice(0)
+    };
+  }
+  function viewFromSnapshot(s) {
+    const slots = new Array(COLS * ROWS).fill(null);
+    s.sl.forEach(([i, it]) => (slots[i] = it));
+    return { phase: s.ph, rs: s.rs, left: s.left, cd: s.cd, score: s.sc, served: s.sv, missed: s.ms, slots, pots: s.pots, orders: s.od, players: s.pl };
+  }
+
+  // ===== 이동 =====
+  const keys = new Set();
+  function inputVec() {
+    let x = 0, y = 0;
+    if (keys.has("KeyA") || keys.has("ArrowLeft")) x -= 1;
+    if (keys.has("KeyD") || keys.has("ArrowRight")) x += 1;
+    if (keys.has("KeyW") || keys.has("ArrowUp")) y -= 1;
+    if (keys.has("KeyS") || keys.has("ArrowDown")) y += 1;
+    const l = Math.hypot(x, y);
+    return l ? { x: x / l, y: y / l } : { x: 0, y: 0 };
+  }
+  function collide(b, axis, dir) {
+    const minX = Math.floor(b.x - R), maxX = Math.floor(b.x + R - 1e-6);
+    const minY = Math.floor(b.y - R), maxY = Math.floor(b.y + R - 1e-6);
+    for (let ty = minY; ty <= maxY; ty++) for (let tx = minX; tx <= maxX; tx++) {
+      if (!solid(tx, ty)) continue;
+      if (axis === "x") b.x = dir > 0 ? tx - R : tx + 1 + R;
+      else b.y = dir > 0 ? ty - R : ty + 1 + R;
+      return;
+    }
+  }
+  function moveBy(b, dx, dy) {
+    if (dx) { b.x += dx; collide(b, "x", dx); }
+    if (dy) { b.y += dy; collide(b, "y", dy); }
+  }
+  function moveMe(dt) {
+    if (!me || !view || view.phase !== "play") return;
+    const v = inputVec();
+    if (v.x || v.y) {
+      moveBy(me, v.x * SPEED * dt, v.y * SPEED * dt);
+      if (Math.abs(v.x) > Math.abs(v.y) + 0.01) { me.fx = Math.sign(v.x); me.fy = 0; }
+      else { me.fx = 0; me.fy = Math.sign(v.y); }
+    }
+    const other = view.players[1 - myIdx];
+    if (other && other.on) {
+      const ox = role === "host" ? other.x : remote.x, oy = role === "host" ? other.y : remote.y;
+      const dx = me.x - ox, dy = me.y - oy, d = Math.hypot(dx, dy);
+      if (d < 0.62 && d > 1e-4) { const push = 0.62 - d; moveBy(me, (dx / d) * push, (dy / d) * push); }
+    }
+  }
+
+  // ===== 화면 =====
+  const cv = $("kitchen");
+  const ctx = cv.getContext("2d");
+  let TS = 48;
+  const pops = [];
+
+  function fit() {
+    const stage = $("stage");
+    const w = stage.clientWidth, h = stage.clientHeight;
+    TS = Math.max(26, Math.floor(Math.min(w / COLS, h / ROWS)));
+    const dpr = window.devicePixelRatio || 1;
+    cv.style.width = TS * COLS + "px"; cv.style.height = TS * ROWS + "px";
+    cv.width = Math.round(TS * COLS * dpr); cv.height = Math.round(TS * ROWS * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function drawTile(t, now) {
+    const px = t.x * TS, py = t.y * TS, s = TS;
+    if (t.type === "floor") {
+      ctx.fillStyle = (t.x + t.y) % 2 ? "#ece2cc" : "#f4ecda"; ctx.fillRect(px, py, s, s);
+      return;
+    }
+    if (t.type === "stove") {
+      ctx.fillStyle = "#2f3336"; ctx.fillRect(px, py, s, s);
+      ctx.fillStyle = "#3d4246"; ctx.fillRect(px + 3, py + 3, s - 6, s - 6);
+      ctx.beginPath(); ctx.arc(px + s / 2, py + s / 2, s * 0.33, 0, Math.PI * 2); ctx.strokeStyle = "#5b6166"; ctx.lineWidth = 3; ctx.stroke();
+      return;
+    }
+    if (t.type === "serve") {
+      ctx.fillStyle = "#d7372b"; ctx.fillRect(px, py, s, s);
+      ctx.fillStyle = "#ffcf33"; for (let i = 0; i < 4; i++) ctx.fillRect(px + (i * s) / 4, py, s / 8, s * 0.18);
+      ctx.fillStyle = "#fff"; ctx.font = Math.round(s * 0.24) + "px " + FONT_UI;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("내는 곳", px + s / 2, py + s * 0.6);
+      return;
+    }
+    // 조리대 기본
+    ctx.fillStyle = t.island ? "#b0723c" : "#c98b4f"; ctx.fillRect(px, py, s, s);
+    ctx.fillStyle = t.island ? "#bf8148" : "#d89c5f"; ctx.fillRect(px + 2, py + 2, s - 4, s - 6);
+    ctx.fillStyle = "rgba(0,0,0,.12)"; ctx.fillRect(px, py + s - 4, s, 4);
+    if (t.type === "crate") {
+      rrect(ctx, px + s * 0.1, py + s * 0.08, s * 0.8, s * 0.84, 4); ctx.fillStyle = "#8f5d2c"; ctx.fill();
+      ctx.fillStyle = "#a8743a"; for (let i = 0; i < 3; i++) ctx.fillRect(px + s * 0.14, py + s * (0.14 + i * 0.26), s * 0.72, s * 0.2);
+      drawIcon(ctx, t.ing, px + s / 2, py + s * 0.42, s * 0.56, false);
+      ctx.fillStyle = "#fff8e6"; ctx.font = Math.round(s * 0.2) + "px " + FONT_UI;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(ING[t.ing].name, px + s / 2, py + s * 0.82);
+    } else if (t.type === "board") {
+      rrect(ctx, px + s * 0.12, py + s * 0.14, s * 0.76, s * 0.7, 5); ctx.fillStyle = "#f0d6a4"; ctx.fill(); ctx.strokeStyle = "#c9a56a"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = "#9aa3a8"; ctx.fillRect(px + s * 0.66, py + s * 0.18, s * 0.06, s * 0.3);
+    } else if (t.type === "plates") {
+      for (let i = 2; i >= 0; i--) drawIcon(ctx, "plate", px + s / 2, py + s / 2 - i * 3, s * 0.7);
+    } else if (t.type === "trash") {
+      rrect(ctx, px + s * 0.2, py + s * 0.22, s * 0.6, s * 0.64, 6); ctx.fillStyle = "#6f7a7c"; ctx.fill();
+      ctx.fillStyle = "#59636a"; ctx.fillRect(px + s * 0.14, py + s * 0.16, s * 0.72, s * 0.1);
+      ctx.fillStyle = "#e9e3d6"; ctx.font = Math.round(s * 0.18) + "px " + FONT_UI;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("버리기", px + s / 2, py + s * 0.58);
+    }
+  }
+
+  function drawPot(i, pot, now) {
+    const t = tiles[i], cx = t.x * TS + TS / 2, cy = t.y * TS + TS / 2;
+    const burnt = pot.st === "burnt";
+    const barY = t.y === 0 ? cy + TS * 0.52 : cy - TS * 0.62; // 맨 윗줄 화구는 막대를 아래에
+    dot(ctx, cx, cy, TS * 0.38, burnt ? "#1c1c1c" : "#8e979c");
+    dot(ctx, cx, cy, TS * 0.31, burnt ? "#2a2a2a" : pot.st === "idle" ? "#5d666b" : "#c64a2c");
+    if (pot.st === "idle") pot.items.forEach((k, j) => drawIcon(ctx, k, cx + (j ? TS * 0.12 : -TS * 0.12), cy, TS * 0.3, ING[k].chop));
+    if (pot.st === "cook" || pot.st === "done") {
+      const d = DISH[pot.dish];
+      if (pot.st === "cook") bar(ctx, cx - TS * 0.4, barY, TS * 0.8, TS * 0.16, pot.t / d.cook, "#4bc06a");
+      else {
+        drawIcon(ctx, pot.dish, cx, cy, TS * 0.5);
+        const warn = pot.t > BURN - 4 && Math.floor(now / 200) % 2 === 0;
+        bar(ctx, cx - TS * 0.4, barY, TS * 0.8, TS * 0.16, 1 - pot.t / BURN, warn ? "#ff3b2f" : "#ffcf33");
+      }
+      for (let k = 0; k < 3; k++) { const ph = (now / 900 + k / 3) % 1; ctx.globalAlpha = 0.5 * (1 - ph); dot(ctx, cx + (k - 1) * TS * 0.14, cy - TS * 0.3 - ph * TS * 0.35, TS * 0.07, "#ffffff"); }
+      ctx.globalAlpha = 1;
+    }
+    if (burnt) {
+      for (let k = 0; k < 3; k++) { const ph = (now / 1100 + k / 3) % 1; ctx.globalAlpha = 0.6 * (1 - ph); dot(ctx, cx + (k - 1) * TS * 0.16, cy - TS * 0.25 - ph * TS * 0.5, TS * (0.1 + ph * 0.1), "#555"); }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawChef(p, isMe, idxP, now) {
+    const cx = p.x * TS, cy = p.y * TS;
+    const body = idxP === 0 ? "#d7372b" : "#2f8f5b";
+    ctx.beginPath(); ctx.ellipse(cx, cy + TS * 0.26, TS * 0.3, TS * 0.1, 0, 0, Math.PI * 2); ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.fill();
+    dot(ctx, cx, cy, TS * 0.32, body);
+    dot(ctx, cx, cy - TS * 0.02, TS * 0.22, "#ffe0c2");
+    // 모자
+    rrect(ctx, cx - TS * 0.18, cy - TS * 0.36, TS * 0.36, TS * 0.14, 3); ctx.fillStyle = "#fff"; ctx.fill();
+    dot(ctx, cx - TS * 0.1, cy - TS * 0.4, TS * 0.1, "#fff"); dot(ctx, cx + TS * 0.08, cy - TS * 0.42, TS * 0.11, "#fff");
+    // 눈 (바라보는 방향)
+    const ex = p.fx * TS * 0.07, ey = p.fy * TS * 0.05;
+    dot(ctx, cx - TS * 0.07 + ex, cy - TS * 0.01 + ey, TS * 0.03, "#241a14"); dot(ctx, cx + TS * 0.07 + ex, cy - TS * 0.01 + ey, TS * 0.03, "#241a14");
+    // 이름표
+    const label = idxP === 0 ? "방장" : "친구";
+    ctx.font = Math.round(TS * 0.2) + "px " + FONT_UI;
+    const tw = ctx.measureText(label).width + 10;
+    rrect(ctx, cx - tw / 2, cy - TS * 0.78, tw, TS * 0.26, 6); ctx.fillStyle = isMe ? body : "rgba(36,26,20,.75)"; ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(label, cx, cy - TS * 0.65);
+    // 든 것
+    if (p.hold) drawItem(ctx, p.hold, cx + p.fx * TS * 0.36, cy + p.fy * TS * 0.3 + TS * 0.08, TS * 0.5);
+    if (p.chop && view.phase === "play") {
+      const i = targetIdx(p);
+      if (i >= 0 && tiles[i].type === "board" && view.slots[i]) { const a = Math.sin(now / 60) * 0.3; ctx.save(); ctx.translate(cx + p.fx * TS * 0.3, cy + p.fy * TS * 0.3); ctx.rotate(a); ctx.fillStyle = "#cfd6da"; ctx.fillRect(-2, -TS * 0.18, 4, TS * 0.2); ctx.restore(); }
+    }
+  }
+
+  function render(now) {
+    if (!view) return;
+    ctx.clearRect(0, 0, TS * COLS, TS * ROWS);
+    tiles.forEach((t) => drawTile(t, now));
+    // 조리대 위 물건
+    view.slots.forEach((it, i) => {
+      if (!it) return;
+      const t = tiles[i], cx = t.x * TS + TS / 2, cy = t.y * TS + TS / 2;
+      drawItem(ctx, it, cx, cy, TS * 0.62);
+      if (it.pr) bar(ctx, cx - TS * 0.38, cy - TS * 0.56, TS * 0.76, TS * 0.15, it.pr, "#4bc06a");
+    });
+    for (const k in view.pots) drawPot(Number(k), view.pots[k], now);
+    // 내가 바라보는 칸
+    if (me && view.phase === "play") {
+      const i = targetIdx(me);
+      if (i >= 0) { const t = tiles[i]; ctx.save(); ctx.setLineDash([6, 4]); rrect(ctx, t.x * TS + 2, t.y * TS + 2, TS - 4, TS - 4, 6); ctx.strokeStyle = "rgba(255,255,255,.95)"; ctx.lineWidth = 3; ctx.stroke(); ctx.restore(); }
+    }
+    // 캐릭터
+    const list = [];
+    view.players.forEach((p, i) => {
+      if (!p.on) return;
+      if (i === myIdx) list.push({ p: { ...p, x: me.x, y: me.y, fx: me.fx, fy: me.fy, chop: keys.has("ShiftLeft") || keys.has("ShiftRight") }, i, mine: true });
+      else list.push({ p: { ...p, x: remote.x, y: remote.y }, i, mine: false });
+    });
+    list.sort((a, b) => a.p.y - b.p.y).forEach((o) => drawChef(o.p, o.mine, o.i, now));
+    // 매출 팝업
+    for (let j = pops.length - 1; j >= 0; j--) {
+      const q = pops[j], age = (now - q.t0) / 1300;
+      if (age >= 1) { pops.splice(j, 1); continue; }
+      const t = tiles[q.i];
+      ctx.globalAlpha = 1 - age;
+      ctx.font = Math.round(TS * 0.36) + "px " + FONT_UI;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.lineWidth = 5; ctx.strokeStyle = "#241a14"; ctx.strokeText(q.text, t.x * TS + TS / 2, t.y * TS + TS * (1.2 + age * 0.6));
+      ctx.fillStyle = "#ffcf33"; ctx.fillText(q.text, t.x * TS + TS / 2, t.y * TS + TS * (1.2 + age * 0.6));
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // HUD
+  let orderKey = "";
+  const iconCache = {};
+  function iconURL(k) {
+    if (iconCache[k]) return iconCache[k];
+    const c = document.createElement("canvas"); c.width = c.height = 96;
+    drawIcon(c.getContext("2d"), k, 48, 48, 86);
+    return (iconCache[k] = c.toDataURL());
+  }
+  function hud() {
+    if (!view) return;
+    $("score").textContent = won(view.score);
+    const s = Math.ceil(view.left);
+    $("time").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    $("timeBox").classList.toggle("low", view.phase === "play" && s <= 30);
+    const key = view.phase + ":" + view.orders.map((o) => o.id).join(",");
+    const box = $("orders");
+    if (key !== orderKey) {
+      orderKey = key;
+      box.innerHTML = "";
+      if (!view.orders.length) { const e = document.createElement("span"); e.className = "empty-orders"; e.textContent = view.phase === "play" ? "곧 주문이 들어와요" : ""; box.appendChild(e); }
+      view.orders.forEach((o) => {
+        const d = DISH[o.dish];
+        const el = document.createElement("div"); el.className = "ticket"; el.dataset.id = o.id;
+        const img = document.createElement("img"); img.src = iconURL(o.dish); img.alt = ""; img.width = 40; img.height = 40;
+        const tx = document.createElement("div");
+        const b = document.createElement("b"); b.textContent = d.name;
+        const sm = document.createElement("small"); sm.textContent = d.how;
+        tx.append(b, sm);
+        const bar = document.createElement("i"); bar.appendChild(document.createElement("span"));
+        el.append(img, tx, bar);
+        box.appendChild(el);
+      });
+    }
+    view.orders.forEach((o) => {
+      const el = box.querySelector('[data-id="' + o.id + '"]');
+      if (!el) return;
+      const f = Math.max(0, o.left / o.limit);
+      el.querySelector("i span").style.width = f * 100 + "%";
+      el.classList.toggle("hurry", f < 0.3);
+    });
+  }
+
+  let toastTimer = 0;
+  function toast(m, bad) {
+    const t = $("toast");
+    t.textContent = m; t.classList.toggle("bad", !!bad); t.classList.remove("hide");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add("hide"), 1900);
+  }
+  function showEvent(e) {
+    if (e.m) toast(e.m, e.bad);
+    if (e.pop) pops.push({ i: e.pop.i, text: e.pop.text, t0: performance.now() });
+  }
+
+  // 단계 화면 (카운트다운, 영업 끝)
+  let shownPhase = "";
+  function phaseUI() {
+    if (!view) return;
+    const ov = $("overlay");
+    if (view.phase === "count") {
+      ov.hidden = false;
+      const n = Math.max(1, Math.ceil(view.cd));
+      if (ov.dataset.n !== String(n)) { ov.dataset.n = String(n); ov.innerHTML = '<span class="count">' + n + "</span>"; }
+    } else if (view.phase === "end") {
+      if (shownPhase !== "end") {
+        ov.hidden = false; ov.dataset.n = "";
+        const stars = STARS.filter((v) => view.score >= v).length;
+        ov.innerHTML =
+          '<div class="result"><h2>영업 끝!</h2>' +
+          '<div class="stars" aria-label="별 ' + stars + '개">' + "★".repeat(stars) + "☆".repeat(3 - stars) + "</div>" +
+          '<div class="big">' + won(view.score) + "</div>" +
+          "<p>낸 음식 " + view.served + "그릇 · 놓친 주문 " + view.missed + "개</p>" +
+          '<p class="note">별 하나 ' + won(STARS[0]) + " · 둘 " + won(STARS[1]) + " · 셋 " + won(STARS[2]) + "</p>" +
+          '<div class="btns">' + (role === "host" ? '<button class="btn" id="againBtn" type="button">한 판 더</button>' : '<p>방장이 한 판 더 누르면 바로 시작돼요.</p>') +
+          '<button class="btn ghost" id="quitBtn" type="button">나가기</button></div></div>';
+        const again = $("againBtn");
+        if (again) again.addEventListener("click", () => { startRound(); });
+        $("quitBtn").addEventListener("click", leave);
+      }
+    } else {
+      ov.hidden = true; ov.dataset.n = ""; ov.innerHTML = "";
+    }
+    shownPhase = view.phase;
+  }
+
+  function showScreen(name) {
+    $("lobby").hidden = name !== "lobby";
+    $("room").hidden = name !== "room";
+    $("game").hidden = name !== "game";
+    if (name === "game") { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); requestAnimationFrame(fit); }
+  }
+
+  // ===== 연결 =====
+  function errText(type) {
+    switch (type) {
+      case "peer-unavailable": return "그 코드의 방이 없어요. 코드를 다시 확인해주세요.";
+      case "browser-incompatible": return "이 브라우저에서는 연결 기능이 안 돼요. 크롬이나 엣지로 열어주세요.";
+      case "timeout": return "연결이 안 돼요. 둘 다 같은 와이파이면 더 잘 붙어요. 다시 시도해주세요.";
+      case "network": case "server-error": case "socket-error": case "socket-closed": return "연결 서버에 접속하지 못했어요. 인터넷 연결을 확인하고 다시 해주세요.";
+      case "nolib": return "연결 기능을 불러오지 못했어요. 새로고침해서 다시 해주세요.";
+      default: return "연결에 문제가 생겼어요. 다시 시도해주세요. (" + type + ")";
+    }
+  }
+
+  function hostTransport(code, h) {
+    if (IS_LOCAL) {
+      const bc = new BroadcastChannel("bunsik-local-" + code);
+      bc.onmessage = (e) => { const m = e.data; if (m.from !== "g") return; if (m.bye) { h.leave(); return; } h.data(m.d); };
+      setTimeout(() => h.ready(), 0);
+      return { send: (d) => bc.postMessage({ from: "h", d }), close: () => { bc.postMessage({ from: "h", bye: true }); bc.close(); } };
+    }
+    if (typeof window.Peer !== "function") { setTimeout(() => h.error("nolib"), 0); return { send() {}, close() {} }; }
+    const peer = new window.Peer(PREFIX + code, { debug: 0 });
+    let conn = null;
+    peer.on("open", () => h.ready());
+    peer.on("connection", (c) => {
+      if (conn && conn.open) { c.on("open", () => { c.send({ t: "full" }); setTimeout(() => c.close(), 500); }); return; }
+      conn = c;
+      c.on("data", (d) => h.data(d));
+      c.on("close", () => { if (conn === c) { conn = null; h.leave(); } });
+      c.on("error", () => {});
+    });
+    peer.on("error", (e) => h.error(e.type));
+    peer.on("disconnected", () => { try { peer.reconnect(); } catch (e) {} });
+    return { send: (d) => { if (conn && conn.open) conn.send(d); }, close: () => { try { peer.destroy(); } catch (e) {} } };
+  }
+
+  function guestTransport(code, h) {
+    if (IS_LOCAL) {
+      const bc = new BroadcastChannel("bunsik-local-" + code);
+      bc.onmessage = (e) => { const m = e.data; if (m.from !== "h") return; if (m.bye) { h.leave(); return; } h.data(m.d); };
+      setTimeout(() => h.ready(), 0);
+      return { send: (d) => bc.postMessage({ from: "g", d }), close: () => { bc.postMessage({ from: "g", bye: true }); bc.close(); } };
+    }
+    if (typeof window.Peer !== "function") { setTimeout(() => h.error("nolib"), 0); return { send() {}, close() {} }; }
+    const peer = new window.Peer({ debug: 0 });
+    let conn = null, opened = false;
+    const timer = setTimeout(() => { if (!opened) h.error("timeout"); }, 15000);
+    peer.on("open", () => {
+      conn = peer.connect(PREFIX + code, { reliable: true, serialization: "json" });
+      conn.on("open", () => { opened = true; clearTimeout(timer); h.ready(); });
+      conn.on("data", (d) => h.data(d));
+      conn.on("close", () => h.leave());
+      conn.on("error", () => {});
+    });
+    peer.on("error", (e) => { clearTimeout(timer); h.error(e.type); });
+    return { send: (d) => { if (conn && conn.open) conn.send(d); }, close: () => { clearTimeout(timer); try { peer.destroy(); } catch (e) {} } };
+  }
+
+  let timers = [];
+  function clearTimers() { timers.forEach((t) => clearInterval(t)); timers = []; }
+
+  function leave() {
+    if (net) { try { net.close(); } catch (e) {} }
+    net = null; role = null; W = null; view = null; me = null; guestOn = false; remote.init = false;
+    clearTimers(); orderKey = ""; shownPhase = "";
+    $("hostBtn").disabled = false; $("joinBtn").disabled = false;
+    showScreen("lobby");
+  }
+
+  // 방장
+  function host(tries) {
+    const code = String(Math.floor(1000 + Math.random() * 9000));
+    $("hostBtn").disabled = true;
+    $("hostStatus").className = "status"; $("hostStatus").textContent = "방을 여는 중이에요...";
+    role = "host"; myIdx = 0; W = newWorld(); view = W; me = W.players[0];
+    net = hostTransport(code, {
+      ready() {
+        $("roomTitle").textContent = "방 코드";
+        $("roomCode").textContent = code;
+        $("roomStatus").textContent = "친구가 이 코드를 넣으면 연결돼요. 혼자 먼저 해봐도 돼요.";
+        $("startBtn").hidden = false; $("startBtn").textContent = "혼자 시작";
+        $("hostStatus").textContent = "";
+        showScreen("room");
+      },
+      data(d) {
+        if (!d || !d.t) return;
+        if (d.t === "hi") {
+          if (d.v !== VERSION) { net.send({ t: "ver" }); return; }
+          guestOn = true; W.players[1] = spawn(1); W.players[1].on = true; remote.init = false;
+          net.send({ t: "welcome" });
+          $("roomStatus").textContent = "친구가 들어왔어요!";
+          $("startBtn").textContent = "영업 시작";
+          ev({ m: "친구가 들어왔어요", to: 0 });
+        } else if (d.t === "p") {
+          const p = W.players[1]; p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; p.chop = !!d.ch;
+        } else if (d.t === "a") {
+          const p = W.players[1]; p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; act(1);
+        }
+      },
+      leave() {
+        if (!W) return;
+        guestOn = false; W.players[1].on = false; W.players[1].hold = null; pendingGuestEvents = [];
+        $("roomStatus").textContent = "친구가 나갔어요. 다시 들어오길 기다리는 중이에요.";
+        $("startBtn").textContent = "혼자 시작";
+        toast("친구 연결이 끊겼어요", true);
+      },
+      error(type) {
+        if (type === "unavailable-id" && (tries || 0) < 3) { try { net.close(); } catch (e) {} host((tries || 0) + 1); return; }
+        $("hostStatus").className = "status bad"; $("hostStatus").textContent = errText(type);
+        if (net) { try { net.close(); } catch (e) {} }
+        net = null; role = null; W = null; view = null;
+        $("hostBtn").disabled = false;
+        showScreen("lobby");
+      }
+    });
+    let last = performance.now();
+    timers.push(setInterval(() => {
+      if (!W) return;
+      const now = performance.now(); const dt = Math.min(0.1, (now - last) / 1000); last = now;
+      tick(dt);
+    }, 1000 / 30));
+    timers.push(setInterval(() => { if (W && guestOn && net) net.send(snapshot()); }, 50));
+  }
+
+  // 친구
+  function join(code) {
+    $("joinBtn").disabled = true;
+    $("joinStatus").className = "status"; $("joinStatus").textContent = "연결하는 중이에요...";
+    role = "guest"; myIdx = 1; me = { x: 11.5, y: 5.5, fx: 0, fy: -1 }; view = null;
+    let lastRs = -1, welcomed = false;
+    net = guestTransport(code, {
+      ready() { net.send({ t: "hi", v: VERSION }); },
+      data(d) {
+        if (!d || !d.t) return;
+        if (d.t === "full") { failJoin("이미 두 명이 들어가 있는 방이에요."); return; }
+        if (d.t === "ver") { failJoin("친구 화면이 예전 버전이에요. 둘 다 새로고침해주세요."); return; }
+        if (d.t === "welcome") {
+          welcomed = true;
+          $("joinStatus").textContent = "";
+          $("roomTitle").textContent = "들어온 방";
+          $("roomCode").textContent = code;
+          $("roomStatus").textContent = "연결됐어요! 방장이 영업을 시작하면 바로 시작돼요.";
+          $("startBtn").hidden = true;
+          showScreen("room");
+          return;
+        }
+        if (d.t === "s") {
+          if (!welcomed) return;
+          view = viewFromSnapshot(d);
+          const other = view.players[0];
+          if (!remote.init) { remote.x = other.x; remote.y = other.y; remote.init = true; }
+          remote.tx = other.x; remote.ty = other.y;
+          if (d.rs !== lastRs) { lastRs = d.rs; const mine = view.players[1]; me.x = mine.x; me.y = mine.y; me.fx = mine.fx; me.fy = mine.fy; }
+          (d.ev || []).forEach(showEvent);
+          if (view.phase === "wait") { if ($("room").hidden) showScreen("room"); }
+          else if ($("game").hidden) showScreen("game");
+        }
+      },
+      leave() {
+        if (role !== "guest") return;
+        leave();
+        $("joinStatus").className = "status bad"; $("joinStatus").textContent = "방장 연결이 끊겼어요.";
+      },
+      error(type) { failJoin(errText(type)); }
+    });
+    timers.push(setInterval(() => {
+      if (!net || !view || role !== "guest") return;
+      net.send({ t: "p", x: me.x, y: me.y, fx: me.fx, fy: me.fy, ch: keys.has("ShiftLeft") || keys.has("ShiftRight") });
+    }, 50));
+  }
+  function failJoin(msg) {
+    leave();
+    $("joinStatus").className = "status bad"; $("joinStatus").textContent = msg;
+  }
+
+  // ===== 입력 =====
+  const GAME_KEYS = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space", "ShiftLeft", "ShiftRight"]);
+  window.addEventListener("keydown", (e) => {
+    if ($("game").hidden || !GAME_KEYS.has(e.code)) return;
+    e.preventDefault();
+    keys.add(e.code);
+    if (e.code === "Space" && !e.repeat && view && view.phase === "play") {
+      if (role === "host") { act(0); }
+      else if (net) net.send({ t: "a", x: me.x, y: me.y, fx: me.fx, fy: me.fy });
+    }
+    if (role === "host" && W) W.players[0].chop = keys.has("ShiftLeft") || keys.has("ShiftRight");
+  });
+  window.addEventListener("keyup", (e) => {
+    keys.delete(e.code);
+    if (role === "host" && W) W.players[0].chop = keys.has("ShiftLeft") || keys.has("ShiftRight");
+  });
+  window.addEventListener("blur", () => { keys.clear(); if (role === "host" && W) W.players[0].chop = false; });
+
+  $("hostBtn").addEventListener("click", () => host(0));
+  $("joinForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const code = $("codeInput").value.replace(/\D/g, "");
+    if (code.length !== 4) { $("joinStatus").className = "status bad"; $("joinStatus").textContent = "코드 4자리를 넣어주세요."; return; }
+    join(code);
+  });
+  $("codeInput").addEventListener("input", (e) => { e.target.value = e.target.value.replace(/\D/g, "").slice(0, 4); });
+  $("startBtn").addEventListener("click", () => { if (role === "host" && W) { startRound(); showScreen("game"); } });
+  $("leaveBtn").addEventListener("click", leave);
+  window.addEventListener("resize", () => { if (!$("game").hidden) fit(); });
+  window.addEventListener("beforeunload", () => { if (net) try { net.close(); } catch (e) {} });
+
+  // 메뉴판
+  Object.values(DISH).forEach((d) => {
+    const el = document.createElement("div"); el.className = "recipe";
+    const c = document.createElement("canvas"); c.width = c.height = 104;
+    drawIcon(c.getContext("2d"), d.id, 52, 52, 92);
+    const tx = document.createElement("div");
+    const b = document.createElement("b"); b.textContent = d.name + " " + won(d.pts);
+    const sm = document.createElement("small"); sm.textContent = d.how + (d.where === "pot" ? " → 다 끓으면 빈 접시로 담기" : " (접시 위에 하나씩 올리기)");
+    tx.append(b, sm); el.append(c, tx); $("menu").appendChild(el);
+  });
+
+  // ===== 메인 루프 =====
+  let lastFrame = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - lastFrame) / 1000); lastFrame = now;
+    if (view && !$("game").hidden) {
+      if (role === "host") view = W;
+      moveMe(dt);
+      const other = view.players[1 - myIdx];
+      if (other) {
+        const tx = role === "host" ? other.x : remote.tx, ty = role === "host" ? other.y : remote.ty;
+        if (tx != null) {
+          if (!remote.init || Math.hypot(remote.x - tx, remote.y - ty) > 2) { remote.x = tx; remote.y = ty; remote.init = true; }
+          const k = Math.min(1, dt * 14); remote.x += (tx - remote.x) * k; remote.y += (ty - remote.y) * k;
+        }
+      }
+      render(now); hud(); phaseUI();
+      $("peerTag").textContent = role === "host" ? (guestOn ? "친구 연결됨" : "혼자 하는 중") : "방장과 연결됨";
+      $("whoami").textContent = role === "host" ? "나는 빨간 모자(방장)" : "나는 초록 모자(친구)";
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  if (IS_LOCAL) window.__bunsik = { get W() { return W; }, get me() { return me; }, get view() { return view; } };
+  if (document.fonts && document.fonts.load) document.fonts.load('20px "Jua"', "가나다 내는 곳 버리기 방장 친구");
+})();
+</script>
+</body>
+</html>
