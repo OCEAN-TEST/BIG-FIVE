@@ -471,7 +471,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 13;
+  const VERSION = 14;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -582,9 +582,13 @@ body.modal { overflow: hidden; }
   // 별 기준: 둘이 기본. 혼자면 낮게, 3·4명이면 높게 (np = 판을 시작할 때 사람 수)
   const starsOf = (st, np) => { const k = np <= 1 ? SOLO_STAR : PARTY[np] ? PARTY[np].star : 1; return k === 1 ? st.stars : st.stars.map((v) => Math.round((v * k) / 1000) * 1000); };
   const partyOf = (np) => PARTY[Math.min(MAX_P, np)] || null;
-  // 접시 개수: 0이면 무한. 3명부터는 모든 단계에 접시가 모자라요
-  const platesOf = (st, np) => (np >= 3 ? (st.plates ? st.plates + np - 2 : np + 1) : st.plates);
-  // 3명부터 개수대·반납구가 없는 맵엔 내는 곳 가까운 조리대를 반납구로, 접시 가까운 조리대를 개수대로 바꿔요
+  // 접시 개수: 0이면 무한. 3명부터는 모든 단계에 접시가 모자라요 (원래 무한인 맵은 사람 수+1개, 원래 제한 있는 맵은 2개 더)
+  const platesOf = (st, np) => (np >= 3 ? (st.plates ? st.plates + 2 : np + 1) : st.plates);
+  // 쥐: 쥐구멍 맵(7단계)은 원래대로, 3명부터는 모든 맵에 나와요
+  const PARTY_RATS = { first: 15, gap: [10, 16] };
+  const ratsOf = (st, np) => st.rats || (np >= 3 ? PARTY_RATS : null);
+  // 3명부터 개수대·반납구가 없는 맵엔 내는 곳 가까운 조리대를 반납구로, 접시 가까운 조리대를 개수대로 바꿔요.
+  // 쥐구멍이 없으면 왼쪽 아래·오른쪽 아래 가장자리 조리대에 하나씩 뚫어요
   const NB4C = [[1, 0], [-1, 0], [0, 1], [0, -1]], WALK_CH = ".~}{^v";
   const partyMaps = {};
   function mapOf(st, np) {
@@ -605,6 +609,11 @@ body.modal { overflow: hidden; }
     let r = null;
     if (!has("R")) { r = pick("W"); if (r) m[r[1]][r[0]] = "R"; }
     if (!has("H")) { const h = pick("P", r); if (h) m[h[1]][h[0]] = "H"; }
+    if (!has("Z")) {
+      const edge = cands.filter(([x, y]) => m[y][x] === "C" && (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1));
+      const corner = (fx) => edge.reduce((b, [x, y]) => { const sc = (ROWS - 1 - y) * 2 + (fx ? COLS - 1 - x : x); return !b || sc < b[2] ? [x, y, sc] : b; }, null);
+      [corner(false), corner(true)].forEach((z) => { if (z) m[z[1]][z[0]] = "Z"; });
+    }
     return (partyMaps[st.id] = m.map((row) => row.join("")));
   }
   // 시작 자리: 단계에 적힌 두 자리 + 3·4번째는 1·2번째 바로 옆 바닥 (같은 쪽 구역)
@@ -1666,9 +1675,10 @@ body.modal { overflow: hidden; }
   }
   function ratTick(dt) {
     const st = stageOf(W.stage);
-    if (!st.rats || !W.rats) return;
+    const rc = ratsOf(st, W.np);
+    if (!rc || !W.rats) return;
     const e = st.time - W.left;
-    if (!W.rats.length && e >= (W.ratNext || st.rats.first) && !spawnRat()) W.ratNext = e + 2.5; // 훔칠 게 없으면 조금 뒤에 다시 봐요
+    if (!W.rats.length && e >= (W.ratNext || rc.first) && !spawnRat()) W.ratNext = e + 2.5; // 훔칠 게 없으면 조금 뒤에 다시 봐요
     for (const r of W.rats) {
       if ((r.st === "go" || r.st === "bite") && W.slots[r.tgt] !== r.want) { r.st = "flee"; ratHome(r); } // 물기 전에 누가 집어 갔어요
       if (r.st === "bite") {
@@ -1686,7 +1696,7 @@ body.modal { overflow: hidden; }
       }
       if (r.path.length) continue;
       if (r.st === "go") { const t = tiles[r.tgt], dx = t.x + 0.5 - r.x, dy = t.y + 0.5 - r.y, l = Math.hypot(dx, dy) || 1; r.st = "bite"; r.t = RAT_BITE; r.fx = dx / l; r.fy = dy / l; }
-      else { r.gone = true; W.ratNext = e + st.rats.gap[0] + Math.random() * (st.rats.gap[1] - st.rats.gap[0]); } // 구멍으로 쏙. 물고 간 음식은 사라져요
+      else { r.gone = true; W.ratNext = e + rc.gap[0] + Math.random() * (rc.gap[1] - rc.gap[0]); } // 구멍으로 쏙. 물고 간 음식은 사라져요
     }
     W.rats = W.rats.filter((r) => !r.gone);
   }
@@ -4937,7 +4947,7 @@ body.modal { overflow: hidden; }
       b.addEventListener("click", () => pickChar(k));
       box.appendChild(b);
     });
-    $("pickNote").textContent = "내 앞치마는 " + iyeyo(APRON_NAME[myIdx]) + "." + (others.length ? " 지금 " + (others.length + 1) + "명이에요." + (others.length >= 2 ? " 3명부터는 접시가 모자라서 설거지를 해야 하고 주문이 더 빨리 와요." : "") : "");
+    $("pickNote").textContent = "내 앞치마는 " + iyeyo(APRON_NAME[myIdx]) + "." + (others.length ? " 지금 " + (others.length + 1) + "명이에요." + (others.length >= 2 ? " 3명부터는 접시가 모자라서 설거지를 해야 하고, 쥐가 나오고, 주문이 더 빨리 와요." : "") : "");
   }
   // 관전: 요리사들이 고른 캐릭터만 보여줘요 (못 골라요)
   function renderPickerSpec(st) {
@@ -4962,7 +4972,7 @@ body.modal { overflow: hidden; }
       b.append(c2, nm, sm);
       box.appendChild(b);
     });
-    $("pickNote").textContent = "요리사 " + ons.length + "명" + (ons.length < MAX_P ? " · 빈자리 " + (MAX_P - ons.length) + "개" : "") + ".";
+    $("pickNote").textContent = ons.map(({ q, i }) => seatName(i) + " " + CHARS[q.ch].name).join(" · ") + (ons.length < MAX_P ? " · 빈자리 " + (MAX_P - ons.length) + "개" : "") + ".";
   }
   // 대기실: 관전 인원, 빈자리 앉기 버튼
   function roomExtras() {
@@ -5024,7 +5034,7 @@ body.modal { overflow: hidden; }
     }
     const cur = stageOf(st.stage);
     $("stageTip").textContent = cur.id + "단계: " + cur.tip + " 메뉴는 " + cur.menu.map((d) => DISH[d].name).join(", ") + "." +
-      (npNow >= 3 ? " " + npNow + "명이라 접시가 " + platesOf(cur, npNow) + "개뿐이에요. 반납구로 돌아온 접시는 개수대에서 씻어요. 주문도 더 빨리 와요." : "");
+      (npNow >= 3 ? " " + npNow + "명이라 접시가 " + platesOf(cur, npNow) + "개뿐이에요. 반납구로 돌아온 접시는 개수대에서 씻어요. 쥐구멍에서 쥐가 나와 조리대 위 음식을 물어 가고, 주문도 더 빨리 와요." : "");
     updateStart();
   }
   function updateStart() {
