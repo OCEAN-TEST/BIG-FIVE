@@ -138,6 +138,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 .intro .dishes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; font-family: var(--font-ui); font-size: 15px; }
 .intro .dishes span { display: flex; align-items: center; gap: 4px; }
 .intro .dishes img { width: 30px; height: 30px; }
+.intro .goal { font-family: var(--font-ui); font-size: 14px; color: #b07d00; }
 .intro .count { font-family: var(--font-sign); font-size: 64px; line-height: 1; color: var(--sign); text-shadow: 0 4px 0 var(--chili); }
 .result { pointer-events: auto; background: var(--paper); border-radius: 14px; padding: 22px 28px; min-width: min(420px, 90vw); max-height: calc(100% - 12px); overflow-y: auto; display: flex; flex-direction: column; gap: 8px; align-items: center; text-align: center; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
 .result h2 { margin: 0; font-family: var(--font-sign); font-weight: 400; font-size: 44px; color: var(--chili); line-height: 1.1; }
@@ -211,7 +212,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 <div class="wrap" id="lobby">
   <header class="sign">
     <h1>둘이서 분식집</h1>
-    <p>각자 폰이나 컴퓨터로 접속해서 같이 차리는 분식집. 다섯 단계를 차례로 깨 나가요.</p>
+    <p>각자 폰이나 컴퓨터로 접속해서 같이 차리는 분식집. 열 단계를 차례로 깨 나가요. 뒤로 갈수록 메뉴보다 맵 장치가 어려워져요.</p>
     <canvas class="crew" id="crew" width="760" height="230" aria-label="고양이, 강아지, 토끼, 곰 요리사"></canvas>
   </header>
 
@@ -323,13 +324,16 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 4;
+  const VERSION = 5;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const CHOP_TIME = 1.2, WASH_TIME = 2, SPEED = 4.3, R = 0.3;
   const SAFE = 5, WARN = 7; // 다 익은 뒤 SAFE초는 안전, 그다음 WARN초 동안 타기 시작해서 다 타요
   const DASH_TIME = 0.16, DASH_CD = 0.6, DASH_MUL = 3.1;
   const FLY_SPEED = 11, FLY_MAX = 5.5, BELT_STEP = 0.65, RETURN_DELAY = 7;
+  const WALK = 2.4, WALK_STEP = 1 / WALK;       // 무빙워크가 미는 빠르기 (칸/초)
+  const ICE_GRIP = 2.2, ICE_GLIDE = 0.55;      // 얼음: 누를 때 붙는 정도, 뗐을 때 멈추는 정도 (작을수록 미끄러워요)
+  const BIKE_STUN = 0.6;                       // 오토바이에 치이면 잠깐 못 움직여요
   const MISS = 1000, TIP = 1000, MAX_ORDERS = 4;
   const COLS = 15, ROWS = 9;
   const FONT_UI = '"Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
@@ -357,47 +361,95 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 
   // 맵 기호: . 바닥  C 조리대  | 칸막이 조리대(노랑, 어디서든 넘겨요)  # 벽  K 도마  S 화구+냄비  F 튀김기+바구니  W 내는 곳  T 쓰레기통
   //          P 접시  H 개수대  R 반납구  > 컨베이어  t m p r b g d o 재료 상자
+  //   장치:  ~ 얼음 바닥  } { ^ v 무빙워크(화살표 쪽으로 밀어요)  = 오토바이 길  @ $ 순간이동문(같은 기호끼리 연결)
+  //          X Y 움직이는 칸막이 (X는 둘째 구간, Y는 첫째 구간에 올라와요)
+  // 별 기준은 둘이서 할 때예요. 혼자면 SOLO_STAR배로 낮춰요.
   const STAGES = [
-    { id: 1, name: "골목 분식집", time: 150, menu: ["gimbap", "tteokbokki"], stars: [10000, 20000, 30000], plates: 0, gap: [13, 17], extra: 0, duo: false,
+    { id: 1, name: "골목 분식집", time: 150, menu: ["gimbap", "tteokbokki"], stars: [15000, 33000, 60000], plates: 0, gap: [13, 17], extra: 0, duo: false,
       floor: ["#f4ecda", "#ece2cc"], spawn: [[3.5, 5.5], [11.5, 5.5]],
       tip: "기본기 익히기. 썰고, 냄비에 넣어 끓이고, 접시에 담아서 내요.",
       map: ["CCtmCCSSCCWWCCC", "C.............C", "b.............C", "g....CCCC.....K", "d....CCCC.....K", "C.............C", "P.............T", "C.............C", "CCCCCCCCCCCCCCC"] },
-    { id: 2, name: "칸막이 주방", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [14000, 28000, 40000], plates: 0, gap: [11, 15], extra: 10, duo: true,
+    { id: 2, name: "칸막이 주방", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [17000, 38000, 68000], plates: 0, gap: [11, 15], extra: 10, duo: true,
       floor: ["#e6eef2", "#d8e3ea"], spawn: [[3.5, 4.5], [10.5, 4.5]],
       tip: "가운데 노란 칸막이는 못 넘어가요. 왼쪽은 재료 손질, 오른쪽은 조리와 서빙. 노란 칸 아무 데나 올려두거나 던져서 넘겨요.",
       map: ["CtmprCC|CSSCWWC", "b......|......C", "g......|......C", "d......|......P", "K......|......C", "K......|......T", "C......|......C", "T......|......C", "CCCCCCC|CCCCCCC"] },
-    { id: 3, name: "설거지 대란", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [12000, 24000, 36000], plates: 3, gap: [11, 15], extra: 5, duo: false,
+    { id: 3, name: "설거지 대란", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [14000, 32000, 58000], plates: 3, gap: [11, 15], extra: 5, duo: false,
       floor: ["#e3f1ea", "#d3e8dd"], spawn: [[3.5, 5.5], [11.5, 5.5]],
       tip: "접시가 3개뿐이에요. 음식을 내면 접시가 반납구로 돌아와요. 개수대에서 씻어야 다시 써요.",
       map: ["CtmprCSSCCWWRCC", "C.............C", "b.............K", "g...CCC.CCC...K", "d.............C", "C.............C", "H.............T", "P.............C", "CCCCCCCCCCCCCCC"] },
-    { id: 4, name: "포장마차 컨베이어", time: 180, menu: ["tteokbokki", "ramen", "gimbap", "twigim"], stars: [15000, 30000, 44000], plates: 0, gap: [10, 14], extra: 10, duo: false,
+    { id: 4, name: "포장마차 컨베이어", time: 180, menu: ["tteokbokki", "ramen", "gimbap", "twigim"], stars: [15000, 34000, 62000], plates: 0, gap: [10, 14], extra: 10, duo: false,
       floor: ["#4d4a47", "#45423f"], spawn: [[4.5, 2.5], [4.5, 6.5]],
       tip: "위는 손질, 아래는 조리. 가운데 벨트가 물건을 오른쪽 끝까지 옮겨줘요. 오른쪽 틈으로 건너갈 수도 있어요.",
       map: ["CtmproCCKKCbgdC", "C.............C", "C.............T", "C.............C", ">>>>>>>>>>>>C.C", "C.............C", "S.............W", "S.............W", "CFFPCCCCCCCCTCC"] },
-    { id: 5, name: "오픈 첫날", time: 210, menu: ["gimbap", "tteokbokki", "ramen", "twigim"], stars: [16000, 34000, 50000], plates: 4, gap: [9, 13], extra: 15, duo: true,
+    { id: 5, name: "오픈 첫날", time: 210, menu: ["gimbap", "tteokbokki", "ramen", "twigim"], stars: [17000, 38000, 68000], plates: 4, gap: [9, 13], extra: 15, duo: true,
       floor: ["#f6e7e4", "#efd8d3"], spawn: [[3.5, 4.5], [10.5, 4.5]],
       tip: "칸막이, 설거지, 튀김까지 전부. 왼쪽은 손질·설거지·김밥, 오른쪽은 냄비·튀김·서빙. 가운데 노란 칸에 올려서 넘겨요.",
-      map: ["CtmproC|CSSCWWC", "b......|......R", "g......|......F", "d......|......F", "K......|......C", "K......|......C", "H......|......C", "T......|......T", "CCPCCCC|CCCCCCC"] }
+      map: ["CtmproC|CSSCWWC", "b......|......R", "g......|......F", "d......|......F", "K......|......C", "K......|......C", "H......|......C", "T......|......T", "CCPCCCC|CCCCCCC"] },
+    // ---- 6단계부터는 메뉴는 2~3개로 두고, 맵 장치가 어려움을 만들어요 ----
+    { id: 6, name: "무빙워크 푸드코트", time: 180, menu: ["gimbap", "ramen"], stars: [16000, 38000, 70000], plates: 0, gap: [11, 15], extra: 10, duo: false,
+      floor: ["#e9edf0", "#dfe4e8"], spawn: [[2.5, 4.5], [12.5, 4.5]],
+      tip: "바닥 무빙워크가 화살표 쪽으로 밀어줘요. 위 길은 오른쪽 화구로, 아래 길은 왼쪽 내는 곳으로 흘러요. 거꾸로 걸으면 느려지고, 재료를 내려놓으면 같이 실려 가요.",
+      map: ["CbgdCCrpCCSSSCC", "C.............C", "C}}}}}}}}}}}}.C", "K...CCCCCCC...T", "K...CCCCCCC...C", "P.............C", "C.{{{{{{{{{{{{C", "C.............C", "CCCCCWWCCCCCCCC"] },
+    { id: 7, name: "꽁꽁 야시장", time: 180, menu: ["tteokbokki", "twigim"], stars: [15000, 34000, 62000], plates: 0, gap: [11, 15], extra: 15, duo: false,
+      floor: ["#5d6672", "#555e69"], spawn: [[1.5, 4.5], [13.5, 4.5]],
+      tip: "가운데가 꽁꽁 언 빙판이에요. 한번 미끄러지면 잘 안 멈춰요. 매트 위에서만 딱 서요. 빙판 건너편으로 재료를 던지면 빨라요.",
+      map: ["CtmCCSSCFFCCCCC", "C...~..~..~...C", "K..~~~~~~~~~..W", "K..~~~~~~~~~..W", "o..~~~CCC~~~..C", "C..~~~CCC~~~..T", "P..~~~~~~~~~..C", "C...~~~~~~~...C", "CCCCCCCCCCCCCCC"] },
+    { id: 8, name: "배달 골목", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [15000, 34000, 62000], plates: 0, gap: [11, 15], extra: 15, duo: false,
+      road: { row: 4, first: 7, warn: 1.6, speed: 12, gap: [5, 9] },
+      floor: ["#c9c2b6", "#bfb8ab"], spawn: [[3.5, 2.5], [10.5, 6.5]],
+      tip: "주방 한가운데로 배달 오토바이가 지나가요. 빵빵 소리와 빨간 화살표가 뜨면 길에서 비켜요. 치이면 밀려나요. 길 건너로 던지거나 길가 조리대에 올려서 넘겨요.",
+      map: ["CtmprbgdCKKCCCC", "C.............C", "C.............T", "C...CC...CC...C", "===============", "C...CC...CC...C", "S.............W", "S.............W", "CCPCCSSCCCCCTCC"] },
+    { id: 9, name: "마법 분식집", time: 180, menu: ["ramen", "twigim"], stars: [15000, 35000, 64000], plates: 0, gap: [11, 15], extra: 10, duo: false,
+      floor: ["#d3c7e4", "#c8bbdc"], spawn: [[2.5, 4.5], [11.5, 4.5]],
+      tip: "가운데 벽은 못 넘어가요. 바닥의 순간이동문을 밟으면 같은 색 문으로 휙 넘어가요. 재료를 문 쪽으로 던지면 재료도 넘어가요.",
+      map: ["CrpoCCC#CSSCFFC", "C....@C#C$....C", "K.....C#C.....W", "K.....C#C.....W", "C.....C#C.....C", "P.....C#C.....T", "T.....C#C.....C", "C....$C#C@....C", "CCCCCCC#CCCCCCC"] },
+    { id: 10, name: "변신 주방", time: 200, menu: ["gimbap", "tteokbokki", "twigim"], stars: [16000, 37000, 68000], plates: 0, gap: [11, 15], extra: 15, duo: false,
+      gate: { period: 20, warn: 3 },
+      floor: ["#d3d6d8", "#c8cccf"], spawn: [[3.5, 2.5], [10.5, 6.5]],
+      tip: "20초마다 주방이 바뀌어요. 처음엔 가로 칸막이가 위아래를, 다음엔 세로 칸막이가 좌우를 나눠요. 노랑·검정 줄이 깜빡이면 곧 바뀌니 비켜요. 칸막이 위로 넘겨줘요.",
+      map: ["CtmoCCCCCSSCCCC", "K......X......W", "C......X......W", "C......X......C", "CYYYYYYCYYYYYYC", "C......X......T", "F......X......K", "F......X......C", "CPPCCCCCCbgdCCC"] }
   ];
+  const SOLO_STAR = 0.6;
+  // 맵·메뉴·규칙 지문: 한쪽만 새 버전이면 같이 못 하게 막아요 (버전 숫자를 깜빡해도 걸러져요)
+  const RULES = (() => {
+    const src = JSON.stringify([STAGES, DISH, ING, CHOP_TIME, WASH_TIME, SPEED, R, SAFE, WARN, DASH_TIME, DASH_MUL, FLY_SPEED, FLY_MAX, BELT_STEP, WALK, ICE_GRIP, ICE_GLIDE, MISS, TIP]);
+    let h = 2166136261;
+    for (let i = 0; i < src.length; i++) { h ^= src.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return (h >>> 0).toString(36);
+  })();
+  const starsOf = (st, solo) => (solo ? st.stars.map((v) => Math.round((v * SOLO_STAR) / 1000) * 1000) : st.stars);
   const stageOf = (id) => STAGES.find((s) => s.id === id) || STAGES[0];
 
   const CRATE_CH = { t: "tteok", m: "eomuk", p: "pa", r: "ramyeon", b: "bap", g: "gim", d: "danmuji", o: "ojingeo" };
   const TYPE_CH = { ".": "floor", C: "counter", "|": "counter", "#": "wall", K: "board", S: "stove", F: "fryer", W: "serve", T: "trash", P: "plates", H: "sink", R: "return", ">": "belt" };
   const BELT_DIR = { ">": [1, 0] };
+  // 바닥 장치: 걸어 다닐 수 있는 바닥인데 성질이 달라요
+  const FLOOR_CH = { "~": { ice: true }, "}": { push: [1, 0] }, "{": { push: [-1, 0] }, "^": { push: [0, -1] }, "v": { push: [0, 1] }, "=": { road: true }, "@": { portal: 0 }, "$": { portal: 1 } };
   function buildTiles(map) {
     const out = [];
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       const ch = map[y][x];
-      out.push({ i: y * COLS + x, x, y, ch, type: CRATE_CH[ch] ? "crate" : TYPE_CH[ch], ing: CRATE_CH[ch] || null, dir: BELT_DIR[ch] || null, div: ch === "|" });
+      const fl = FLOOR_CH[ch];
+      const type = fl ? "floor" : ch === "X" ? "floor" : ch === "Y" ? "counter" : CRATE_CH[ch] ? "crate" : TYPE_CH[ch];
+      out.push(Object.assign({ i: y * COLS + x, x, y, ch, type, ing: CRATE_CH[ch] || null, dir: BELT_DIR[ch] || null, div: ch === "|", gate: ch === "X" || ch === "Y" ? ch : null, portal: null }, fl || {}));
     }
+    // 순간이동문: 같은 기호 두 칸을 서로 이어요
+    [0, 1].forEach((k) => { const ps = out.filter((t) => t.portal === k); if (ps.length === 2) { ps[0].link = ps[1].i; ps[1].link = ps[0].i; } else ps.forEach((t) => (t.portal = null)); });
     return out;
   }
   let tiles = buildTiles(STAGES[0].map);
-  let belts = [];
+  let belts = [], gates = [];
   let curStage = 1;
-  function loadMap(id) { curStage = id; tiles = buildTiles(stageOf(id).map); belts = tiles.filter((t) => t.type === "belt"); }
+  function loadMap(id) {
+    curStage = id; tiles = buildTiles(stageOf(id).map);
+    belts = tiles.filter((t) => t.type === "belt" || t.push); // 벨트와 무빙워크는 위에 놓인 물건을 실어 날라요
+    gates = tiles.filter((t) => t.gate);
+  }
   const idx = (x, y) => y * COLS + x;
   const solid = (x, y) => x < 0 || y < 0 || x >= COLS || y >= ROWS || tiles[idx(x, y)].type !== "floor";
+  const tileUnder = (b) => { const x = Math.floor(b.x), y = Math.floor(b.y); return x < 0 || y < 0 || x >= COLS || y >= ROWS ? null : tiles[idx(x, y)]; };
+  // 바닥에 물건을 내려놓을 수 있는 칸 (오토바이 길, 순간이동문 위는 안 돼요)
+  const canDrop = (t) => !!t && t.type === "floor" && !t.road && t.portal == null;
 
   const $ = (id) => document.getElementById(id);
   const won = (n) => (n < 0 ? "−" : "") + Math.abs(n).toLocaleString("ko-KR") + "원";
@@ -836,10 +888,43 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   let pendingGuestEvents = [], pendingSpecEvents = [];
   let guestRs = -1; // 친구가 마지막으로 본 판 번호
 
-  function targetIdx(p) {
-    const tx = Math.floor(p.x + p.fx * 0.75), ty = Math.floor(p.y + p.fy * 0.75);
-    if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return -1;
-    return idx(tx, ty);
+  // 바라보는 칸 고르기. 바로 앞 칸이 기본이고, 거기에 손에 맞는 게 없으면
+  // 반 칸 더 앞, 그리고 가까운 옆 칸까지 봐줘요 (살짝 비껴 서도 집히게)
+  const inMap = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS;
+  function useful(i, h, v) {
+    const t = tiles[i], s = v.slots[i];
+    switch (t.type) {
+      case "floor": return !!s;
+      case "crate": return !h || (h.k === t.ing && !h.cut) || h.k === "plate" || isCont(h);
+      case "counter": case "board": case "belt": case "stove": case "fryer": return h ? true : !!s;
+      case "plates": { const n = v.racks ? v.racks[t.i] : -1; return h ? plateEmpty(h) : n === -1 || n > 0; }
+      case "return": return h ? h.k === "dirty" : (v.rets ? v.rets[t.i] || 0 : 0) > 0;
+      case "sink": { const k = v.sinks ? v.sinks[t.i] : null; return h ? h.k === "dirty" : !!(k && k.n > 0); }
+      case "serve": return !!(h && h.k === "plate" && h.dish);
+      case "trash": return !!h;
+      default: return false;
+    }
+  }
+  function targetIdx(p, v) {
+    v = v || W || view;
+    const rx = p.x + p.fx * 0.75, ry = p.y + p.fy * 0.75;
+    const tx = Math.floor(rx), ty = Math.floor(ry);
+    const prim = inMap(tx, ty) ? idx(tx, ty) : -1;
+    if (!v || !v.slots || (!p.fx && !p.fy)) return prim;
+    const h = p.hold || null;
+    if (prim >= 0 && useful(prim, h, v)) return prim;
+    const cands = [];
+    // 반 칸 더 앞 (바로 앞이 빈 바닥일 때)
+    if (prim < 0 || tiles[prim].type === "floor") {
+      const fx = Math.floor(p.x + p.fx * 1.2), fy = Math.floor(p.y + p.fy * 1.2);
+      if (inMap(fx, fy) && idx(fx, fy) !== prim) cands.push(idx(fx, fy));
+    }
+    // 가까운 옆 칸 (바라보는 방향과 직각으로)
+    const lat = p.fx ? ry - ty : rx - tx, side = lat < 0.5 ? -1 : 1;
+    const sx = p.fx ? tx : tx + side, sy = p.fx ? ty + side : ty;
+    if (inMap(sx, sy)) cands.push(idx(sx, sy));
+    for (const c of cands) if (useful(c, h, v)) return c;
+    return prim;
   }
 
   function ev(e) {
@@ -869,19 +954,21 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       if (t.type === "sink") W.sinks[t.i] = { n: 0, pr: 0 };
     });
     W.orders = []; W.score = 0; W.combo = 1; W.served = 0; W.missed = 0; W.left = st.time; W.last = null;
+    W.solo = !guestOn; // 혼자 시작한 판은 별 기준이 낮아요
+    applyGates(W);
     const keep = W.players.map((p) => ({ on: p.on, ch: p.ch, an: p.an, ds: p.ds }));
     W.players = [spawn(0, st), spawn(1, st)];
     W.players.forEach((p, i) => Object.assign(p, keep[i]));
     W.rs++; W.phase = "count"; W.cd = 4;
     me = W.players[0];
-    me.dashT = 0; me.dashCD = 0;
+    Object.assign(me, { dashT: 0, dashCD: 0, vx: 0, vy: 0, stun: 0, pLock: null });
     anim.forEach((a) => { a.lx = null; a.dashT = 0; });
   }
 
   function endRound() {
     W.left = 0; W.phase = "end"; W.fly = [];
     const st = stageOf(W.stage);
-    const stars = st.stars.filter((v) => W.score >= v).length;
+    const stars = starsOf(st, W.solo).filter((v) => W.score >= v).length;
     const before = W.prog[st.id] || 0;
     if (stars > before) { W.prog[st.id] = stars; saveProg(W.prog); }
     W.last = { stars, newBest: stars > before, opened: before === 0 && stars >= 1 && !!STAGES.find((x) => x.id === st.id + 1) };
@@ -893,6 +980,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   }
 
   function tick(dt) {
+    W.at = performance.now();
     if (W.phase === "count") {
       W.cd -= dt;
       if (W.cd <= 0) { W.phase = "play"; addOrder(); W.nextOrder = 5; }
@@ -900,7 +988,13 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     }
     if (W.phase !== "play") return;
     const st = stageOf(W.stage);
+    const e0 = st.time - W.left;
     W.left -= dt;
+    applyGates(W);
+    if (st.gate) { // 칸막이가 바뀌기 직전에 알려줘요
+      const e1 = st.time - W.left, p = st.gate.period, w = st.gate.warn;
+      if (Math.floor((e0 + w) / p) !== Math.floor((e1 + w) / p) && e1 + w < st.time) ev({ m: gatePhase(st, e1 + w) === 1 ? "곧 세로 칸막이가 올라와요! 가운데에서 비켜요" : "곧 가로 칸막이가 올라와요! 가운데에서 비켜요", bad: true, snd: "gate" });
+    }
 
     // 빈손으로 꾹: 썰기, 설거지
     W.players.forEach((p) => {
@@ -1018,8 +1112,13 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     switch (t.type) {
       case "floor": {
         const s = W.slots[i];
-        if (!h && s) { p.hold = s; W.slots[i] = null; return; }
-        if (h && !s) { W.slots[i] = h; p.hold = null; return; }
+        if (!h && s) { p.hold = s; W.slots[i] = null; delete s.bt; return; }
+        if (h && !s) {
+          if (!canDrop(t)) { say(t.road ? "오토바이 길에는 못 내려놔요" : "순간이동문 위에는 못 내려놔요"); return; }
+          W.slots[i] = h; p.hold = null;
+          if (t.push) ride(h);
+          return;
+        }
         if (h && s) say(combine(p, i));
         return;
       }
@@ -1040,7 +1139,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
           if (t.type === "board" && !isIng(h)) { say("도마에는 재료만 올려요"); return; }
           if ((t.type === "stove" || t.type === "fryer") && (!isCont(h) || CONT[h.k].station !== t.type)) { say(t.type === "stove" ? "화구에는 냄비만 올려요" : "튀김기에는 튀김 바구니만 올려요"); return; }
           W.slots[i] = h; p.hold = null;
-          if (t.type === "belt") h.bt = 0;
+          if (t.type === "belt") ride(h);
           return;
         }
         say(combine(p, i));
@@ -1112,16 +1211,17 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     W.fly.push({ it: h, x: p.x + (ax / l) * 0.3, y: p.y + (ay / l) * 0.3, dx: ax / l, dy: ay / l, d: 0, by: pi });
   }
   function dropFloor(it, x, y) {
-    const tryAt = (tx, ty) => { if (solid(tx, ty)) return false; const i = idx(tx, ty); if (W.slots[i]) return false; W.slots[i] = it; return true; };
+    const tryAt = (tx, ty) => { if (solid(tx, ty)) return false; const i = idx(tx, ty); if (W.slots[i] || !canDrop(tiles[i])) return false; W.slots[i] = it; if (tiles[i].push) ride(it); return true; };
     if (tryAt(x, y)) return;
     for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) if (tryAt(x + dx, y + dy)) return;
+    for (const [dx, dy] of [[0, 2], [2, 0], [-2, 0], [0, -2], [1, 2], [-1, 2], [2, 1], [-2, 1], [1, -2], [-1, -2], [2, -1], [-2, -1]]) if (tryAt(x + dx, y + dy)) return;
   }
   function landOn(f, i) {
     const t = tiles[i], it = f.it, s = W.slots[i];
     const back = () => dropFloor(it, Math.floor(f.x), Math.floor(f.y));
     if (t.type === "trash") return;
     if (t.type === "counter" || t.type === "board" || t.type === "belt") {
-      if (!s) { W.slots[i] = it; if (t.type === "belt") it.bt = 0; return; }
+      if (!s) { W.slots[i] = it; if (t.type === "belt") ride(it); return; }
       if (s.k === "plate") { if (plateCheck(s, it) === true) { plateAdd(s, it.k); return; } return back(); }
       if (isCont(s)) { if (contAdd(s, it) === true) return; return back(); }
       return back();
@@ -1146,6 +1246,11 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         if (f.done) break;
         const tx = Math.floor(nx), ty = Math.floor(ny);
         if (solid(tx, ty)) { landOn(f, idx(tx, ty)); f.done = true; break; }
+        const pt = tiles[idx(tx, ty)];
+        if (pt.portal != null && pt.link != null && f.pl !== pt.i) { // 순간이동문으로 들어간 재료는 짝 문에서 같은 방향으로 나와요
+          const d = tiles[pt.link]; f.x = d.x + 0.5; f.y = d.y + 0.5; f.pl = d.i;
+          continue;
+        }
         f.x = nx; f.y = ny;
         if (f.d >= FLY_MAX) { dropFloor(f.it, Math.floor(f.x), Math.floor(f.y)); f.done = true; }
       }
@@ -1153,13 +1258,25 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     W.fly = W.fly.filter((f) => !f.done);
   }
 
-  // ===== 컨베이어 =====
+  // ===== 컨베이어, 무빙워크 =====
   function beltNext(t) {
+    if (t.push) { // 무빙워크: 다음 바닥 칸으로
+      const nx = t.x + t.push[0], ny = t.y + t.push[1];
+      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return -1;
+      const ni = idx(nx, ny);
+      return canDrop(tiles[ni]) ? ni : -1;
+    }
+    if (!t.dir) return -1;
     const nx = t.x + t.dir[0], ny = t.y + t.dir[1];
     if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return -1;
     const ni = idx(nx, ny), nt = tiles[ni];
     return nt.type === "belt" || nt.type === "counter" ? ni : -1;
   }
+  const moving = (t) => t.type === "belt" || !!t.push;
+  const stepOf = (t) => (t.push ? WALK_STEP : BELT_STEP);
+  let uid = 0;
+  // 벨트·무빙워크에 올라탄 물건: 번호를 붙여서 칸을 옮겨도 같은 물건으로 그려요
+  function ride(it) { it.bt = 0; if (it.id == null) it.id = ++uid; }
   function beltTick(dt) {
     if (!belts.length) return;
     belts.forEach((t) => { const it = W.slots[t.i]; if (it) it.bt = (it.bt || 0) + dt; });
@@ -1168,14 +1285,83 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       let any = false;
       for (const t of belts) {
         const it = W.slots[t.i];
-        if (!it || moved.has(it) || (it.bt || 0) < BELT_STEP) continue;
+        if (!it || moved.has(it) || (it.bt || 0) < stepOf(t)) continue;
         const ni = beltNext(t);
         if (ni < 0 || W.slots[ni]) continue;
         W.slots[ni] = it; W.slots[t.i] = null; moved.add(it); any = true;
-        if (tiles[ni].type === "belt") it.bt = 0; else delete it.bt;
+        if (moving(tiles[ni])) ride(it); else delete it.bt;
       }
       if (!any) break;
     }
+  }
+  // 벨트 위 물건이 다음 칸으로 얼마나 갔는지 (0~1). 받은 뒤 지난 시간만큼 앞으로 당겨 그려요
+  function slide(t, it, v, now) {
+    if (!moving(t) || it.bt == null) return 0;
+    const ni = beltNext(t);
+    if (ni < 0 || v.slots[ni]) return 0;
+    return Math.min(1, (it.bt + ageOf(v, now)) / stepOf(t));
+  }
+
+  // ===== 맵 장치 =====
+  // 판 시계: 영업 시작 뒤 몇 초 지났는지. 방장은 마지막 계산, 친구·관전은 받은 화면 기준에서 지난 시간을 더해요
+  const ageOf = (v, now) => Math.min(0.12, Math.max(0, ((now || performance.now()) - (v.at || now || performance.now())) / 1000));
+  function clockOf(v, now) {
+    if (!v) return 0;
+    const st = stageOf(v.stage);
+    if (v.phase === "end") return st.time;
+    if (v.phase !== "play") return 0;
+    return st.time - v.left + ageOf(v, now);
+  }
+  // 움직이는 칸막이: period초마다 Y(첫 구간) ↔ X(둘째 구간)가 올라와요
+  const gatePhase = (st, e) => (st.gate ? Math.floor(Math.max(0, e) / st.gate.period) % 2 : 0);
+  const gateLeft = (st, e) => (st.gate ? st.gate.period - (Math.max(0, e) % st.gate.period) : 99);
+  const gateUp = (t, ph) => (t.gate === "Y" ? ph === 0 : ph === 1);
+  function applyGates(v, now) {
+    if (!gates.length || !v || v.stage !== curStage) return;
+    if (v.phase === "end") return;
+    const ph = gatePhase(stageOf(v.stage), clockOf(v, now));
+    gates.forEach((t) => { t.type = gateUp(t, ph) ? "counter" : "floor"; });
+  }
+  // 곧 올라올 칸막이 (깜빡임용)
+  function gateSoon(v, now) {
+    const st = stageOf(v.stage);
+    if (!st.gate || !v || v.phase !== "play") return null;
+    const e = clockOf(v, now);
+    if (gateLeft(st, e) > st.gate.warn) return null;
+    return 1 - gatePhase(st, e);
+  }
+  // 오토바이: 판 번호로 정한 순서라 모든 화면에서 같은 때 지나가요
+  function rng(seed) {
+    let a = seed >>> 0;
+    return () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  let bikeKey = "", bikeList = [];
+  function bikesOf(v) {
+    const st = stageOf(v.stage), rd = st.road;
+    if (!rd) return [];
+    const key = v.stage + ":" + v.rs;
+    if (key !== bikeKey) {
+      bikeKey = key; bikeList = [];
+      const r = rng(v.rs * 7919 + v.stage * 104729);
+      let t = rd.first, dir = r() < 0.5 ? 1 : -1;
+      while (t < st.time) { bikeList.push({ t, dir, n: bikeList.length }); if (r() < 0.65) dir = -dir; t += rd.gap[0] + r() * (rd.gap[1] - rd.gap[0]); }
+    }
+    return bikeList;
+  }
+  const BIKE_RUN = COLS + 3;
+  function bikeNow(v, now) {
+    const out = { on: [], warn: [] };
+    if (!v || v.phase !== "play") return out;
+    const rd = stageOf(v.stage).road;
+    if (!rd) return out;
+    const e = clockOf(v, now);
+    for (const b of bikesOf(v)) {
+      const u = e - b.t;
+      if (u < 0) break;
+      if (u < rd.warn) out.warn.push(b);
+      else if (u < rd.warn + BIKE_RUN / rd.speed) { const d = (u - rd.warn) * rd.speed; out.on.push({ b, dir: b.dir, x: b.dir > 0 ? -1.5 + d : COLS + 1.5 - d, row: rd.row }); }
+    }
+    return out;
   }
 
   function snapshot() {
@@ -1183,7 +1369,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     W.slots.forEach((it, i) => { if (it) sl.push([i, it]); });
     return {
       t: "s", ph: W.phase, st: W.stage, rs: W.rs, left: W.left, cd: W.cd, sc: W.score, cb: W.combo, sv: W.served, ms: W.missed,
-      sl, racks: W.racks, rets: W.rets, sinks: W.sinks, od: W.orders, prog: W.prog, last: W.last,
+      sl, racks: W.racks, rets: W.rets, sinks: W.sinks, od: W.orders, prog: W.prog, last: W.last, so: !!W.solo,
       fly: W.fly.map((f) => ({ it: f.it, x: f.x, y: f.y, dx: f.dx, dy: f.dy, d: f.d })),
       pl: W.players.map((p) => ({ x: p.x, y: p.y, fx: p.fx, fy: p.fy, hold: p.hold, chop: p.chop, on: p.on, ch: p.ch, an: p.an, ds: p.ds })),
       sp: specs.size
@@ -1193,7 +1379,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     const slots = new Array(COLS * ROWS).fill(null);
     s.sl.forEach(([i, it]) => (slots[i] = it));
     specN = s.sp || 0;
-    return { phase: s.ph, stage: s.st, rs: s.rs, left: s.left, cd: s.cd, score: s.sc, combo: s.cb, served: s.sv, missed: s.ms, slots, racks: s.racks, rets: s.rets, sinks: s.sinks, orders: s.od, prog: s.prog, last: s.last, fly: s.fly, players: s.pl, at: performance.now() };
+    return { phase: s.ph, stage: s.st, rs: s.rs, left: s.left, cd: s.cd, score: s.sc, combo: s.cb, served: s.sv, missed: s.ms, slots, racks: s.racks, rets: s.rets, sinks: s.sinks, orders: s.od, prog: s.prog, last: s.last, solo: !!s.so, fly: s.fly, players: s.pl, at: performance.now() };
   }
 
   // ===== 이동 =====
@@ -1237,19 +1423,78 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     if (Math.abs(x) > Math.abs(y) + 0.01) { me.fx = Math.sign(x); me.fy = 0; }
     else if (y) { me.fx = 0; me.fy = Math.sign(y); }
   }
+  // 칸막이가 올라와서 몸이 조리대 안에 들어가면 가장 가까운 바닥으로 밀어내요
+  function unstick(b) {
+    const cx = Math.floor(b.x), cy = Math.floor(b.y);
+    if (!solid(cx, cy)) return false;
+    let best = null, bd = 1e9;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const tx = cx + dx, ty = cy + dy;
+      if (solid(tx, ty)) continue;
+      const px = Math.max(tx + R + 0.01, Math.min(tx + 1 - R - 0.01, b.x)), py = Math.max(ty + R + 0.01, Math.min(ty + 1 - R - 0.01, b.y));
+      const d = Math.hypot(px - b.x, py - b.y);
+      if (d < bd) { bd = d; best = [px, py]; }
+    }
+    if (best) { b.x = best[0]; b.y = best[1]; }
+    return !!best;
+  }
   function moveMe(dt) {
     if (!me || !view || view.phase !== "play") return;
+    const now = performance.now();
     if (me.dashCD > 0) me.dashCD = Math.max(0, me.dashCD - dt);
-    const v = inputVec();
+    let v = inputVec();
+    if (me.stun > 0) { me.stun = Math.max(0, me.stun - dt); v = { x: 0, y: 0 }; }
     if (v.x || v.y) { const l = Math.hypot(v.x, v.y); me.ax = v.x / l; me.ay = v.y / l; }
+    const under = tileUnder(me), onIce = !!(under && under.ice);
+    // 빙판: 누르는 쪽으로 천천히 붙고, 떼면 쭉 미끄러져요. 빙판 밖에서는 바로 서요
+    const tvx = v.x * SPEED, tvy = v.y * SPEED;
+    if (onIce) {
+      const k = 1 - Math.exp(-dt * (v.x || v.y ? ICE_GRIP : ICE_GLIDE));
+      me.vx = (me.vx || 0) + (tvx - (me.vx || 0)) * k; me.vy = (me.vy || 0) + (tvy - (me.vy || 0)) * k;
+      if (Math.hypot(me.vx, me.vy) < 0.05) { me.vx = 0; me.vy = 0; }
+    } else { me.vx = tvx; me.vy = tvy; }
     if (me.dashT > 0) {
       const st = Math.min(dt, me.dashT); me.dashT -= dt;
       moveBy(me, me.ddx * SPEED * DASH_MUL * st, me.ddy * SPEED * DASH_MUL * st);
       faceFrom(me.ddx, me.ddy);
-    } else if (v.x || v.y) {
-      moveBy(me, v.x * SPEED * dt, v.y * SPEED * dt);
-      faceFrom(v.x, v.y);
+      if (me.dashT <= 0 && onIce) { me.vx = me.ddx * SPEED * 1.1; me.vy = me.ddy * SPEED * 1.1; } // 빙판 대시는 끝나도 쭉 미끄러져요
+    } else if (me.vx || me.vy) {
+      const x0 = me.x, y0 = me.y;
+      moveBy(me, me.vx * dt, me.vy * dt);
+      if (onIce) { // 벽에 부딪히면 그쪽 속도는 살짝 튕기고 멈춰요
+        if (Math.abs(me.x - x0) < Math.abs(me.vx * dt) * 0.5) me.vx *= -0.2;
+        if (Math.abs(me.y - y0) < Math.abs(me.vy * dt) * 0.5) me.vy *= -0.2;
+      }
+      if (v.x || v.y) faceFrom(v.x, v.y);
     }
+    // 무빙워크가 밀어줘요
+    if (under && under.push) moveBy(me, under.push[0] * WALK * dt, under.push[1] * WALK * dt);
+    // 오토바이에 치이면 길 밖으로 밀려나요
+    const bk = bikeNow(view, now);
+    for (const b of bk.on) {
+      if (Math.abs(me.y - (b.row + 0.5)) < 0.5 + R * 0.7 && Math.abs(me.x - b.x) < 0.9) {
+        const upY = b.row - R - 0.02, dnY = b.row + 1 + R + 0.02;
+        let ty = me.y < b.row + 0.5 ? upY : dnY;
+        if (solid(Math.floor(me.x), Math.floor(ty))) ty = ty === upY ? dnY : upY;
+        me.y = ty; me.x += b.dir * 0.35; collide(me, "x", b.dir);
+        me.stun = BIKE_STUN; me.vx = 0; me.vy = 0; me.dashT = 0;
+        spawnDust(me.x, me.y, b.dir, 0);
+        toast("앗, 오토바이에 밀려났어요!", true); sfx.bump();
+        if (navigator.vibrate) { try { navigator.vibrate(40); } catch (e) {} }
+      }
+    }
+    // 순간이동문: 가운데쯤 밟으면 짝 문으로. 나온 문은 한번 벗어나야 다시 써요
+    const tu = tileUnder(me);
+    if (me.pLock != null && (!tu || tu.i !== me.pLock)) me.pLock = null;
+    if (tu && tu.portal != null && tu.link != null && tu.i !== me.pLock && Math.hypot(me.x - tu.x - 0.5, me.y - tu.y - 0.5) < 0.42) {
+      const d = tiles[tu.link];
+      spawnDust(me.x, me.y, 0, 0);
+      me.x = d.x + 0.5; me.y = d.y + 0.5; me.pLock = d.i;
+      if (myIdx >= 0) anim[myIdx].lx = null;
+      spawnDust(me.x, me.y, 0, 0); sfx.portal();
+    }
+    // 칸막이가 올라온 자리에 서 있으면 밀려나요
+    unstick(me);
     const other = view.players[1 - myIdx];
     if (other && other.on) {
       const r = remotes[1 - myIdx], ox = role === "host" ? other.x : r.x, oy = role === "host" ? other.y : r.y;
@@ -1301,11 +1546,65 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, x, y);
   }
 
+  // 노랑·검정 사선 (움직이는 칸막이 표시)
+  function hazard(c, x, y, w, h, a) {
+    c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip();
+    c.fillStyle = "rgba(242,179,27," + a + ")"; c.fillRect(x, y, w, h);
+    c.strokeStyle = "rgba(43,43,43," + a + ")"; c.lineWidth = Math.max(2, TS * 0.09);
+    for (let k = -h; k < w + h; k += TS * 0.26) { c.beginPath(); c.moveTo(x + k, y + h); c.lineTo(x + k + h, y); c.stroke(); }
+    c.restore();
+  }
+  const PORTAL_COL = ["#a855f7", "#14b8a6"];
+  function drawFloorFx(t, px, py, s, now, st) {
+    if (t.ice) {
+      ctx.fillStyle = (t.x + t.y) % 2 ? "#cfe8f5" : "#d9eef8"; ctx.fillRect(px, py, s, s);
+      ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = Math.max(1.5, s * 0.04); ctx.lineCap = "round";
+      const k = (t.x * 7 + t.y * 3) % 4;
+      ctx.beginPath(); ctx.moveTo(px + s * (0.15 + k * 0.05), py + s * 0.7); ctx.lineTo(px + s * (0.45 + k * 0.05), py + s * 0.35);
+      ctx.moveTo(px + s * 0.55, py + s * (0.85 - k * 0.04)); ctx.lineTo(px + s * 0.8, py + s * (0.55 - k * 0.04)); ctx.stroke();
+    } else if (t.push) {
+      ctx.fillStyle = "#7d868c"; ctx.fillRect(px, py, s, s);
+      ctx.fillStyle = "#666f75";
+      if (t.push[0]) { ctx.fillRect(px, py, s, s * 0.1); ctx.fillRect(px, py + s * 0.9, s, s * 0.1); } else { ctx.fillRect(px, py, s * 0.1, s); ctx.fillRect(px + s * 0.9, py, s * 0.1, s); }
+      const off = ((now / 1000) * WALK) % 1;
+      ctx.save(); ctx.beginPath(); ctx.rect(px + s * 0.1, py + s * 0.1, s * 0.8, s * 0.8); ctx.clip();
+      ctx.translate(px + s / 2, py + s / 2); ctx.rotate(Math.atan2(t.push[1], t.push[0]));
+      ctx.strokeStyle = "#e8edf0"; ctx.lineWidth = Math.max(2, s * 0.08); ctx.lineCap = "round"; ctx.lineJoin = "round";
+      for (let k = -2; k <= 1; k++) { const x0 = (k + off) * s * 0.5; ctx.beginPath(); ctx.moveTo(x0 - s * 0.1, -s * 0.2); ctx.lineTo(x0 + s * 0.08, 0); ctx.lineTo(x0 - s * 0.1, s * 0.2); ctx.stroke(); }
+      ctx.restore();
+    } else if (t.road) {
+      ctx.fillStyle = "#45484d"; ctx.fillRect(px, py, s, s);
+      ctx.fillStyle = "#f2c21b"; ctx.fillRect(px, py, s, s * 0.06); ctx.fillRect(px, py + s * 0.94, s, s * 0.06);
+      ctx.fillStyle = "#f2f2f2"; ctx.fillRect(px + s * 0.15, py + s * 0.47, s * 0.4, s * 0.06);
+    } else if (t.portal != null) {
+      const col = PORTAL_COL[t.portal], a = now / 600;
+      ctx.save(); ctx.translate(px + s / 2, py + s / 2);
+      const g = ctx.createRadialGradient(0, 0, s * 0.05, 0, 0, s * 0.46); g.addColorStop(0, "rgba(255,255,255,.9)"); g.addColorStop(0.55, col); g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, s * 0.46, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = Math.max(2, s * 0.06);
+      for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(0, 0, s * 0.33, a + (k * Math.PI * 2) / 3, a + (k * Math.PI * 2) / 3 + 1.1); ctx.stroke(); }
+      ctx.restore();
+    }
+  }
+  function drawGateTile(t, px, py, s, now, v, st) {
+    const up = t.type === "counter";
+    const soon = gateSoon(v, now), blink = soon != null && gateUp(t, soon) && !up && Math.floor(now / 220) % 2 === 0;
+    if (up) {
+      counterBase(px, py, s);
+      hazard(ctx, px + 2, py + 2, s - 4, s * 0.22, 1);
+      ctx.fillStyle = "#c9cfd3"; ctx.fillRect(px + 2, py + s * 0.24, s - 4, s * 0.68);
+      return;
+    }
+    ctx.fillStyle = st.floor[(t.x + t.y) % 2]; ctx.fillRect(px, py, s, s);
+    hazard(ctx, px, py, s, s, blink ? 0.85 : 0.22);
+  }
   function drawTile(t, now, v, st) {
     const px = t.x * TS, py = t.y * TS, s = TS;
+    if (t.gate) { drawGateTile(t, px, py, s, now, v, st); return; }
     switch (t.type) {
       case "floor":
         ctx.fillStyle = st.floor[(t.x + t.y) % 2]; ctx.fillRect(px, py, s, s);
+        drawFloorFx(t, px, py, s, now, st);
         return;
       case "wall":
         ctx.fillStyle = "#6d4a30"; ctx.fillRect(px, py, s, s);
@@ -1380,10 +1679,39 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     }
   }
 
+  // 배달 오토바이 (2D). x, y는 가운데, s는 한 칸 크기
+  function drawBike(c, x, y, dir, s, now) {
+    c.save(); c.translate(x, y); c.scale(dir, 1);
+    c.beginPath(); c.ellipse(0, s * 0.3, s * 0.62, s * 0.12, 0, 0, Math.PI * 2); c.fillStyle = "rgba(0,0,0,.25)"; c.fill();
+    for (const wx of [-0.38, 0.4]) { dot(c, wx * s, s * 0.2, s * 0.15, "#1f2224"); dot(c, wx * s, s * 0.2, s * 0.06, "#9aa3a8"); }
+    rrect(c, -s * 0.42, -s * 0.05, s * 0.9, s * 0.24, s * 0.1); c.fillStyle = "#d7372b"; c.fill();
+    rrect(c, -s * 0.62, -s * 0.42, s * 0.36, s * 0.38, s * 0.05); c.fillStyle = "#fff"; c.fill(); c.strokeStyle = "#d7372b"; c.lineWidth = Math.max(1.5, s * 0.04); c.stroke();
+    c.fillStyle = "#d7372b"; c.fillRect(-s * 0.62, -s * 0.26, s * 0.36, s * 0.07);
+    rrect(c, -s * 0.2, -s * 0.38, s * 0.3, s * 0.36, s * 0.1); c.fillStyle = "#3d4a57"; c.fill();
+    dot(c, -s * 0.02, -s * 0.5, s * 0.15, "#ffcf33"); c.fillStyle = "#26323d"; c.fillRect(s * 0.02, -s * 0.55, s * 0.13, s * 0.08);
+    c.strokeStyle = "#2b2e31"; c.lineWidth = Math.max(2, s * 0.05); c.beginPath(); c.moveTo(s * 0.3, -s * 0.05); c.lineTo(s * 0.4, -s * 0.3); c.stroke();
+    dot(c, s * 0.5, s * 0.02, s * 0.06, "#fff6c2");
+    c.strokeStyle = "rgba(255,255,255,.7)"; c.lineWidth = Math.max(1.5, s * 0.035);
+    for (const ly of [-0.3, -0.1, 0.1]) { c.beginPath(); c.moveTo(-s * 0.75, ly * s); c.lineTo(-s * (1.05 + Math.random() * 0.2), ly * s); c.stroke(); }
+    c.restore();
+  }
+  function drawBikeWarn(c, dir, row, now, s) {
+    if (Math.floor(now / 160) % 2) return;
+    const y = (row + 0.5) * s;
+    c.save();
+    for (let k = 0; k < 3; k++) {
+      const x = dir > 0 ? (0.45 + k * 0.42) * s : (COLS - 0.45 - k * 0.42) * s;
+      c.strokeStyle = "#ff3b30"; c.lineWidth = Math.max(3, s * 0.1); c.lineCap = "round"; c.lineJoin = "round";
+      c.beginPath(); c.moveTo(x - dir * s * 0.12, y - s * 0.24); c.lineTo(x + dir * s * 0.12, y); c.lineTo(x - dir * s * 0.12, y + s * 0.24); c.stroke();
+    }
+    c.restore();
+    pill(c, dir > 0 ? s * 1.3 : (COLS - 1.3) * s, y - s * 0.42, "빵빵!", "#ff3b30", s * 0.26, false);
+  }
+
   // 지금 썰거나 씻는 중인지 (화면용)
   function workingOn(p, v) {
     if (!p.chop || p.hold || !v || v.phase !== "play") return null;
-    const i = targetIdx(p);
+    const i = targetIdx(p, v);
     if (i < 0) return null;
     const t = tiles[i];
     if (t.type === "board") { const it = v.slots[i]; if (isIng(it) && ING[it.k].chop && !it.cut) return { i, it, wash: false }; }
@@ -1413,10 +1741,8 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       if (!it) return;
       const t = tiles[i];
       let cx = t.x * TS + TS / 2, cy = t.y * TS + TS / 2;
-      if (t.type === "belt" && it.bt) {
-        const ni = beltNext(t);
-        if (ni >= 0 && !view.slots[ni]) { const f = Math.min(1, it.bt / BELT_STEP); cx += t.dir[0] * f * TS; cy += t.dir[1] * f * TS; }
-      }
+      const f = slide(t, it, view, now);
+      if (f) { const d = t.push || t.dir; cx += d[0] * f * TS; cy += d[1] * f * TS; }
       if (busy.has(i)) cx += Math.sin(now / 25) * TS * 0.025;
       if (t.type === "floor") {
         ctx.beginPath(); ctx.ellipse(cx, cy + TS * 0.2, TS * 0.22, TS * 0.07, 0, 0, Math.PI * 2); ctx.fillStyle = "rgba(0,0,0,.15)"; ctx.fill();
@@ -1438,7 +1764,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 
     // 내가 바라보는 칸
     if (me && view.phase === "play") {
-      const i = targetIdx(me);
+      const i = targetIdx(Object.assign({}, me, { hold: myHold() }), view);
       if (i >= 0) {
         const t = tiles[i];
         const mineHold = view.players[myIdx] && view.players[myIdx].hold;
@@ -1446,6 +1772,11 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         if (show) { ctx.save(); ctx.setLineDash([6, 4]); rrect(ctx, t.x * TS + 2, t.y * TS + 2, TS - 4, TS - 4, 6); ctx.strokeStyle = t.type === "floor" ? "rgba(36,26,20,.4)" : "rgba(255,255,255,.95)"; ctx.lineWidth = 3; ctx.stroke(); ctx.restore(); }
       }
     }
+
+    // 오토바이와 경고
+    const bk = bikeNow(view, now);
+    bk.warn.forEach((b) => drawBikeWarn(ctx, b.dir, stageOf(view.stage).road.row, now, TS));
+    bk.on.forEach((b) => drawBike(ctx, b.x * TS, (b.row + 0.5) * TS, b.dir, TS, now));
 
     // 캐릭터
     list.sort((a, b) => a.q.y - b.q.y).forEach(({ q, i, mine, w }) => {
@@ -1518,8 +1849,13 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     1: { floor: ["#d8bf96", "#cbb085"], body: "#b06a35", top: "#cf9d63", knob: "#7a4f2c", kick: "#5a3d26", wall: ["#f4e6c8", "#e3cfa6"], band: "#d7372b", sign: "#ffcf33", ink: "#d7372b", wblk: "#9b6a45", wcap: "#c99a68" },
     2: { floor: ["#bcc9d2", "#adbcc6"], body: "#4f7596", top: "#8aa3b3", knob: "#3d5a73", kick: "#34495a", wall: ["#e3edf3", "#c9d9e4"], band: "#3b7dd8", sign: "#ffffff", ink: "#2f64ad", wblk: "#7d9bb5", wcap: "#a9c0d3" },
     3: { floor: ["#bed6c6", "#afcab8"], body: "#3f8a6a", top: "#8fb89d", knob: "#2f6b52", kick: "#2c5242", wall: ["#e2f2ea", "#c6e2d3"], band: "#2f8f5b", sign: "#ffffff", ink: "#2f8f5b", wblk: "#6a9c84", wcap: "#9cc5b0" },
-    4: { floor: ["#57524c", "#4c4842"], body: "#7a3324", top: "#c08f5c", knob: "#5a2418", kick: "#3e1a12", wall: ["#e8742c", "#d06020"], band: "#7a2a18", sign: "#d7372b", ink: "#fff3d6", wblk: "#6b3b28", wcap: "#8a5440" },
-    5: { floor: ["#e2c3b8", "#d6b3a6"], body: "#c25a52", top: "#d99487", knob: "#9c423c", kick: "#7a332e", wall: ["#fae6e1", "#efcdc4"], band: "#d7372b", sign: "#ffcf33", ink: "#d7372b", wblk: "#b8726a", wcap: "#e0a39b" }
+    4: { floor: ["#57524c", "#4c4842"], body: "#7a3324", top: "#c08f5c", knob: "#5a2418", kick: "#3e1a12", wall: ["#e8742c", "#d06020"], band: "#7a2a18", sign: "#d7372b", ink: "#fff3d6", wblk: "#6b3b28", wcap: "#8a5440", night: true, tent: true },
+    5: { floor: ["#e2c3b8", "#d6b3a6"], body: "#c25a52", top: "#d99487", knob: "#9c423c", kick: "#7a332e", wall: ["#fae6e1", "#efcdc4"], band: "#d7372b", sign: "#ffcf33", ink: "#d7372b", wblk: "#b8726a", wcap: "#e0a39b" },
+    6: { floor: ["#dfe4e8", "#d3d9de"], body: "#2f8f8a", top: "#e3e9ec", knob: "#22625f", kick: "#1d4a48", wall: ["#f2f5f7", "#dde4e8"], band: "#2f8f8a", sign: "#ffffff", ink: "#227a75", wblk: "#5aa8a3", wcap: "#8cc5c1" },
+    7: { floor: ["#5d6672", "#555e69"], body: "#3e5f8a", top: "#c9a06a", knob: "#2b4566", kick: "#1f3349", wall: ["#2f5d9a", "#e9eef5"], band: "#24456f", sign: "#e9f3ff", ink: "#24456f", wblk: "#4c6a90", wcap: "#7b95b5", night: true, tent: true },
+    8: { floor: ["#c9c2b6", "#bfb8ab"], body: "#8a4b32", top: "#d1a576", knob: "#5e3221", kick: "#40221a", wall: ["#b5553c", "#8f3f2c"], band: "#2b2b2b", sign: "#ffcf33", ink: "#2b2b2b", wblk: "#7c5a48", wcap: "#a07c66", brick: true },
+    9: { floor: ["#d3c7e4", "#c8bbdc"], body: "#5b3f8f", top: "#b7a3d8", knob: "#3f2a66", kick: "#2e1f4d", wall: ["#3b2a63", "#4a3778"], band: "#ffcf33", sign: "#2a1d4a", ink: "#ffcf33", wblk: "#3a2a5c", wcap: "#5a4590", stars: true },
+    10: { floor: ["#d3d6d8", "#c8cccf"], body: "#5f6b73", top: "#aab3b8", knob: "#3d474e", kick: "#2c343a", wall: ["#e6e2d6", "#d2ccbb"], band: "#f2b31b", sign: "#2b2b2b", ink: "#f2b31b", wblk: "#6b767d", wcap: "#949ea4" }
   };
 
   function make3D() {
@@ -2192,7 +2528,39 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       g.strokeStyle = "rgba(0,0,0,.08)"; g.lineWidth = 2;
       for (let x = 0; x <= COLS; x++) { g.beginPath(); g.moveTo(x * u, 0); g.lineTo(x * u, ROWS * u); g.stroke(); }
       for (let y = 0; y <= ROWS; y++) { g.beginPath(); g.moveTo(0, y * u); g.lineTo(COLS * u, y * u); g.stroke(); }
-      const solidAt = (x, y) => { const t = at(x, y); return !t || t.type !== "floor"; };
+      // 바닥 장치 (얼음, 무빙워크 틀, 길, 순간이동문 자리, 칸막이 자리)
+      tiles.forEach((t) => {
+        const x0 = t.x * u, y0 = t.y * u;
+        if (t.ice) {
+          g.fillStyle = (t.x + t.y) % 2 ? "#cfe7f4" : "#dbeef8"; g.fillRect(x0, y0, u, u);
+          g.strokeStyle = "rgba(255,255,255,.9)"; g.lineWidth = 3; g.lineCap = "round";
+          const k = (t.x * 7 + t.y * 3) % 4;
+          g.beginPath(); g.moveTo(x0 + u * (0.12 + k * 0.05), y0 + u * 0.72); g.lineTo(x0 + u * (0.46 + k * 0.05), y0 + u * 0.32);
+          g.moveTo(x0 + u * 0.56, y0 + u * (0.88 - k * 0.04)); g.lineTo(x0 + u * 0.84, y0 + u * (0.56 - k * 0.04)); g.stroke();
+          g.fillStyle = "rgba(255,255,255,.5)"; g.fillRect(x0 + u * 0.7, y0 + u * 0.14, 4, 4);
+        } else if (t.push) {
+          g.fillStyle = "#6f787e"; g.fillRect(x0, y0, u, u);
+          g.fillStyle = "#565e63";
+          if (t.push[0]) { g.fillRect(x0, y0, u, u * 0.1); g.fillRect(x0, y0 + u * 0.9, u, u * 0.1); } else { g.fillRect(x0, y0, u * 0.1, u); g.fillRect(x0 + u * 0.9, y0, u * 0.1, u); }
+          g.fillStyle = "rgba(0,0,0,.18)"; for (let k = 1; k < 8; k++) { if (t.push[0]) g.fillRect(x0, y0 + u * (0.1 + k * 0.1), u, 1); else g.fillRect(x0 + u * (0.1 + k * 0.1), y0, 1, u); }
+        } else if (t.road) {
+          g.fillStyle = "#3f4247"; g.fillRect(x0, y0, u, u);
+          g.fillStyle = "#f2c21b"; g.fillRect(x0, y0, u, u * 0.06); g.fillRect(x0, y0 + u * 0.94, u, u * 0.06);
+          g.fillStyle = "#f2f2f2"; g.fillRect(x0 + u * 0.15, y0 + u * 0.46, u * 0.42, u * 0.08);
+        } else if (t.portal != null) {
+          const col = ["#a855f7", "#14b8a6"][t.portal];
+          const gr = g.createRadialGradient(x0 + u / 2, y0 + u / 2, 2, x0 + u / 2, y0 + u / 2, u * 0.5);
+          gr.addColorStop(0, "#ffffff"); gr.addColorStop(0.5, col); gr.addColorStop(1, "rgba(0,0,0,0)");
+          g.fillStyle = gr; g.fillRect(x0, y0, u, u);
+        } else if (t.gate) {
+          g.save(); g.beginPath(); g.rect(x0, y0, u, u); g.clip();
+          g.fillStyle = "rgba(242,179,27,.55)"; g.fillRect(x0, y0, u, u);
+          g.strokeStyle = "rgba(43,43,43,.5)"; g.lineWidth = 7;
+          for (let k = -u; k < 2 * u; k += 17) { g.beginPath(); g.moveTo(x0 + k, y0 + u); g.lineTo(x0 + k + u, y0); g.stroke(); }
+          g.restore();
+        }
+      });
+      const solidAt = (x, y) => { const t = at(x, y); return !t || (t.type !== "floor" && !t.gate); };
       const ao = u * 0.32;
       for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
         if (solidAt(x, y)) continue;
@@ -2215,8 +2583,22 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       const g = c.getContext("2d");
       const X = (wx) => (wx + 0.3) * u, Y = (wy) => (2.7 - wy) * u;
       g.fillStyle = P.wall[0]; g.fillRect(0, 0, Wc, Hc);
-      if (sid === 4) { // 포장마차 천막
+      if (P.tent) { // 포장마차 천막
         for (let x = 0; x < Wc; x += u * 0.9) { g.fillStyle = P.wall[1]; g.fillRect(x, 0, u * 0.45, Hc); g.fillStyle = "rgba(0,0,0,.16)"; g.fillRect(x + u * 0.44, 0, 3, Hc); }
+      } else if (P.brick) { // 골목 벽돌
+        const bw = u * 0.5, bh = u * 0.2;
+        for (let r = 0; r * bh < Hc; r++) for (let x = (r % 2) * -bw / 2; x < Wc; x += bw) {
+          g.fillStyle = (r * 7 + Math.round(x / bw) * 3) % 5 ? P.wall[0] : P.wall[1];
+          g.fillRect(x + 3, Hc - (r + 1) * bh + 3, bw - 6, bh - 6);
+        }
+        g.fillStyle = "rgba(0,0,0,.12)"; g.fillRect(0, 0, Wc, Hc * 0.05);
+      } else if (P.stars) { // 마법 분식집: 밤하늘
+        const gr = g.createLinearGradient(0, 0, 0, Hc); gr.addColorStop(0, P.wall[0]); gr.addColorStop(1, P.wall[1]);
+        g.fillStyle = gr; g.fillRect(0, 0, Wc, Hc);
+        let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+        for (let k = 0; k < 120; k++) { g.fillStyle = "rgba(255,246,200," + (0.4 + rnd() * 0.6) + ")"; g.beginPath(); g.arc(rnd() * Wc, rnd() * Hc * 0.8, 1 + rnd() * 3, 0, Math.PI * 2); g.fill(); }
+        g.fillStyle = "#fff3c4"; g.beginPath(); g.arc(Wc * 0.86, Hc * 0.22, u * 0.22, 0, Math.PI * 2); g.fill();
+        g.fillStyle = P.wall[0]; g.beginPath(); g.arc(Wc * 0.86 + u * 0.1, Hc * 0.2, u * 0.2, 0, Math.PI * 2); g.fill();
       } else { // 타일
         g.strokeStyle = P.wall[1]; g.lineWidth = 3;
         const tw = u * 0.5, th = u * 0.25;
@@ -2263,11 +2645,111 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     let builtTiles = null, builtStage = 0, dirty = true;
     const flames = {}, knives = {}, oils = {};
     const slotO = new Map(), extraO = new Map(), flyO = new Map();
-    function sync(map, key, sig, make) {
+    function sync(map, key, sig, make, id) {
       let e = map.get(key);
       if (!sig) { if (e) { dynRoot.remove(e.obj); map.delete(key); } return null; }
-      if (!e || e.sig !== sig) { if (e) dynRoot.remove(e.obj); e = { sig, obj: make(), born: performance.now() }; map.set(key, e); dynRoot.add(e.obj); }
+      if (!e || e.sig !== sig) { if (e) dynRoot.remove(e.obj); e = { sig, obj: make(), born: performance.now(), id }; map.set(key, e); dynRoot.add(e.obj); if (map === slotO) slotMade++; }
       return e.obj;
+    }
+    let slotMade = 0; // 새로 '톡' 나타난 물건 수 (시험용)
+
+    // ---- 맵 장치 (무빙워크 화살표, 순간이동문, 움직이는 칸막이, 배달 오토바이) ----
+    let walkTex = null;
+    const walkMat = () => gc("walkMat", () => {
+      const c = document.createElement("canvas"); c.width = c.height = 128;
+      const g = c.getContext("2d");
+      g.strokeStyle = "rgba(236,241,244,.95)"; g.lineWidth = 12; g.lineCap = "round"; g.lineJoin = "round";
+      for (const x0 of [20, 84]) { g.beginPath(); g.moveTo(x0, 38); g.lineTo(x0 + 24, 64); g.lineTo(x0, 90); g.stroke(); }
+      walkTex = canvasTex(c, true);
+      return new T.MeshBasicMaterial({ map: walkTex, transparent: true, depthWrite: false, toneMapped: false, opacity: 0.9 });
+    });
+    const hazTex = () => gc("hazTex", () => {
+      const c = document.createElement("canvas"); c.width = c.height = 64;
+      const g = c.getContext("2d");
+      g.fillStyle = "#f2b31b"; g.fillRect(0, 0, 64, 64);
+      g.strokeStyle = "#2b2b2b"; g.lineWidth = 11;
+      for (let k = -64; k < 128; k += 32) { g.beginPath(); g.moveTo(k, 64); g.lineTo(k + 64, 0); g.stroke(); }
+      const t = canvasTex(c, true); t.wrapT = T.RepeatWrapping; t.repeat.set(2, 2);
+      return t;
+    });
+    const hazMat = () => gc("hazMat", () => std({ map: hazTex(), roughness: 0.55 }));
+    const hazWarn = () => gc("hazWarn", () => new T.MeshBasicMaterial({ map: hazTex(), transparent: true, opacity: 0.95, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+    const swirlTex = () => gc("swirlTex", () => {
+      const c = document.createElement("canvas"); c.width = c.height = 128;
+      const g = c.getContext("2d");
+      g.translate(64, 64); g.lineCap = "round";
+      for (let k = 0; k < 3; k++) {
+        g.rotate((Math.PI * 2) / 3);
+        for (let j = 0; j < 26; j++) {
+          const a = j * 0.13, r = 8 + j * 2;
+          g.fillStyle = "rgba(255,255,255," + (0.9 - j / 32) + ")";
+          g.beginPath(); g.arc(Math.cos(a) * r, Math.sin(a) * r, 5 - j * 0.12, 0, Math.PI * 2); g.fill();
+        }
+      }
+      return canvasTex(c);
+    });
+    let walk3 = [], portal3 = [], gate3 = [], gateAt = {}, bike3 = null;
+    function buildWalk(t) {
+      const m = new T.Mesh(planeG(0.8, 0.8), walkMat());
+      m.rotation.order = "YXZ"; m.rotation.set(-Math.PI / 2, Math.atan2(-t.push[1], t.push[0]), 0);
+      m.position.set(t.x + 0.5, 0.004, t.y + 0.5); m.renderOrder = 1;
+      stageRoot.add(m); walk3.push(m);
+    }
+    function buildPortal(t) {
+      const col = [0xa855f7, 0x14b8a6][t.portal];
+      const g = sub(stageRoot, t.x + 0.5, 0.01, t.y + 0.5);
+      const glow = (o) => own(new T.MeshBasicMaterial(Object.assign({ color: col, transparent: true, depthWrite: false, toneMapped: false, blending: T.AdditiveBlending }, o)));
+      const disc = new T.Mesh(gc("pdisc", () => new T.CircleGeometry(0.42, 40)), glow({ opacity: 0.4 }));
+      disc.rotation.x = -Math.PI / 2; g.add(disc);
+      const sw = new T.Mesh(planeG(0.86, 0.86), glow({ map: swirlTex(), color: 0xffffff, opacity: 0.85 }));
+      sw.rotation.x = -Math.PI / 2; sw.position.y = 0.004; g.add(sw);
+      const ring = new T.Mesh(torG(0.41, 0.032, 0, 8, 40), own(new T.MeshBasicMaterial({ color: col, toneMapped: false })));
+      ring.rotation.x = Math.PI / 2; ring.position.y = 0.018; g.add(ring);
+      const motes = [];
+      for (let k = 0; k < 5; k++) { const m = new T.Mesh(sphG(8), glow({ opacity: 0.9 })); m.scale.setScalar(0.001); g.add(m); motes.push(m); }
+      portal3.push({ g, sw, disc, motes, k: t.portal });
+    }
+    function buildGate(t) {
+      const cx = t.x + 0.5, cz = t.y + 0.5, g = new T.Group();
+      const B = new Batch(true);
+      B.add(rboxG(0.98, CH - 0.07, 0.98, 0.035, 1), mtx(cx, (CH - 0.07) / 2, cz), "#8d979d");
+      B.add(rboxG(1, 0.075, 1, 0.03, 2), mtx(cx, CH - 0.0375, cz), "#c5ccd0");
+      B.add(boxG(1.0, 0.06, 1.0), mtx(cx, 0.14, cz), "#f2b31b");
+      const body = B.mesh(VMET); own(body.geometry); g.add(body);
+      const top = new T.Mesh(planeG(0.86, 0.86), hazMat());
+      top.rotation.x = -Math.PI / 2; top.position.set(cx, CH + 0.002, cz); top.receiveShadow = true; g.add(top);
+      const warn = new T.Mesh(planeG(0.98, 0.98), hazWarn());
+      warn.rotation.x = -Math.PI / 2; warn.position.set(cx, 0.006, cz); warn.visible = false; warn.renderOrder = 1;
+      const y = t.type === "counter" ? 0 : -(CH + 0.03);
+      g.position.y = y; g.visible = t.type === "counter";
+      stageRoot.add(g, warn);
+      const e = { t, g, warn, y }; gate3.push(e); gateAt[t.i] = e;
+    }
+    // 칸막이 위 물건 높이 (칸막이가 오르내리는 대로 같이 움직여요)
+    const gateTop = (t) => { const e = gateAt[t.i]; return e ? Math.max(0, CH + e.y) : surfY(t); };
+    function buildBike() {
+      const g = new T.Group(), B = new Batch(), MB = new Batch();
+      const P = (geo, x, y, z, col, rx, ry, rz, sx, sy, sz, metal) => (metal ? MB : B).add(geo, mtx(x, y, z, rx, ry, rz, sx, sy, sz), col);
+      for (const wx of [-0.36, 0.36]) { P(cylG(0.17, 0.17, 0.09, 20), wx, 0.17, 0, "#1f2224", Math.PI / 2); P(cylG(0.07, 0.07, 0.1, 12), wx, 0.17, 0, "#b9c1c6", Math.PI / 2, 0, 0, 1, 1, 1, true); }
+      P(rboxG(0.78, 0.12, 0.3, 0.05, 1), 0, 0.27, 0, "#d7372b");
+      P(rboxG(0.42, 0.26, 0.34, 0.1, 2), -0.2, 0.4, 0, "#d7372b");
+      P(rboxG(0.16, 0.5, 0.32, 0.06, 2), 0.34, 0.47, 0, "#d7372b");
+      P(rboxG(0.38, 0.07, 0.28, 0.03, 1), -0.16, 0.56, 0, "#2b2e31");
+      P(cylG(0.025, 0.025, 0.34, 8), 0.37, 0.76, 0, "#2b2e31", 0, 0, -0.25);
+      P(boxG(0.05, 0.05, 0.54), 0.41, 0.92, 0, "#2b2e31");
+      P(rboxG(0.44, 0.4, 0.42, 0.04, 1), -0.44, 0.86, 0, "#f5f3ec");
+      P(boxG(0.45, 0.07, 0.43), -0.44, 0.86, 0, "#d7372b");
+      P(rboxG(0.3, 0.12, 0.26, 0.04, 1), 0.04, 0.63, 0, "#31465e");
+      P(rboxG(0.22, 0.36, 0.3, 0.08, 2), -0.03, 0.84, 0, "#3d5a78");
+      for (const az of [-0.15, 0.15]) P(rboxG(0.32, 0.07, 0.07, 0.03, 1), 0.2, 0.9, az, "#3d5a78", 0, 0, -0.35);
+      P(sphG(16), -0.01, 1.11, 0, "#ffcf33", 0, 0, 0, 0.16);
+      P(boxG(0.07, 0.08, 0.22), 0.13, 1.1, 0, "#26323d");
+      const a = B.mesh(VSKIN), m = MB.mesh(CLS_MAT.p);
+      own(a.geometry); own(m.geometry); g.add(a, m);
+      const lamp2 = new T.Mesh(sphG(10), mat("#fff6c2", "b")); lamp2.position.set(0.43, 0.66, 0); lamp2.scale.setScalar(0.07); g.add(lamp2);
+      g.scale.setScalar(1.15); g.visible = false;
+      stageRoot.add(g);
+      bike3 = g;
     }
     // 톡: 0.5배에서 살짝 넘쳤다가 1배로 (0.24초)
     function popAt(born, now) {
@@ -2290,10 +2772,11 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       while (stageRoot.children.length) stageRoot.remove(stageRoot.children[0]);
       junk.forEach((d) => d.dispose()); junk = [];
       [flames, knives, oils].forEach((o) => { for (const k in o) delete o[k]; });
+      walk3 = []; portal3 = []; gate3 = []; gateAt = {}; bike3 = null;
       clearDyn();
       builtTiles = tiles; builtStage = curStage; dirty = false;
       const sid = curStage, st = stageOf(sid), P = PAL[sid] || PAL[1];
-      const nightTime = sid === 4;
+      const nightTime = !!P.night;
       hemi.intensity = (envTex ? 0.22 : 0.8) * (nightTime ? 0.8 : 1); hemi.groundColor.set(nightTime ? 0x4a3a2e : 0x8a7563);
       sun.intensity = nightTime ? 1.0 : 1.2; sun.color.set(nightTime ? 0xffd2a0 : 0xfff0dc);
       lamp.intensity = nightTime ? 1.1 : 0;
@@ -2346,8 +2829,12 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 
       tiles.forEach((t) => {
         const cx = t.x + 0.5, cz = t.y + 0.5;
+        if (t.gate) { buildGate(t); return; }
         switch (t.type) {
-          case "floor": return;
+          case "floor":
+            if (t.push) buildWalk(t);
+            else if (t.portal != null) buildPortal(t);
+            return;
           case "wall": // 칸막이: 조리대와 같은 높이로 끊김 없이 이어지는 막대. 어두운 윗면 = 못 넘겨요
             A.add(boxG(1, CH - 0.075, 1), mtx(cx, (CH - 0.075) / 2, cz), P.wblk);
             A.add(boxG(1, 0.075, 1), mtx(cx, CH - 0.0375, cz), "#4a3428");
@@ -2474,6 +2961,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
           }
         }
       });
+      if (st.road) buildBike();
       const a = A.mesh(VMAT), m = M.mesh(VMET);
       own(a.geometry); own(m.geometry);
       stageRoot.add(a, m);
@@ -2569,15 +3057,27 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       const busy = new Set(list.filter((o) => o.w && !o.w.wash).map((o) => o.w.i));
       for (const k in knives) knives[k].visible = !busy.has(+k);
 
+      // 벨트·무빙워크로 칸을 옮긴 물건은 모델을 그대로 넘겨요 (칸마다 다시 '톡' 커지지 않게)
+      const hand = [];
+      view.slots.forEach((it, i) => {
+        if (!it || it.id == null) return;
+        const e = slotO.get(i);
+        if (e && e.id === it.id) return;
+        for (const [k, e2] of slotO) if (k !== i && e2.id === it.id && !(view.slots[k] && view.slots[k].id === it.id)) { hand.push([k, i, e2]); break; }
+      });
+      hand.forEach(([k]) => slotO.delete(k));
+      hand.forEach(([, i, e]) => { const old = slotO.get(i); if (old && old !== e) dynRoot.remove(old.obj); slotO.set(i, e); });
+
       // 놓인 물건
       view.slots.forEach((it, i) => {
         const t = tiles[i];
-        const o = sync(slotO, i, it ? itemSig(it) : "", () => itemModel(it));
+        const o = sync(slotO, i, it ? itemSig(it) : "", () => itemModel(it), it && it.id);
         if (!o) return;
         let x = t.x + 0.5, z = t.y + 0.5;
-        if (t.type === "belt" && it.bt) { const nx = beltNext(t); if (nx >= 0 && !view.slots[nx]) { const f = Math.min(1, it.bt / BELT_STEP); x += t.dir[0] * f; z += t.dir[1] * f; } }
+        const f = slide(t, it, view, now);
+        if (f) { const d = t.push || t.dir; x += d[0] * f; z += d[1] * f; }
         if (busy.has(i)) x += Math.sin(now / 25) * 0.02;
-        const y = surfY(t);
+        const y = t.gate ? gateTop(t) : surfY(t);
         o.position.set(x, y, z);
         o.scale.setScalar(popOf(slotO, i, now));
         // 그릇 손잡이는 요리사 쪽 대각선으로 (옆 칸·요리사와 안 부딪히게)
@@ -2622,6 +3122,28 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         }
       });
       if (beltTex) beltTex.offset.x = -(((now / 1000) / BELT_STEP) % 1);
+      // 맵 장치 움직임
+      if (walkTex && walk3.length) walkTex.offset.x = -(((now / 1000) * WALK) % 1);
+      portal3.forEach((p, j) => {
+        p.sw.rotation.z = (now / 520) * (p.k ? -1 : 1);
+        p.disc.material.opacity = 0.32 + 0.14 * Math.sin(now / 280 + j);
+        p.motes.forEach((m, k) => { const ph = (now / 1500 + k / 5) % 1, a = k * 1.26 + now / 800; m.position.set(Math.cos(a) * 0.26, 0.05 + ph * 0.75, Math.sin(a) * 0.26); m.scale.setScalar(0.045 * (1 - ph)); });
+      });
+      if (gate3.length) {
+        const soon = gateSoon(view, now), blinkOn = Math.floor(now / 220) % 2 === 0;
+        gate3.forEach((gt) => {
+          const up = gt.t.type === "counter", target = up ? 0 : -(CH + 0.03);
+          gt.y += (target - gt.y) * Math.min(1, dt * 14);
+          if (Math.abs(target - gt.y) < 0.003) gt.y = target;
+          gt.g.position.y = gt.y; gt.g.visible = gt.y > -(CH + 0.025);
+          gt.warn.visible = !up && soon != null && gateUp(gt.t, soon) && blinkOn;
+        });
+      }
+      if (bike3) {
+        const b = bikeNow(view, now).on[0];
+        bike3.visible = !!b;
+        if (b) { bike3.position.set(b.x, 0, b.row + 0.5); bike3.rotation.y = b.dir > 0 ? 0 : Math.PI; bike3.position.y = Math.abs(Math.sin(now / 45)) * 0.02; blobAt(b.x, 0, b.row + 0.5, 1.3); }
+      }
 
       // 요리사
       for (let i = 0; i < 2; i++) {
@@ -2659,7 +3181,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       // 내가 바라보는 칸
       hl.visible = false;
       if (me && view.phase === "play") {
-        const ti = targetIdx(me);
+        const ti = targetIdx(Object.assign({}, me, { hold: myHold() }), view);
         if (ti >= 0) {
           const t = tiles[ti];
           const mineHold = view.players[myIdx] && view.players[myIdx].hold;
@@ -2674,7 +3196,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 
       // 날아가는 재료
       const fl = view.fly || [];
-      const age = role === "guest" ? Math.min(0.1, (now - (view.at || now)) / 1000) : 0;
+      const age = role !== "host" ? Math.min(0.1, (now - (view.at || now)) / 1000) : 0;
       fl.forEach((f, j) => {
         const o = sync(flyO, j, itemSig(f.it), () => itemModel(f.it));
         const x = f.x + f.dx * FLY_SPEED * age, y = f.y + f.dy * FLY_SPEED * age;
@@ -2710,6 +3232,22 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         dot(c, x, y, unit(d.x, 0, d.y) * (0.05 + ag * 0.18), "#ffffff");
       }
       c.globalAlpha = 1;
+      // 오토바이 온다: 들어오는 쪽에 빨간 화살표와 빵빵
+      const bw = bikeNow(view, now).warn;
+      if (bw.length && Math.floor(now / 160) % 2 === 0) {
+        const rd = stageOf(view.stage).road, wz = rd.row + 0.5;
+        bw.forEach((b) => {
+          c.strokeStyle = "#ff3b30"; c.lineCap = "round"; c.lineJoin = "round";
+          for (let k = 0; k < 3; k++) {
+            const wx = b.dir > 0 ? 0.45 + k * 0.42 : COLS - 0.45 - k * 0.42;
+            const p0 = S(wx - b.dir * 0.12, 0.02, wz - 0.26), p1 = S(wx + b.dir * 0.12, 0.02, wz), p2 = S(wx - b.dir * 0.12, 0.02, wz + 0.26);
+            c.lineWidth = Math.max(3, unit(wx, 0, wz) * 0.1);
+            c.beginPath(); c.moveTo(p0[0], p0[1]); c.lineTo(p1[0], p1[1]); c.lineTo(p2[0], p2[1]); c.stroke();
+          }
+          const ex = b.dir > 0 ? 1.2 : COLS - 1.2, [px, py] = S(ex, 0.9, wz);
+          pill(c, px, py, "빵빵!", "#ff3b30", Math.max(12, unit(ex, 0.9, wz) * 0.22), false);
+        });
+      }
       // 대시 바람
       list.forEach(({ q, i }) => {
         const a = anim[i];
@@ -2819,7 +3357,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       ]).then(() => { dirty = true; }, () => {});
     }
 
-    const info = () => ({ calls: gl.info.render.calls, tris: gl.info.render.triangles, geos: gl.info.memory.geometries, tex: gl.info.memory.textures, progs: gl.info.programs ? gl.info.programs.length : 0 });
+    const info = () => ({ made: slotMade, calls: gl.info.render.calls, tris: gl.info.render.triangles, geos: gl.info.memory.geometries, tex: gl.info.memory.textures, progs: gl.info.programs ? gl.info.programs.length : 0 });
     return { el, render: render3, resize, portrait, info };
   }
 
@@ -2906,7 +3444,11 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     bad() { tone(196, 0.35, "square", 0.05, 0, 120); },
     catch() { tone(880, 0.07, "sine", 0.1); },
     order() { tone(660, 0.08, "sine", 0.08); tone(880, 0.12, "sine", 0.07, 0.07); },
-    chop() { tone(1500 + Math.random() * 300, 0.03, "square", 0.022); }
+    chop() { tone(1500 + Math.random() * 300, 0.03, "square", 0.022); },
+    honk() { tone(440, 0.12, "square", 0.05); tone(440, 0.16, "square", 0.05, 0.17); },
+    bump() { tone(150, 0.18, "square", 0.07, 0, 70); },
+    portal() { tone(520, 0.18, "sine", 0.09, 0, 1240); },
+    gate() { tone(300, 0.12, "triangle", 0.09); tone(225, 0.2, "triangle", 0.08, 0.13); }
   };
   ["pointerdown", "keydown"].forEach((t) => window.addEventListener(t, () => { if (sndOn) audio(); }, true));
   function setSound(on) {
@@ -3018,13 +3560,17 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       const key = "c" + view.rs + ":" + n;
       if (ov.dataset.k !== key) {
         ov.dataset.k = key;
+        const thr = starsOf(st, view.solo);
         ov.innerHTML = '<div class="intro"><span class="lv">' + st.id + "단계</span><h2>" + st.name + "</h2><p>" + st.tip + '</p><div class="dishes">' +
-          st.menu.map((d) => '<span><img src="' + iconURL(d) + '" alt="">' + DISH[d].name + "</span>").join("") + '</div><span class="count">' + n + "</span></div>";
+          st.menu.map((d) => '<span><img src="' + iconURL(d) + '" alt="">' + DISH[d].name + "</span>").join("") + "</div>" +
+          '<p class="goal">★ ' + won(thr[0]) + " · ★★ " + won(thr[1]) + " · ★★★ " + won(thr[2]) + (view.solo ? " (혼자 기준)" : "") + "</p>" +
+          '<span class="count">' + n + "</span></div>";
       }
     } else if (view.phase === "end") {
       if (shownPhase !== "end") {
         ov.hidden = false; ov.dataset.k = "";
-        const stars = st.stars.filter((v) => view.score >= v).length;
+        const thr = starsOf(st, view.solo);
+        const stars = thr.filter((v) => view.score >= v).length;
         const next = STAGES.find((x) => x.id === st.id + 1);
         const nextOpen = !!(next && unlocked(next.id, view.prog || {}));
         const best = view.last && view.last.newBest, opened = view.last && view.last.opened;
@@ -3040,7 +3586,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
           '<div class="big">' + won(view.score) + "</div>" +
           (best ? '<p class="best">최고 기록이에요!' + (opened ? " 다음 단계가 열렸어요." : "") + "</p>" : "") +
           "<p>낸 음식 " + view.served + "그릇 · 놓친 주문 " + view.missed + "개</p>" +
-          '<p class="note">별 하나 ' + won(st.stars[0]) + " · 둘 " + won(st.stars[1]) + " · 셋 " + won(st.stars[2]) + "</p>" +
+          '<p class="note">' + (view.solo ? "혼자 기준 · " : "") + "별 하나 " + won(thr[0]) + " · 둘 " + won(thr[1]) + " · 셋 " + won(thr[2]) + "</p>" +
           '<div class="btns">' + btns + '<button class="btn ghost" id="quitBtn" type="button">나가기</button></div></div>';
         const again = $("againBtn"), nextB = $("nextBtn"), pickB = $("pickBtn");
         if (again) again.addEventListener("click", () => startRound());
@@ -3137,12 +3683,13 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 
   // 대기실: 단계
   const MINI_COL = { counter: "#c98b4f", wall: "#6d4a30", crate: "#8f5d2c", board: "#f0d6a4", stove: "#2f3336", fryer: "#e5b347", serve: "#d7372b", trash: "#6f7a7c", plates: "#ffffff", sink: "#8fc3e0", return: "#5a3d26", belt: "#34373a" };
+  const MINI_CH = { "~": "#cfe8f5", "}": "#7d868c", "{": "#7d868c", "^": "#7d868c", v: "#7d868c", "=": "#45484d", "@": "#a855f7", "$": "#14b8a6", X: "#f2b31b", Y: "#f2b31b" };
   function drawMini(c, s) {
     const u = 10;
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       const ch = s.map[y][x];
       const type = CRATE_CH[ch] ? "crate" : TYPE_CH[ch];
-      c.fillStyle = type === "floor" ? s.floor[(x + y) % 2] : ch === "|" ? "#ffcf33" : MINI_COL[type];
+      c.fillStyle = MINI_CH[ch] || (type === "floor" ? s.floor[(x + y) % 2] : ch === "|" ? "#ffcf33" : MINI_COL[type]);
       c.fillRect(x * u, y * u, u, u);
     }
   }
@@ -3334,7 +3881,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         if (!d || !d.t || !W) return;
         seen.set(id, performance.now());
         if (d.t === "hi") {
-          if (d.v !== VERSION) { net.send(id, { t: "ver" }); net.drop(id); return; }
+          if (d.v !== VERSION || d.h !== RULES) { net.send(id, { t: "ver" }); net.drop(id); return; }
           if (id === guestId || specs.has(id)) return;
           if (d.want !== "spec" && !guestOn) { seatGuest(id); return; }
           if (specs.size >= MAX_SPEC) { net.send(id, { t: "full", spec: true }); net.drop(id); return; }
@@ -3421,7 +3968,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     let lastRs = -1, welcomed = false;
     const freshMe = () => ({ x: 11.5, y: 5.5, fx: 0, fy: -1, ax: 0, ay: 1, dashT: 0, dashCD: 0, ds: 0 });
     net = guestTransport(code, {
-      ready() { net.send({ t: "hi", v: VERSION, want }); },
+      ready() { net.send({ t: "hi", v: VERSION, h: RULES, want }); },
       data(d) {
         if (!d || !d.t) return;
         if (d.t === "full") { failJoin(d.spec ? "자리도 관전석(" + MAX_SPEC + "명)도 다 찼어요." : "이미 두 명이 들어가 있는 방이에요."); return; }
@@ -3455,7 +4002,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
               const mine = view.players[1], sp = stageOf(d.st).spawn[1];
               if (d.ph === "count") Object.assign(me, { x: sp[0], y: sp[1], fx: 0, fy: 1 });
               else Object.assign(me, { x: mine.x, y: mine.y, fx: mine.fx, fy: mine.fy });
-              Object.assign(me, { dashT: 0, dashCD: 0 });
+              Object.assign(me, { dashT: 0, dashCD: 0, vx: 0, vy: 0, stun: 0, pLock: null });
             }
             anim.forEach((a) => { a.lx = null; a.dashT = 0; });
           }
@@ -3656,6 +4203,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     const raw = (now - lastFrame) / 1000, dt = Math.min(0.1, raw); lastFrame = now;
     if (view && !$("game").hidden) {
       if (role === "host") view = W;
+      applyGates(view, now);
       moveMe(dt);
       view.players.forEach((p, i) => {
         if (i === myIdx) return;
