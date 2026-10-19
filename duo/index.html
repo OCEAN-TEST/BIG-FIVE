@@ -320,7 +320,7 @@ body.modal { overflow: hidden; }
     </div>
   </div>
   <div class="foot">
-    <span id="keysHint"><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동 · <kbd>스페이스</kbd> 집기·놓기 · <kbd>시프트</kbd> 썰기·설거지·불끄기(꾹)·던지기 · <kbd>E</kbd> 대시</span>
+    <span id="keysHint"><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동 · <kbd>스페이스</kbd> 집기·놓기 · <kbd>E</kbd> 썰기·설거지·불끄기(꾹)·던지기 · <kbd>시프트</kbd> 대시</span>
     <span id="whoami"></span>
   </div>
 </div>
@@ -345,8 +345,8 @@ body.modal { overflow: hidden; }
     <dl class="keys">
       <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 또는 <kbd>방향키</kbd></dt><dd>이동</dd>
       <dt><kbd>스페이스</kbd></dt><dd>집기 · 놓기 · 넣기 · 담기 · 내기 (바라보는 칸에. 바닥에도 놓을 수 있어요)</dd>
-      <dt><kbd>시프트</kbd></dt><dd>작업. 빈손으로 꾹 누르면 썰기·설거지, 재료를 들고 누르면 던지기, 소화기를 들고 꾹 누르면 불 끄기</dd>
-      <dt><kbd>E</kbd> 또는 <kbd>Q</kbd></dt><dd>대시 (짧게 휙 미끄러지기)</dd>
+      <dt><kbd>E</kbd></dt><dd>작업. 빈손으로 꾹 누르면 썰기·설거지, 재료를 들고 누르면 던지기, 소화기를 들고 꾹 누르면 불 끄기</dd>
+      <dt><kbd>시프트</kbd> 또는 <kbd>Q</kbd></dt><dd>대시 (짧게 휙 미끄러지기)</dd>
       <dt>폰</dt><dd>왼쪽 화면을 누른 채 끌어서 이동, 오른쪽 <b>집기</b>·<b>작업</b>·<b>대시</b> 버튼</dd>
     </dl>
     <p class="note">폰이랑 컴퓨터끼리도 같이 할 수 있어요. 폰은 가로로 돌리면 더 크게 보여요. 한/영 상태와 상관없이 움직여요. 첫 화면·대기실·게임 화면의 <b>설정</b>에서 게임 소리를 끄거나(음소거), 버벅이면 2D 화면으로 바꿀 수 있어요.</p>
@@ -1506,7 +1506,7 @@ body.modal { overflow: hidden; }
   // ===== 이동 =====
   const keys = new Set();
   const touchIn = { x: 0, y: 0, m: 0, chop: false };
-  const chopHeld = () => keys.has("ShiftLeft") || keys.has("ShiftRight") || touchIn.chop;
+  const chopHeld = () => keys.has("KeyE") || touchIn.chop; // 작업(썰기·설거지·불 끄기)은 E를 꾹
   function syncChop() { if (role === "host" && W) W.players[0].chop = chopHeld(); }
   let viewRot = false; // 세로 폰 3D: 주방을 90도 돌려서 길게 보여줘요 (화면 위 = 주방 오른쪽)
   function inputVec() {
@@ -4368,8 +4368,8 @@ body.modal { overflow: hidden; }
     keys.add(e.code);
     if (!e.repeat) {
       if (e.code === "Space") doAct(false);
-      else if (e.code === "ShiftLeft" || e.code === "ShiftRight") workPress(false);
-      else if (e.code === "KeyE" || e.code === "KeyQ") doDash(false);
+      else if (e.code === "KeyE") workPress(false);
+      else if (e.code === "ShiftLeft" || e.code === "ShiftRight" || e.code === "KeyQ") doDash(false);
     }
     syncChop();
   });
