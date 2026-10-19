@@ -2488,17 +2488,53 @@ body.modal { overflow: hidden; }
 
     // ---- 재료: 글씨 없이도 모양·색으로 바로 알아보게, 통통하고 큼직하게 ----
     const capG = (r, l) => gc("cap" + r + "," + l, () => new T.CapsuleGeometry(r, l, 10, 24));
+    // 떡 토막: 원기둥 양 끝을 같은 방향으로 비스듬히 자른 모양
+    const tteokG = () => gc("tteok", () => {
+      const L = 0.34, r = 0.062, geo = new T.CylinderGeometry(r, r, L, 22, 1);
+      const pos = geo.attributes.position;
+      for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); if (Math.abs(Math.abs(y) - L / 2) < 1e-4) pos.setY(i, y + pos.getX(i) * 0.75); }
+      geo.computeVertexNormals();
+      return geo;
+    });
     const waveG = () => gc("wave", () => { // 꼬불꼬불한 면 한 가닥
       const pts = [];
       for (let i = 0; i <= 12; i++) pts.push(new T.Vector3(-0.15 + i * 0.025, 0, Math.sin(i * Math.PI / 2) * 0.016));
       return new T.TubeGeometry(new T.CatmullRomCurve3(pts), 48, 0.014, 8, false);
     });
+    // 밥알: 둥근 밥 더미(가로 R, 높이 H) 겉에 길쭉한 쌀알을 골고루
+    function riceGrains(g, x0, y0, z0, R, H, n) {
+      const w = mat("#ffffff"), w2 = mat("#f6f2e8");
+      for (let j = 0; j < n; j++) {
+        const f = (j + 0.5) / n, rr = Math.sqrt(f) * R * 0.97, a = j * 2.39996, h = Math.sqrt(Math.max(0, 1 - (rr / R) ** 2));
+        part(g, sphG(8), j % 3 ? w : w2, x0 + Math.cos(a) * rr, y0 + h * H + 0.004, z0 + Math.sin(a) * rr, (j % 7) * 0.4, a * 1.7, (j % 5) * 0.5, 0.024, 0.011, 0.012);
+      }
+    }
+    // 밥솥: 뚜껑이 뒤로 열려서 하얀 밥이 보이는 전기밥솥
+    function cookerModel() {
+      const g = new T.Group(), wh = mat("#f6f3ec", "g"), red = mat("#d9475a", "g"), stl = mat("#c9d0d4", "p"), dk = mat("#3b3f43");
+      part(g, cylG(0.33, 0.31, 0.3, 36), wh, 0, 0.15, 0);
+      part(g, cylG(0.334, 0.334, 0.06, 36), red, 0, 0.17, 0);
+      part(g, torG(0.3, 0.025, 0, 8, 40), stl, 0, 0.3, 0, Math.PI / 2, 0, 0);
+      part(g, cylG(0.29, 0.29, 0.02, 32), mat("#e9e4d8"), 0, 0.3, 0);
+      part(g, sphG(24, true), mat("#ece7dc"), 0, 0.3, 0, 0, 0, 0, 0.27, 0.08, 0.27);
+      riceGrains(g, 0, 0.3, 0, 0.28, 0.085, 110);
+      part(g, rboxG(0.2, 0.09, 0.03, 0.012, 1), dk, 0, 0.13, 0.31);
+      part(g, cylG(0.018, 0.018, 0.012, 12), mat("#7fe08a", "b"), 0.05, 0.13, 0.327, Math.PI / 2, 0, 0);
+      const hinge = sub(g, 0, 0.31, -0.3);
+      hinge.rotation.x = -1.95; // 뚜껑을 뒤로 젖혀 열어요
+      part(hinge, sphG(24, true), wh, 0, 0, 0.3, 0, 0, 0, 0.32, 0.1, 0.32);
+      part(hinge, cylG(0.27, 0.27, 0.012, 32), stl, 0, -0.004, 0.3);
+      part(hinge, cylG(0.05, 0.05, 0.04, 16), red, 0, 0.1, 0.3);
+      part(g, rboxG(0.12, 0.05, 0.06, 0.015, 1), dk, 0, 0.3, -0.32);
+      return g;
+    }
     function ingModel(k, cut) {
       const g = new T.Group();
       switch (k) {
-        case "tteok": { // 가래떡: 통통한 하얀 막대 셋을 쌓아서, 끝은 둥글게
-          const s = sub(g, 0, 0, 0, 0.35), m = mat("#fff7ea", "g");
-          for (const [z, y] of [[-0.068, 0.062], [0.068, 0.062], [0, 0.17]]) part(s, capG(0.062, 0.26), m, 0, y, z, 0, 0, Math.PI / 2);
+        case "tteok": { // 떡볶이 떡: 양 끝을 어슷하게 썬 통통한 가래떡 토막 (아래 셋, 위에 둘 엇갈려)
+          const s = sub(g, 0, 0, 0, 0.35), m1 = mat("#f6ecdb", "g"), m2 = mat("#ead9bd", "g");
+          [[0, 0.06, -0.15, 0.08, m1], [0.03, 0.06, 0, -0.06, m2], [-0.02, 0.06, 0.15, 0.1, m1], [-0.05, 0.168, -0.07, 0.62, m2], [0.06, 0.168, 0.08, -0.5, m1]]
+            .forEach(([x, y, z, r, m]) => part(s, tteokG(), m, x, y, z, 0, r, Math.PI / 2));
           break;
         }
         case "eomuk":
@@ -2539,8 +2575,8 @@ body.modal { overflow: hidden; }
           part(g, cylG(0.19, 0.13, 0.13, 32, true), mat("#cfd7db", "pd"), 0, 0.065, 0);
           part(g, cylG(0.13, 0.13, 0.012, 24), mat("#b9c2c7", "p"), 0, 0.006, 0);
           part(g, torG(0.19, 0.013, 0, 8, 36), mat("#e6ebee", "p"), 0, 0.13, 0, Math.PI / 2, 0, 0);
-          part(g, sphG(24, true), mat("#ffffff"), 0, 0.115, 0, 0, 0, 0, 0.185, 0.13, 0.185);
-          for (let j = 0; j < 14; j++) { const a = j * 2.4, r = 0.03 + (j % 5) * 0.03, h = Math.sqrt(Math.max(0, 1 - (r / 0.185) ** 2)); part(g, sphG(8), mat("#f3efe4"), Math.cos(a) * r, 0.115 + h * 0.13, Math.sin(a) * r, 0, a, 0, 0.022, 0.012, 0.012); }
+          part(g, sphG(24, true), mat("#ece7dc"), 0, 0.115, 0, 0, 0, 0, 0.18, 0.125, 0.18);
+          riceGrains(g, 0, 0.115, 0, 0.185, 0.13, 90);
           break;
         }
         case "gim": // 김: 크고 새까만 네모 장 여러 장
@@ -2788,6 +2824,22 @@ body.modal { overflow: hidden; }
       if (snapURLs.has(key)) { cb(snapURLs.get(key)); return; }
       snapLater(it, top, (c) => { if (!snapURLs.has(key)) snapURLs.set(key, c ? c.toDataURL() : null); cb(snapURLs.get(key)); });
     }
+    // 그림 둘레에 같은 색을 진하게 한 테두리 (원래 그림을 사방으로 밀어 그리고 어둡게 → 위에 원래 그림)
+    function outlined(src, rad, dark) {
+      const N = src.width, o = document.createElement("canvas"); o.width = o.height = N;
+      const g = o.getContext("2d");
+      for (let k = 0; k < 24; k++) { const a = (k / 24) * Math.PI * 2; g.drawImage(src, Math.cos(a) * rad, Math.sin(a) * rad); }
+      for (let k = 0; k < 12; k++) { const a = ((k + 0.5) / 12) * Math.PI * 2; g.drawImage(src, Math.cos(a) * rad * 0.55, Math.sin(a) * rad * 0.55); }
+      const id = g.getImageData(0, 0, N, N), px = id.data;
+      for (let i = 0; i < px.length; i += 4) {
+        if (!px[i + 3]) continue;
+        px[i] *= dark; px[i + 1] *= dark; px[i + 2] *= dark;
+        if (px[i + 3] > 60) px[i + 3] = 255;
+      }
+      g.putImageData(id, 0, 0);
+      g.drawImage(src, 0, 0);
+      return o;
+    }
     // top = 거의 위에서 (상자 뚜껑에 눕혀 붙일 그림), 아니면 게임 화면과 비슷한 각도
     function snapStep() {
       const job = snapQ.shift();
@@ -2810,7 +2862,7 @@ body.modal { overflow: hidden; }
           pts.forEach((q) => { _v.copy(q).project(snapCam); x0 = Math.min(x0, _v.x); x1 = Math.max(x1, _v.x); y0 = Math.min(y0, _v.y); y1 = Math.max(y1, _v.y); });
           return { x0, x1, y0, y1, e: Math.max(x1 - x0, y1 - y0) / 2 };
         };
-        for (let k = 0; k < 4; k++) { b = frame(); d *= b.e / 0.86; }
+        for (let k = 0; k < 4; k++) { b = frame(); d *= b.e / 0.76; } // 테두리 자리를 남겨요
         b = frame();
         const e = snapCam.projectionMatrix.elements;
         e[8] = (b.x0 + b.x1) / 2; e[9] = (b.y0 + b.y1) / 2;
@@ -2824,6 +2876,7 @@ body.modal { overflow: hidden; }
         gl.shadowMap.autoUpdate = auto;
         c = document.createElement("canvas"); c.width = c.height = SNAP;
         c.getContext("2d").drawImage(el, 0, el.height - S, S, S, 0, 0, SNAP, SNAP);
+        c = outlined(c, 15, 0.42);
       } catch (err) { c = null; try { gl.setScissorTest(false); gl.setViewport(0, 0, vw, vh); } catch (e2) {} }
       if (g) scene.remove(g);
       snapCache.set(job.key, c); snapMs += performance.now() - t1; snapN++;
@@ -3459,6 +3512,11 @@ body.modal { overflow: hidden; }
               A.add(rboxG(0.05, 0.13, 0.84, 0.012, 1), mtx(cx - 0.465, sy, cz), "#c48d50");
             }
             A.add(rboxG(1, 0.06, 1, 0.02, 1), mtx(cx, CH - 0.03, cz), "#b07a42");
+            if (t.ing === "bap") { // 밥은 상자 위에 밥솥
+              const ck = cookerModel(); ck.position.set(cx, CH, cz); ck.rotation.y = rotView ? -Math.PI / 2 : 0; ck.scale.setScalar(1.25);
+              bake(ck, A, M);
+              return;
+            }
             const cv = crateCanvas(t.ing), dm = decal(cv, cx, CH + 0.004, cz, 0.92), ing = t.ing;
             snapLater({ k: ing }, true, (ph) => { if (!ph || !dm.parent) return; crateDraw(cv.getContext("2d"), ing, ph); dm.material.map.needsUpdate = true; });
             return;
