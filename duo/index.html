@@ -471,7 +471,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 15;
+  const VERSION = 16;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -5571,6 +5571,23 @@ body.modal { overflow: hidden; }
       : "<b>아이폰은 주소창 없이 꽉 차게 할 수 있어요.</b> 사파리 <b>공유</b> 버튼(안 보이면 ⋯ 안에) → <b>홈 화면에 추가</b>를 누르고, 홈 화면에 생긴 분식집 아이콘으로 들어오세요.";
     $("appNote").hidden = false;
     $("appNoteX").addEventListener("click", () => { $("appNote").hidden = true; try { localStorage.setItem(APPNOTE_KEY, "1"); } catch (e) {} });
+  })();
+  // 새 버전이 올라왔는데 폰·홈 화면 앱이 예전 화면을 붙잡고 있으면, 첫 화면에서 알아서 새로 불러와요 (방에 있을 땐 안 건드려요)
+  (function autoUpdate() {
+    if (IS_LOCAL || !window.fetch) return;
+    const check = () => {
+      if (role || document.hidden) return;
+      fetch(location.pathname + "?nv=" + Date.now(), { cache: "no-store" }).then((r) => r.text()).then((t) => {
+        const m = t.match(/const VERSION = (\d+);/), nv = m ? +m[1] : 0;
+        if (nv <= VERSION || role) return;
+        const key = "bunsik.upd." + nv; // 같은 버전으로는 한 번만 (계속 새로고침되지 않게)
+        try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, "1"); } catch (e) { return; }
+        const q = new URLSearchParams(location.search); q.set("v", String(nv));
+        location.replace(location.pathname + "?" + q.toString());
+      }).catch(() => {});
+    };
+    check();
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
   })();
   $("rotKeep").addEventListener("click", () => { try { sessionStorage.setItem(PORTRAIT_KEY, "1"); } catch (e) {} layout(); });
   ["hostBtn", "joinBtn", "watchBtn", "startBtn"].forEach((id) => $(id).addEventListener("click", goLandscape, true));
