@@ -355,7 +355,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       map: ["CCtmCCSSCCWWCCC", "C.............C", "b.............C", "g....CCCC.....K", "d....CCCC.....K", "C.............C", "P.............T", "C.............C", "CCCCCCCCCCCCCCC"] },
     { id: 2, name: "칸막이 주방", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [14000, 28000, 40000], plates: 0, gap: [11, 15], extra: 10, duo: true,
       floor: ["#e6eef2", "#d8e3ea"], spawn: [[3.5, 4.5], [10.5, 4.5]],
-      tip: "가운데 벽은 못 넘어가요. 왼쪽은 재료 손질, 오른쪽은 조리와 서빙. 창구에 올리거나 던져서 넘겨요.",
+      tip: "가운데 칸막이는 못 넘어가요. 왼쪽은 재료 손질, 오른쪽은 조리와 서빙. 칸막이의 노란 창구에 올리거나 던져서 넘겨요.",
       map: ["CtmprCC#CSSCWWC", "b......#......C", "g......C......C", "d......#......P", "K......C......C", "K......#......T", "C......C......C", "T......#......C", "CCCCCCC#CCCCCCC"] },
     { id: 3, name: "설거지 대란", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [12000, 24000, 36000], plates: 3, gap: [11, 15], extra: 5, duo: false,
       floor: ["#e3f1ea", "#d3e8dd"], spawn: [[3.5, 5.5], [11.5, 5.5]],
@@ -367,7 +367,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       map: ["CtmproCCKKCbgdC", "C.............C", "C.............T", "C.............C", ">>>>>>>>>>>>C.C", "C.............C", "S.............W", "S.............W", "CFFPCCCCCCCCTCC"] },
     { id: 5, name: "오픈 첫날", time: 210, menu: ["gimbap", "tteokbokki", "ramen", "twigim"], stars: [16000, 34000, 50000], plates: 4, gap: [9, 13], extra: 15, duo: true,
       floor: ["#f6e7e4", "#efd8d3"], spawn: [[3.5, 4.5], [10.5, 4.5]],
-      tip: "벽, 설거지, 튀김까지 전부. 왼쪽은 손질·설거지·김밥, 오른쪽은 냄비·튀김·서빙이에요.",
+      tip: "칸막이, 설거지, 튀김까지 전부. 왼쪽은 손질·설거지·김밥, 오른쪽은 냄비·튀김·서빙이에요. 노란 창구로 넘겨요.",
       map: ["CtmproC#CSSCWWC", "b......#......R", "g......C......F", "d......#......F", "K......C......C", "K......#......C", "H......C......C", "T......#......T", "CCPCCCC#CCCCCCC"] }
   ];
   const stageOf = (id) => STAGES.find((s) => s.id === id) || STAGES[0];
@@ -388,6 +388,12 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   let curStage = 1;
   function loadMap(id) { curStage = id; tiles = buildTiles(stageOf(id).map); belts = tiles.filter((t) => t.type === "belt"); }
   const idx = (x, y) => y * COLS + x;
+  // 칸막이 창구: 위아래(또는 좌우)가 칸막이 벽인 조리대. vertOnly면 세로 칸막이인지만
+  function isWindow(t, vertOnly) {
+    const w = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS && tiles[y * COLS + x].type === "wall";
+    const v = w(t.x, t.y - 1) && w(t.x, t.y + 1);
+    return vertOnly ? v : v || (w(t.x - 1, t.y) && w(t.x + 1, t.y));
+  }
   const solid = (x, y) => x < 0 || y < 0 || x >= COLS || y >= ROWS || tiles[idx(x, y)].type !== "floor";
 
   const $ = (id) => document.getElementById(id);
@@ -1326,7 +1332,14 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       }
     }
     counterBase(px, py, s);
-    if (t.type === "crate") {
+    if (t.type === "counter" && isWindow(t)) { // 칸막이 창구: 노란 칸 + 넘기는 화살표
+      ctx.fillStyle = "#ffcf33"; ctx.fillRect(px + 1, py + 1, s - 2, s - 3);
+      ctx.save(); ctx.translate(px + s / 2, py + s / 2); if (!isWindow(t, true)) ctx.rotate(Math.PI / 2);
+      ctx.beginPath(); const u = s / 10;
+      ctx.moveTo(-4 * u, 0); ctx.lineTo(-2.2 * u, -1.6 * u); ctx.lineTo(-2.2 * u, -0.7 * u); ctx.lineTo(2.2 * u, -0.7 * u); ctx.lineTo(2.2 * u, -1.6 * u); ctx.lineTo(4 * u, 0);
+      ctx.lineTo(2.2 * u, 1.6 * u); ctx.lineTo(2.2 * u, 0.7 * u); ctx.lineTo(-2.2 * u, 0.7 * u); ctx.lineTo(-2.2 * u, 1.6 * u); ctx.closePath();
+      ctx.fillStyle = "#ffffff"; ctx.fill(); ctx.restore();
+    } else if (t.type === "crate") {
       rrect(ctx, px + s * 0.1, py + s * 0.08, s * 0.8, s * 0.84, 4); ctx.fillStyle = "#8f5d2c"; ctx.fill();
       ctx.fillStyle = "#a8743a"; for (let i = 0; i < 3; i++) ctx.fillRect(px + s * 0.14, py + s * (0.14 + i * 0.26), s * 0.72, s * 0.2);
       drawIcon(ctx, t.ing, px + s / 2, py + s * 0.42, s * 0.56, false);
@@ -1691,6 +1704,15 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       for (const x0 of [22, 86]) { g.beginPath(); g.moveTo(x0, 34); g.lineTo(x0 + 24, 64); g.lineTo(x0, 94); g.stroke(); }
       beltTex = canvasTex(c, true);
       return std({ map: beltTex, roughness: 0.72 });
+    });
+    const arrowMat = () => gc("arrowMat", () => {
+      const c = document.createElement("canvas"); c.width = 256; c.height = 128;
+      const g = c.getContext("2d");
+      const path = () => { g.beginPath(); g.moveTo(14, 64); g.lineTo(62, 22); g.lineTo(62, 46); g.lineTo(194, 46); g.lineTo(194, 22); g.lineTo(242, 64); g.lineTo(194, 106); g.lineTo(194, 82); g.lineTo(62, 82); g.lineTo(62, 106); g.closePath(); };
+      path(); g.lineJoin = "round"; g.lineWidth = 12; g.strokeStyle = "rgba(160,100,0,.55)"; g.stroke();
+      path(); g.fillStyle = "#ffffff"; g.fill();
+      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = ANISO;
+      return new T.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     });
     const blobMat = () => gc("blobMat", () => {
       const c = document.createElement("canvas"); c.width = c.height = 64;
@@ -2314,19 +2336,21 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         const cx = t.x + 0.5, cz = t.y + 0.5;
         switch (t.type) {
           case "floor": return;
-          case "wall":
-            A.add(rboxG(0.96, 1.0, 1, 0.03, 1), mtx(cx, 0.5, cz), P.wblk);
-            A.add(rboxG(1.0, 0.08, 1.02, 0.025, 1), mtx(cx, 1.03, cz), "#4a3428");
-            for (const yy of [0.3, 0.62]) A.add(boxG(0.97, 0.02, 1.005), mtx(cx, yy, cz), P.wcap);
+          case "wall": // 칸막이: 조리대와 같은 높이로 끊김 없이 이어지는 막대. 어두운 윗면 = 못 넘겨요
+            A.add(boxG(1, CH - 0.075, 1), mtx(cx, (CH - 0.075) / 2, cz), P.wblk);
+            A.add(boxG(1, 0.075, 1), mtx(cx, CH - 0.0375, cz), "#4a3428");
             return;
           case "counter": {
             const n = at(t.x, t.y - 1), s = at(t.x, t.y + 1), w = at(t.x - 1, t.y), e = at(t.x + 1, t.y);
             const isW = (q) => !!q && q.type === "wall";
-            if ((isW(n) && isW(s)) || (isW(w) && isW(e))) { // 칸막이 창구: 노란 상판으로 눈에 띄게
-              cabinet(t, P.wblk, "#ffd75e");
-              A.add(boxG(0.98, 0.012, 0.98), mtx(cx, CH + 0.002, cz), "#ffcf33");
-              A.add(boxG(0.06, 0.014, 0.98), mtx(cx - 0.47, CH + 0.004, cz), "#e0a91c");
-              A.add(boxG(0.06, 0.014, 0.98), mtx(cx + 0.47, CH + 0.004, cz), "#e0a91c");
+            const vert = isW(n) && isW(s);
+            if (vert || (isW(w) && isW(e))) { // 칸막이 창구: 같은 막대 안의 노란 칸 + 넘기는 화살표
+              A.add(boxG(1, CH - 0.075, 1), mtx(cx, (CH - 0.075) / 2, cz), P.wblk);
+              A.add(boxG(1, 0.075, 1), mtx(cx, CH - 0.0375, cz), "#ffcf33");
+              const ar = new T.Mesh(planeG(0.66, 0.33), arrowMat());
+              ar.rotation.order = "YXZ"; ar.rotation.set(-Math.PI / 2, vert ? 0 : Math.PI / 2, 0);
+              ar.position.set(cx, CH + 0.003, cz); ar.renderOrder = 2;
+              stageRoot.add(ar);
             } else cabinet(t);
             return;
           }
