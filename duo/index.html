@@ -374,7 +374,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 7;
+  const VERSION = 8;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const CHOP_TIME = 1.2, WASH_TIME = 2, SPEED = 4.3, R = 0.3;
@@ -383,7 +383,7 @@ body.modal { overflow: hidden; }
   const FLY_SPEED = 11, FLY_MAX = 5.5, BELT_STEP = 0.65, RETURN_DELAY = 7;
   const WALK = 2.4, WALK_STEP = 1 / WALK;       // 무빙워크가 미는 빠르기 (칸/초)
   const ICE_GRIP = 2.2, ICE_GLIDE = 0.55;      // 얼음: 누를 때 붙는 정도, 뗐을 때 멈추는 정도 (작을수록 미끄러워요)
-  const BIKE_STUN = 0.6;                       // 오토바이에 치이면 잠깐 못 움직여요
+  const BIKE_STUN = 3;                         // 오토바이에 치이면 3초 기절 (들고 있던 음식은 뺏겨요)
   const FIRE_SPREAD = 6, EXT_TIME = 0.8, FIRE_REGROW = 0.25, EXT_RANGE = 2.4; // 불: 몇 초마다 옆 칸으로 번지는지, 한 칸 끄는 데 뿌리는 시간, 멈추면 다시 커지는 빠르기, 소화기 닿는 거리
   const MISS = 1000, TIP = 1000, MAX_ORDERS = 4;
   const COLS = 15, ROWS = 9;
@@ -438,22 +438,23 @@ body.modal { overflow: hidden; }
       map: ["CtmproC|CSSCWWC", "b......|......R", "g......|......F", "d......|......F", "K......|......C", "K......|......C", "H......|......C", "T......|......T", "CCPCCCC|CCCCCCC"] },
     // ---- 6단계부터는 메뉴는 2~3개로 두고, 맵 장치가 어려움을 만들어요 ----
     { id: 6, name: "무빙워크 푸드코트", time: 180, menu: ["gimbap", "ramen"], stars: [16000, 38000, 70000], plates: 0, gap: [8, 11], extra: 10, duo: false,
-      ext: [14, 4], floor: ["#e9edf0", "#dfe4e8"], spawn: [[2.5, 4.5], [12.5, 4.5]],
-      tip: "바닥 무빙워크가 화살표 쪽으로 밀어줘요. 위 길은 오른쪽 화구로, 아래 길은 왼쪽 내는 곳으로 흘러요. 거꾸로 걸으면 느려지고, 재료를 내려놓으면 같이 실려 가요.",
-      map: ["CbgdCCrpCCSSSCC", "C.............C", "C}}}}}}}}}}}}.C", "K...CCCCCCC...T", "K...CCCCCCC...C", "P.............C", "C.{{{{{{{{{{{{C", "C.............C", "CCCCCWWCCCCCCCC"] },
+      ext: [10, 8], floor: ["#e9edf0", "#dfe4e8"], spawn: [[3.5, 4.5], [11.5, 4.5]],
+      tip: "재료 줄 바로 밑에 오른쪽으로 흐르는 레일이 깔려 있고, 그 밑은 테이블이 막고 있어요. 레일 줄은 양 끝 좁은 통로로만 드나들어요. 재료는 아래 테이블에 올려서 넘기거나 레일에 실어 오른쪽 끝으로 보내요. 통로에서 서로 길을 막지 않게!",
+      map: ["CCbCgCdCCrCpCCC", "C}}}}}}}}}}}}}C", "C.CCCCCCCCCCC.C", "K.............C", "K.............W", "C....CCCCC....W", "P.............T", "C.............C", "CCCCCSSSCCCCCCC"] },
     { id: 7, name: "꽁꽁 야시장", time: 180, menu: ["tteokbokki", "twigim"], stars: [15000, 34000, 62000], plates: 0, gap: [8, 11], extra: 15, duo: false,
       ext: [12, 0], floor: ["#5d6672", "#555e69"], spawn: [[1.5, 4.5], [13.5, 4.5]],
-      tip: "가운데가 꽁꽁 언 빙판이에요. 한번 미끄러지면 잘 안 멈춰요. 매트 위에서만 딱 서요. 빙판 건너편으로 재료를 던지면 빨라요.",
-      map: ["CtmCCSSCFFCCCCC", "C...~..~..~...C", "K..~~~~~~~~~..W", "K..~~~~~~~~~..W", "o..~~~CCC~~~..C", "C..~~~CCC~~~..T", "P..~~~~~~~~~..C", "C...~~~~~~~...C", "CCCCCCCCCCCCCCC"] },
+      tip: "가운데가 꽁꽁 언 빙판이라 한번 미끄러지면 잘 안 멈춰요. 쥐구멍에서 쥐가 나와 조리대 위 음식을 물고 달아나요. 물기 전에 음식을 집으면 그냥 돌아가고, 물고 가는 쥐 앞에서 집기를 누르면 뺏어 와요.",
+      rats: { first: 10, gap: [8, 13] },
+      map: ["CtmCCSSCFFCCCCC", "C...~..~..~...C", "K..~~~~~~~~~..W", "K..~~~~~~~~~..W", "o..~~~CCC~~~..C", "C..~~~CCC~~~..T", "P..~~~~~~~~~..C", "Z...~~~~~~~...C", "CCCCZCCCCCZCCCC"] },
     { id: 8, name: "배달 골목", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [15000, 34000, 62000], plates: 0, gap: [8, 11], extra: 15, duo: false,
       road: { row: 4, first: 7, warn: 1.6, speed: 12, gap: [5, 9] },
       ext: [8, 8], floor: ["#c9c2b6", "#bfb8ab"], spawn: [[3.5, 2.5], [10.5, 6.5]],
-      tip: "주방 한가운데로 배달 오토바이가 지나가요. 빵빵 소리와 빨간 화살표가 뜨면 길에서 비켜요. 치이면 밀려나요. 길 건너로 던지거나 길가 조리대에 올려서 넘겨요.",
+      tip: "주방 한가운데로 배달 오토바이가 지나가요. 빵빵 소리와 빨간 화살표가 뜨면 길에서 비켜요. 치이면 3초 동안 기절하고 들고 있던 음식을 뺏겨요. 길 건너로 던지거나 길가 조리대에 올려서 넘겨요.",
       map: ["CtmprbgdCKKCCCC", "C.............C", "C.............T", "C...CC...CC...C", "===============", "C...CC...CC...C", "S.............W", "S.............W", "CCPCCSSCCCCCTCC"] },
     { id: 9, name: "마법 분식집", time: 180, menu: ["ramen", "twigim"], stars: [15000, 35000, 64000], plates: 0, gap: [8, 11], extra: 10, duo: false,
       ext: [8, 4], floor: ["#d3c7e4", "#c8bbdc"], spawn: [[2.5, 4.5], [11.5, 4.5]],
       tip: "가운데 벽은 못 넘어가요. 바닥의 순간이동문을 밟으면 같은 색 문으로 휙 넘어가요. 재료를 문 쪽으로 던지면 재료도 넘어가요.",
-      map: ["CrpoCCC#CSSCFFC", "C....@C#C$....C", "K.....C#C.....W", "K.....C#C.....W", "C.....C#C.....C", "P.....C#C.....T", "T.....C#C.....C", "C....$C#C@....C", "CCCCCCC#CCCCCCC"] },
+      map: ["CrpoCCC#CCSSFFC", "C....@C#C$....C", "K.....C#C.....W", "K.....C#C.....W", "C.....C#C.....C", "P.....C#C.....T", "T.....C#C.....C", "C....$C#C@....C", "CCCCCCC#CCCCCCC"] },
     { id: 10, name: "변신 주방", time: 200, menu: ["gimbap", "tteokbokki", "twigim"], stars: [16000, 37000, 68000], plates: 0, gap: [8, 11], extra: 15, duo: false,
       gate: { period: 20, warn: 3 },
       ext: [6, 0], floor: ["#d3d6d8", "#c8cccf"], spawn: [[3.5, 2.5], [10.5, 6.5]],
@@ -472,7 +473,7 @@ body.modal { overflow: hidden; }
   const stageOf = (id) => STAGES.find((s) => s.id === id) || STAGES[0];
 
   const CRATE_CH = { t: "tteok", m: "eomuk", p: "pa", r: "ramyeon", b: "bap", g: "gim", d: "danmuji", o: "ojingeo" };
-  const TYPE_CH = { ".": "floor", C: "counter", "|": "counter", "#": "wall", K: "board", S: "stove", F: "fryer", W: "serve", T: "trash", P: "plates", H: "sink", R: "return", ">": "belt" };
+  const TYPE_CH = { ".": "floor", C: "counter", "|": "counter", "#": "wall", K: "board", S: "stove", F: "fryer", W: "serve", T: "trash", P: "plates", H: "sink", R: "return", ">": "belt", Z: "hole" };
   const BELT_DIR = { ">": [1, 0] };
   // 바닥 장치: 걸어 다닐 수 있는 바닥인데 성질이 달라요
   const FLOOR_CH = { "~": { ice: true }, "}": { push: [1, 0] }, "{": { push: [-1, 0] }, "^": { push: [0, -1] }, "v": { push: [0, 1] }, "=": { road: true }, "@": { portal: 0 }, "$": { portal: 1 } };
@@ -975,6 +976,7 @@ body.modal { overflow: hidden; }
     if (!v || !v.slots || (!p.fx && !p.fy)) return prim;
     const h = p.hold || null;
     if (prim >= 0 && (useful(prim, h, v) || (v.fire && v.fire[prim]))) return prim; // 불난 칸을 보고 있으면 그 칸 그대로 (옆 칸으로 새지 않게)
+    if (h && prim >= 0 && canDrop(tiles[prim]) && !v.slots[prim]) return prim; // 들고 있을 때 빈 바닥을 보고 있으면 거기에 내려놔요 (레일에 싣기 등)
     const cands = [];
     // 반 칸 더 앞 (바로 앞이 빈 바닥일 때)
     if (prim < 0 || tiles[prim].type === "floor") {
@@ -1006,7 +1008,7 @@ body.modal { overflow: hidden; }
     const st = stageOf(W.stage);
     loadMap(st.id);
     W.slots = new Array(COLS * ROWS).fill(null);
-    W.racks = {}; W.rets = {}; W.sinks = {}; W.returns = []; W.fly = []; W.fire = {};
+    W.racks = {}; W.rets = {}; W.sinks = {}; W.returns = []; W.fly = []; W.fire = {}; W.rats = []; W.ratNext = 0;
     if (st.ext) W.slots[idx(st.ext[0], st.ext[1])] = { k: "ext" }; // 소화기
     let first = true;
     tiles.forEach((t) => {
@@ -1061,7 +1063,7 @@ body.modal { overflow: hidden; }
 
     // 빈손으로 꾹: 썰기, 설거지
     W.players.forEach((p) => {
-      if (!p.on || !p.chop || p.hold) return;
+      if (!p.on || !p.chop || p.hold || p.stun > 0 || p.sn) return;
       const i = targetIdx(p);
       if (i < 0) return;
       const t = tiles[i];
@@ -1093,6 +1095,7 @@ body.modal { overflow: hidden; }
     flyTick(dt);
     beltTick(dt);
     fireTick(dt);
+    ratTick(dt);
 
     // 접시 반납
     for (let j = 0; j < W.returns.length; j++) W.returns[j] -= dt;
@@ -1169,6 +1172,7 @@ body.modal { overflow: hidden; }
   function act(pi) {
     if (W.phase !== "play") return;
     const p = W.players[pi];
+    if (!p.hold && W.rats && W.rats.length && grabFromRat(p)) { p.an = (p.an || 0) + 1; return; } // 쥐가 물고 가는 음식 뺏기
     const i = targetIdx(p);
     if (i < 0) return;
     const t = tiles[i], h = p.hold;
@@ -1353,7 +1357,7 @@ body.modal { overflow: hidden; }
     }
     return out;
   }
-  const spraying = (p) => !!(p && p.on !== false && p.chop && p.hold && p.hold.k === "ext");
+  const spraying = (p) => !!(p && p.on !== false && p.chop && !(p.stun > 0) && !p.sn && p.hold && p.hold.k === "ext");
   function fireTick(dt) {
     const had = Object.keys(W.fire).length;
     if (!had) return;
@@ -1376,6 +1380,97 @@ body.modal { overflow: hidden; }
       if (since > 4) { W.fireMsgAt = W.left; ev({ m: "불이 번지고 있어요! 소화기로 꺼요", bad: true }); }
     }
     if (!Object.keys(W.fire).length) ev({ m: "불을 다 껐어요!", snd: "out" });
+  }
+
+  // ===== 오토바이에 치였을 때: 들고 있던 음식은 뺏겨요 (냄비·바구니·소화기는 그 자리에 떨어뜨려요) =====
+  function bikeHitHost(pi) {
+    if (!W || W.phase !== "play") return;
+    const p = W.players[pi], h = p.hold;
+    if (!h) return;
+    p.hold = null;
+    if (isCont(h) || h.k === "ext") dropFloor(h, Math.floor(p.x), Math.floor(p.y));
+  }
+
+  // ===== 쥐: 구멍에서 나와 조리대 위 음식을 물고 구멍으로 달아나요 =====
+  // 물기 전에 음식을 누가 집으면 그 쥐는 그냥 돌아가요. 물고 가는 쥐 앞에서 빈손으로 집기를 누르면 뺏어 와요.
+  const RAT_GO = 2.4, RAT_RUN = 3.0, RAT_FLEE = 3.8, RAT_BITE = 0.8;
+  const ratFood = (it) => !!it && (isIng(it) || (it.k === "plate" && !!(it.dish || it.items.length)));
+  const NB4 = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+  function bfsFrom(sx, sy) {
+    const prev = new Map([[sy * COLS + sx, -1]]), q = [[sx, sy]];
+    for (let h = 0; h < q.length; h++) {
+      const [x, y] = q[h];
+      for (const [dx, dy] of NB4) {
+        const nx = x + dx, ny = y + dy, k = ny * COLS + nx;
+        if (solid(nx, ny) || prev.has(k)) continue;
+        prev.set(k, y * COLS + x); q.push([nx, ny]);
+      }
+    }
+    return prev;
+  }
+  function pathTo(prev, sx, sy, tx, ty) {
+    let k = ty * COLS + tx;
+    if (!prev.has(k)) return null;
+    const out = [], start = sy * COLS + sx;
+    while (k !== start) { out.push([k % COLS, Math.floor(k / COLS)]); k = prev.get(k); }
+    return out.reverse();
+  }
+  function ratHome(r) { const x = Math.floor(r.x), y = Math.floor(r.y); r.path = pathTo(bfsFrom(x, y), x, y, r.home[0], r.home[1]) || []; }
+  let ratUid = 0;
+  function spawnRat() {
+    const holes = tiles.filter((t) => t.type === "hole").sort(() => Math.random() - 0.5);
+    for (const h of holes) {
+      const home = NB4.map(([dx, dy]) => [h.x + dx, h.y + dy]).find(([x, y]) => !solid(x, y));
+      if (!home) continue;
+      const prev = bfsFrom(home[0], home[1]);
+      let best = null;
+      W.slots.forEach((it, i) => {
+        const t = tiles[i];
+        if (!ratFood(it) || (t.type !== "counter" && t.type !== "board") || W.fire[i]) return;
+        for (const [dx, dy] of NB4) {
+          const path = pathTo(prev, home[0], home[1], t.x + dx, t.y + dy);
+          if (path && (!best || path.length < best.path.length)) best = { i, it, path };
+        }
+      });
+      if (!best) continue;
+      W.rats.push({ id: ++ratUid, x: home[0] + 0.5, y: home[1] + 0.5, home, tgt: best.i, want: best.it, path: best.path, st: "go", t: 0, fx: 0, fy: -1, it: null });
+      ev({ snd: "squeak" });
+      return true;
+    }
+    return false;
+  }
+  function ratTick(dt) {
+    const st = stageOf(W.stage);
+    if (!st.rats || !W.rats) return;
+    const e = st.time - W.left;
+    if (!W.rats.length && e >= (W.ratNext || st.rats.first) && !spawnRat()) W.ratNext = e + 2.5; // 훔칠 게 없으면 조금 뒤에 다시 봐요
+    for (const r of W.rats) {
+      if ((r.st === "go" || r.st === "bite") && W.slots[r.tgt] !== r.want) { r.st = "flee"; ratHome(r); } // 물기 전에 누가 집어 갔어요
+      if (r.st === "bite") {
+        r.t -= dt;
+        if (r.t <= 0) { r.it = r.want; W.slots[r.tgt] = null; delete r.it.bt; r.st = "run"; ratHome(r); ev({ snd: "squeak" }); }
+        continue;
+      }
+      let rem = (r.st === "go" ? RAT_GO : r.st === "run" ? RAT_RUN : RAT_FLEE) * dt;
+      while (rem > 0 && r.path.length) {
+        const cx = r.path[0][0] + 0.5, cy = r.path[0][1] + 0.5, dx = cx - r.x, dy = cy - r.y, d = Math.hypot(dx, dy);
+        if (d < 1e-4) { r.path.shift(); continue; }
+        const step = Math.min(rem, d);
+        r.x += (dx / d) * step; r.y += (dy / d) * step; rem -= step; r.fx = dx / d; r.fy = dy / d;
+        if (step >= d) r.path.shift();
+      }
+      if (r.path.length) continue;
+      if (r.st === "go") { const t = tiles[r.tgt], dx = t.x + 0.5 - r.x, dy = t.y + 0.5 - r.y, l = Math.hypot(dx, dy) || 1; r.st = "bite"; r.t = RAT_BITE; r.fx = dx / l; r.fy = dy / l; }
+      else { r.gone = true; W.ratNext = e + st.rats.gap[0] + Math.random() * (st.rats.gap[1] - st.rats.gap[0]); } // 구멍으로 쏙. 물고 간 음식은 사라져요
+    }
+    W.rats = W.rats.filter((r) => !r.gone);
+  }
+  function grabFromRat(p) {
+    const rx = p.x + p.fx * 0.6, ry = p.y + p.fy * 0.6;
+    const r = W.rats.find((q) => q.it && Math.hypot(q.x - rx, q.y - ry) < 0.8);
+    if (!r) return false;
+    p.hold = r.it; r.it = null; r.st = "flee"; ratHome(r);
+    return true;
   }
 
   // ===== 컨베이어, 무빙워크 =====
@@ -1492,7 +1587,8 @@ body.modal { overflow: hidden; }
       sl, racks: W.racks, rets: W.rets, sinks: W.sinks, od: W.orders, prog: W.prog, last: W.last, so: !!W.solo,
       fi: Object.keys(W.fire).map((i) => [+i, Math.round(W.fire[i].hp * 100) / 100]),
       fly: W.fly.map((f) => ({ it: f.it, x: f.x, y: f.y, dx: f.dx, dy: f.dy, d: f.d })),
-      pl: W.players.map((p) => ({ x: p.x, y: p.y, fx: p.fx, fy: p.fy, hold: p.hold, chop: p.chop, on: p.on, ch: p.ch, an: p.an, ds: p.ds })),
+      pl: W.players.map((p) => ({ x: p.x, y: p.y, fx: p.fx, fy: p.fy, hold: p.hold, chop: p.chop, on: p.on, ch: p.ch, an: p.an, ds: p.ds, sn: p.sn || p.stun > 0 ? 1 : 0 })),
+      rt: (W.rats || []).map((r) => ({ id: r.id, x: Math.round(r.x * 100) / 100, y: Math.round(r.y * 100) / 100, fx: r.fx, fy: r.fy, st: r.st, it: r.it })),
       sp: specs.size
     };
   }
@@ -1500,13 +1596,13 @@ body.modal { overflow: hidden; }
     const slots = new Array(COLS * ROWS).fill(null);
     s.sl.forEach(([i, it]) => (slots[i] = it));
     specN = s.sp || 0;
-    return { phase: s.ph, stage: s.st, rs: s.rs, left: s.left, cd: s.cd, score: s.sc, combo: s.cb, served: s.sv, missed: s.ms, slots, racks: s.racks, rets: s.rets, sinks: s.sinks, orders: s.od, prog: s.prog, last: s.last, solo: !!s.so, fire: Object.fromEntries((s.fi || []).map(([i, hp]) => [i, { hp }])), fly: s.fly, players: s.pl, at: performance.now() };
+    return { phase: s.ph, stage: s.st, rs: s.rs, left: s.left, cd: s.cd, score: s.sc, combo: s.cb, served: s.sv, missed: s.ms, slots, racks: s.racks, rets: s.rets, sinks: s.sinks, orders: s.od, prog: s.prog, last: s.last, solo: !!s.so, rats: s.rt || [], fire: Object.fromEntries((s.fi || []).map(([i, hp]) => [i, { hp }])), fly: s.fly, players: s.pl, at: performance.now() };
   }
 
   // ===== 이동 =====
   const keys = new Set();
   const touchIn = { x: 0, y: 0, m: 0, chop: false };
-  const chopHeld = () => keys.has("KeyE") || touchIn.chop; // 작업(썰기·설거지·불 끄기)은 E를 꾹
+  const chopHeld = () => !(me && me.stun > 0) && (keys.has("KeyE") || touchIn.chop); // 작업(썰기·설거지·불 끄기)은 E를 꾹
   function syncChop() { if (role === "host" && W) W.players[0].chop = chopHeld(); }
   let viewRot = false; // 세로 폰 3D: 주방을 90도 돌려서 길게 보여줘요 (화면 위 = 주방 오른쪽)
   function inputVec() {
@@ -1600,7 +1696,8 @@ body.modal { overflow: hidden; }
         me.y = ty; me.x += b.dir * 0.35; collide(me, "x", b.dir);
         me.stun = BIKE_STUN; me.vx = 0; me.vy = 0; me.dashT = 0;
         spawnDust(me.x, me.y, b.dir, 0);
-        toast("앗, 오토바이에 밀려났어요!", true); sfx.bump();
+        sfx.bump();
+        if (role === "host") bikeHitHost(0); else if (net) net.send({ t: "hit", rs: guestRs }); // 들고 있던 음식은 방장 쪽에서 빼앗아요
         if (navigator.vibrate) { try { navigator.vibrate(40); } catch (e) {} }
       }
     }
@@ -1797,6 +1894,11 @@ body.modal { overflow: hidden; }
       const n = v.rets ? v.rets[t.i] || 0 : 0;
       if (n > 0) { for (let k = Math.min(3, n) - 1; k >= 0; k--) drawIcon(ctx, "dirty", px + s / 2, py + s * 0.52 - k * 3, s * 0.55); badge(ctx, px + s * 0.8, py + s * 0.2, String(n), "#7a5a3a", s * 0.22); }
       label("반납", px + s / 2, py + s * 0.82, s * 0.18, "#fff8e6");
+    } else if (t.type === "hole") { // 쥐구멍: 바닥 쪽 모서리에 까만 반원
+      const d = [[0, 1], [0, -1], [1, 0], [-1, 0]].find(([dx, dy]) => !solid(t.x + dx, t.y + dy)) || [0, 1];
+      const a = Math.atan2(d[1], d[0]), cx = px + s / 2 + d[0] * s * 0.46, cy = py + s / 2 + d[1] * s * 0.46, r = s * 0.25;
+      ctx.beginPath(); ctx.arc(cx, cy, r, a + Math.PI / 2, a + Math.PI * 1.5); ctx.closePath();
+      ctx.fillStyle = "#1a120c"; ctx.fill(); ctx.lineWidth = Math.max(2, s * 0.05); ctx.strokeStyle = "#5a3d26"; ctx.stroke();
     }
   }
 
@@ -1821,6 +1923,40 @@ body.modal { overflow: hidden; }
       dot(c, cx + Math.sin(ph * 6 + seed) * s * 0.14, cy - s * 0.45 - ph * s * 0.9, s * (0.12 + ph * 0.2), "#4a4240");
       c.globalAlpha = 1;
     }
+  }
+  // 별 (기절 표시)
+  function drawStar(c, x, y, r, col) {
+    c.beginPath();
+    for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, rr = k % 2 ? r * 0.45 : r; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+    c.closePath(); c.fillStyle = col; c.fill(); c.lineWidth = Math.max(1, r * 0.18); c.strokeStyle = "#b07d00"; c.stroke();
+  }
+  function dizzyOf(i) { return i === myIdx ? !!(me && me.stun > 0) : !!(view && view.players[i] && view.players[i].sn); }
+  // 쥐 (2D). 몸이 바라보는 쪽(fx, fy)으로 돌아가고, 문 음식은 입 앞에
+  function drawRat(c, x, y, s, fx, fy, now, it, st) {
+    c.save(); c.translate(x, y);
+    c.beginPath(); c.ellipse(0, s * 0.14, s * 0.26, s * 0.08, 0, 0, Math.PI * 2); c.fillStyle = "rgba(0,0,0,.2)"; c.fill();
+    c.rotate(Math.atan2(fy || 0, fx || 1));
+    const wig = st === "bite" ? 0 : Math.sin(now / 55) * 0.08;
+    c.strokeStyle = "#d99aa4"; c.lineWidth = Math.max(1.5, s * 0.035); c.lineCap = "round";
+    c.beginPath(); c.moveTo(-s * 0.2, 0); c.quadraticCurveTo(-s * 0.4, s * (0.16 + wig), -s * 0.56, s * (0.02 - wig)); c.stroke();
+    c.beginPath(); c.ellipse(0, 0, s * 0.24, s * 0.15, 0, 0, Math.PI * 2); c.fillStyle = "#8a8f96"; c.fill();
+    c.beginPath(); c.ellipse(s * 0.22, 0, s * 0.13, s * 0.1, 0, 0, Math.PI * 2); c.fill();
+    for (const sy of [-1, 1]) { dot(c, s * 0.16, sy * s * 0.11, s * 0.065, "#b9bdc3"); dot(c, s * 0.16, sy * s * 0.11, s * 0.035, "#e8a3ad"); dot(c, s * 0.27, sy * s * 0.045, s * 0.022, "#1d1d1f"); }
+    dot(c, s * 0.35, 0, s * 0.03, "#e58fa0");
+    c.restore();
+    if (it) drawItem(c, it, x + (fx || 0) * s * 0.42, y + (fy || 0) * s * 0.42 - s * 0.06, s * 0.36, now);
+  }
+  let ratDraw = [];
+  const ratSm = new Map();
+  function smoothRats(dt) {
+    const src = (view && view.rats) || [], seen = new Set(), k = Math.min(1, dt * 14);
+    ratDraw = src.map((r) => {
+      let q = ratSm.get(r.id);
+      if (!q) { q = { x: r.x, y: r.y }; ratSm.set(r.id, q); }
+      q.x += (r.x - q.x) * k; q.y += (r.y - q.y) * k; seen.add(r.id);
+      return { id: r.id, x: q.x, y: q.y, fx: r.fx, fy: r.fy, st: r.st, it: r.it };
+    });
+    for (const id of [...ratSm.keys()]) if (!seen.has(id)) ratSm.delete(id);
   }
   // 소화기 뿌리는 중이면 거품을 뿜어요 (모든 화면에서 각자 그려요)
   let lastHiss = 0, lastCrackle = 0;
@@ -1938,6 +2074,8 @@ body.modal { overflow: hidden; }
     // 불
     const fires = view.fire || {};
     for (const k in fires) { const t = tiles[+k]; drawFire(ctx, (t.x + 0.5) * TS, (t.y + 0.5) * TS, TS, now, fires[k].hp, +k); }
+    // 쥐
+    ratDraw.forEach((r) => drawRat(ctx, r.x * TS, r.y * TS, TS, r.fx, r.fy, now, r.it, r.st));
 
     // 오토바이와 경고
     const bk = bikeNow(view, now);
@@ -2000,6 +2138,14 @@ body.modal { overflow: hidden; }
       dot(ctx, x * TS, (z - h * 0.5) * TS, TS * (f.r + ag * 0.22), "#ffffff");
       ctx.globalAlpha = 1;
     }
+    // 기절: 머리 위를 도는 별
+    list.forEach(({ q, i }) => {
+      if (!dizzyOf(i)) return;
+      for (let k = 0; k < 3; k++) {
+        const a = now / 260 + (k * Math.PI * 2) / 3;
+        drawStar(ctx, q.x * TS + Math.cos(a) * TS * 0.32, q.y * TS - TS * 1.0 + Math.sin(a) * TS * 0.1, TS * 0.11, "#ffd23f");
+      }
+    });
     // 매출 팝업
     for (let j = pops.length - 1; j >= 0; j--) {
       const q = pops[j], ag = (now - q.t0) / 1300;
@@ -2835,7 +2981,7 @@ body.modal { overflow: hidden; }
     const own = (x) => (junk.push(x), x);
     let builtTiles = null, builtStage = 0, dirty = true;
     const flames = {}, knives = {}, oils = {};
-    const slotO = new Map(), extraO = new Map(), flyO = new Map();
+    const slotO = new Map(), extraO = new Map(), flyO = new Map(), ratO = new Map();
     function sync(map, key, sig, make, id) {
       let e = map.get(key);
       if (!sig) { if (e) { dynRoot.remove(e.obj); map.delete(key); } return null; }
@@ -2979,7 +3125,27 @@ body.modal { overflow: hidden; }
     const _bq = new T.Quaternion().setFromEuler(new T.Euler(-Math.PI / 2, 0, 0)), _bm = new T.Matrix4(), _bp = new T.Vector3(), _bs = new T.Vector3();
     let nblob = 0;
     function blobAt(x, y, z, s) { if (nblob >= 220) return; _bm.compose(_bp.set(x, y + 0.004, z), _bq, _bs.set(s, s, 1)); iblob.setMatrixAt(nblob++, _bm); }
-    function clearDyn() { [slotO, extraO, flyO].forEach((mp) => { mp.forEach((e) => dynRoot.remove(e.obj)); mp.clear(); }); }
+    function clearDyn() { [slotO, extraO, flyO].forEach((mp) => { mp.forEach((e) => dynRoot.remove(e.obj)); mp.clear(); }); ratO.forEach((r) => dynRoot.remove(r.g)); ratO.clear(); }
+    // 쥐: 회색 몸, 분홍 코·꼬리. 머리가 +z 쪽
+    function ratModel() {
+      const g = new T.Group(), gray = mat("#8a8f96"), light = mat("#b9bdc3"), pink = mat("#e8a3ad"), dark = mat("#1d1d1f");
+      part(g, sphG(16), gray, 0, 0.1, 0, 0, 0, 0, 0.13, 0.1, 0.2);
+      part(g, sphG(14), gray, 0, 0.13, 0.19, 0, 0, 0, 0.085, 0.08, 0.1);
+      for (const sx of [-1, 1]) {
+        part(g, sphG(10), light, sx * 0.065, 0.21, 0.15, 0, 0, sx * 0.3, 0.05, 0.05, 0.016);
+        part(g, sphG(10), pink, sx * 0.065, 0.21, 0.157, 0, 0, sx * 0.3, 0.03, 0.03, 0.01);
+        part(g, sphG(8), dark, sx * 0.04, 0.16, 0.27, 0, 0, 0, 0.014);
+        part(g, sphG(8), light, sx * 0.07, 0.025, 0.1, 0, 0, 0, 0.03, 0.02, 0.04);
+        part(g, sphG(8), light, sx * 0.07, 0.025, -0.1, 0, 0, 0, 0.03, 0.02, 0.04);
+      }
+      part(g, sphG(8), pink, 0, 0.135, 0.29, 0, 0, 0, 0.022);
+      const tail = new T.Group(); tail.position.set(0, 0.08, -0.19); g.add(tail);
+      part(tail, cylG(0.012, 0.005, 0.34, 6), pink, 0, 0, -0.16, Math.PI / 2 - 0.25, 0, 0);
+      const hold = new T.Group(); hold.position.set(0, 0.11, 0.36); g.add(hold);
+      g.scale.setScalar(1.9);
+      g.userData = { hold, tail, held: null, sig: "" };
+      return g;
+    }
 
     function buildStage() {
       while (stageRoot.children.length) stageRoot.remove(stageRoot.children[0]);
@@ -3153,6 +3319,15 @@ body.modal { overflow: hidden; }
             M.add(sphG(10), L(t, 0, CH + 0.28, -0.36, 0, 0, 0, 0.035), "#c3ccd1");
             M.add(boxG(0.08, 0.02, 0.03), L(t, 0.1, CH + 0.3, -0.36), "#3b7dd8");
             label(t, "개수대", CH + 0.04, "#3b7dd8");
+            return;
+          }
+          case "hole": { // 쥐구멍: 조리대 바닥 쪽에 까만 아치 구멍
+            cabinet(t);
+            // 원판을 바닥 높이에 반쯤 묻어서 위쪽 반만 보이게 (아치 모양)
+            A.add(cylG(0.17, 0.17, 0.05, 20), L(t, 0, 0, 0.475, Math.PI / 2, 0, 0), "#120c08");
+            A.add(torG(0.18, 0.025, 0, 6, 20), L(t, 0, 0, 0.5), "#5a3d26");
+            A.add(cylG(0.2, 0.2, 0.01, 20), mtx(t.x + 0.5, CH + 0.004, t.y + 0.5), "#1a120c"); // 위에서도 보이게 윗면에 까만 구멍
+            label(t, "쥐구멍", CH, "#2a1d14");
             return;
           }
           case "return": {
@@ -3393,6 +3568,7 @@ body.modal { overflow: hidden; }
         }
         if (c.held) c.held.scale.setScalar(0.85 * popAt(c.heldBorn, now));
         if (c.held && c.held.userData.tick) c.held.userData.tick(now, q.hold, false);
+        c.root.rotation.z = dizzyOf(i) ? Math.sin(now / 110) * 0.16 : 0; // 기절하면 비틀비틀
         if (w && now - a.lastBit > (w.wash ? 90 : 55)) {
           a.lastBit = now;
           const tt = tiles[w.i];
@@ -3416,6 +3592,26 @@ body.modal { overflow: hidden; }
           }
         }
       }
+
+      // 쥐
+      const seenR = new Set();
+      ratDraw.forEach((r) => {
+        let e = ratO.get(r.id);
+        if (!e) { e = { g: ratModel() }; ratO.set(r.id, e); dynRoot.add(e.g); }
+        seenR.add(r.id);
+        const ud = e.g.userData, moving = r.st !== "bite";
+        e.g.position.set(r.x, moving ? Math.abs(Math.sin(now / 45)) * 0.025 : 0, r.y);
+        e.g.rotation.y = Math.atan2(r.fx || 0, r.fy || 1);
+        ud.tail.rotation.y = Math.sin(now / (moving ? 90 : 220)) * 0.5;
+        const sig = r.it ? itemSig(r.it) : "";
+        if (sig !== ud.sig) {
+          if (ud.held) ud.hold.remove(ud.held);
+          ud.held = r.it ? itemModel(r.it) : null; ud.sig = sig;
+          if (ud.held) { ud.held.scale.setScalar(0.36); ud.hold.add(ud.held); }
+        }
+        blobAt(r.x, 0, r.y, 0.55);
+      });
+      for (const [id, e] of [...ratO]) if (!seenR.has(id)) { dynRoot.remove(e.g); ratO.delete(id); }
 
       // 날아가는 재료
       const fl = view.fly || [];
@@ -3536,6 +3732,15 @@ body.modal { overflow: hidden; }
           }
         }
       });
+      // 기절: 머리 위를 도는 별
+      list.forEach(({ q, i }) => {
+        if (!dizzyOf(i)) return;
+        for (let k = 0; k < 3; k++) {
+          const a = now / 260 + (k * Math.PI * 2) / 3, wx = q.x + Math.cos(a) * 0.3, wz = q.y + Math.sin(a) * 0.3;
+          const [x, y] = S(wx, q.ch === "rabbit" ? 2.0 : 1.7, wz);
+          drawStar(c, x, y, Math.max(5, unit(wx, 1.7, wz) * 0.09), "#ffd23f");
+        }
+      });
       // 이름표, 들고 있는 접시 수
       list.forEach(({ q, i, mine }) => {
         const ch = chars[i];
@@ -3649,7 +3854,7 @@ body.modal { overflow: hidden; }
     if (slowSamples.length < 90) return;
     slowChecked = true;
     const sorted = slowSamples.slice().sort((a, b) => a - b), mid = sorted[sorted.length >> 1];
-    if (mid > 0.09) { setView(false, false); toast("화면이 버벅여서 2D로 바꿨어요. 오른쪽 위 버튼으로 3D로 돌릴 수 있어요"); }
+    if (mid > 0.09) { setView(false, false); }
   }
   function portraitOf(k, slot) {
     if (!R3) return null;
@@ -3713,7 +3918,8 @@ body.modal { overflow: hidden; }
     fire() { noise(0.7, 0.16, 0, 500, 0.5); tone(150, 0.5, "sawtooth", 0.05, 0, 70); },
     crackle() { noise(0.05, 0.035 + Math.random() * 0.03, 0, 1400 + Math.random() * 1600, 1.2); },
     spray() { noise(0.18, 0.06, 0, 3800, 0.6); },
-    out() { tone(660, 0.1, "sine", 0.1); tone(990, 0.2, "sine", 0.1, 0.09); }
+    out() { tone(660, 0.1, "sine", 0.1); tone(990, 0.2, "sine", 0.1, 0.09); },
+    squeak() { tone(2100, 0.07, "square", 0.035, 0, 2900); tone(2300, 0.06, "square", 0.03, 0.09, 3100); }
   };
   ["pointerdown", "keydown"].forEach((t) => window.addEventListener(t, () => { if (sndOn) audio(); }, true));
   // 음소거: 이 기기에서만, 다음에 와도 기억해요
@@ -3755,7 +3961,7 @@ body.modal { overflow: hidden; }
   window.addEventListener("keydown", (e) => {
     if (e.code === "Escape" && setOpen()) { e.preventDefault(); closeModal(); return; }
     // M 키로 바로 음소거 (글자 입력칸에서는 빼고)
-    if (e.code === "KeyM" && !e.repeat && !(e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA"))) { setSound(!sndOn); if (sndOn) sfx.order(); if (!setOpen()) toast(sndOn ? "소리를 켰어요" : "소리를 껐어요 (음소거)"); }
+    if (e.code === "KeyM" && !e.repeat && !(e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA"))) { setSound(!sndOn); if (sndOn) sfx.order(); }
   }, true);
 
   // 화구 위 그릇이 다 익고, 타기 시작하고, 다 탔을 때 소리 (두 화면 각자)
@@ -3842,7 +4048,6 @@ body.modal { overflow: hidden; }
     clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add("hide"), 1900);
   }
   function showEvent(e) {
-    if (e.m) toast(e.m, e.bad);
     if (e.pop) { pops.push({ i: e.pop.i, text: e.pop.text, t0: performance.now() }); sfx.serve(); }
     if (e.snd && sfx[e.snd]) sfx[e.snd]();
   }
@@ -3981,7 +4186,7 @@ body.modal { overflow: hidden; }
   }
 
   // 대기실: 단계
-  const MINI_COL = { counter: "#c98b4f", wall: "#6d4a30", crate: "#8f5d2c", board: "#f0d6a4", stove: "#2f3336", fryer: "#e5b347", serve: "#d7372b", trash: "#6f7a7c", plates: "#ffffff", sink: "#8fc3e0", return: "#5a3d26", belt: "#34373a" };
+  const MINI_COL = { counter: "#c98b4f", wall: "#6d4a30", crate: "#8f5d2c", board: "#f0d6a4", stove: "#2f3336", fryer: "#e5b347", serve: "#d7372b", trash: "#6f7a7c", plates: "#ffffff", sink: "#8fc3e0", return: "#5a3d26", belt: "#34373a", hole: "#2a1d14" };
   const MINI_CH = { "~": "#cfe8f5", "}": "#7d868c", "{": "#7d868c", "^": "#7d868c", v: "#7d868c", "=": "#45484d", "@": "#a855f7", "$": "#14b8a6", X: "#f2b31b", Y: "#f2b31b" };
   function drawMini(c, s) {
     const u = 10;
@@ -4203,13 +4408,16 @@ body.modal { overflow: hidden; }
           renderPicker();
         } else if (d.t === "p") {
           if (d.rs != null && d.rs !== W.rs) return;
-          const p = W.players[1]; p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; p.chop = !!d.ch; if (d.ds != null) p.ds = d.ds;
+          const p = W.players[1]; p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; p.chop = !!d.ch; p.sn = !!d.sn; if (d.ds != null) p.ds = d.ds;
         } else if (d.t === "a") {
           if (d.rs != null && d.rs !== W.rs) return;
           const p = W.players[1]; p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; act(1);
         } else if (d.t === "th") {
           if (d.rs != null && d.rs !== W.rs) return;
           const p = W.players[1]; p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; throwItem(1, d.ax, d.ay);
+        } else if (d.t === "hit") { // 친구가 오토바이에 치였어요
+          if (d.rs != null && d.rs !== W.rs) return;
+          bikeHitHost(1);
         }
       },
       leave(id) {
@@ -4218,7 +4426,6 @@ body.modal { overflow: hidden; }
         if (id !== guestId) return;
         guestId = null; guestOn = false; W.players[1].on = false; W.players[1].hold = null; pendingGuestEvents = [];
         if (W.phase === "wait") $("roomStatus").textContent = "친구가 나갔어요. 다시 들어오길 기다리는 중이에요.";
-        toast("친구 연결이 끊겼어요", true);
         ev({ m: "친구가 나갔어요", bad: true, to: "spec" });
         renderPicker(); renderStages();
       },
@@ -4319,7 +4526,7 @@ body.modal { overflow: hidden; }
     });
     timers.push(setInterval(() => {
       if (!net || !view || role !== "guest" || !me) return;
-      net.send({ t: "p", rs: guestRs, x: me.x, y: me.y, fx: me.fx, fy: me.fy, ch: chopHeld(), ds: me.ds });
+      net.send({ t: "p", rs: guestRs, x: me.x, y: me.y, fx: me.fx, fy: me.fy, ch: chopHeld(), ds: me.ds, sn: me.stun > 0 ? 1 : 0 });
     }, 50));
     timers.push(setInterval(() => { if (net && role === "spec") net.send({ t: "hb" }); }, 2000)); // 관전: 아직 보고 있다는 신호
   }
@@ -4334,14 +4541,14 @@ body.modal { overflow: hidden; }
     return role === "host" ? W.players[0].hold : view.players[1] && view.players[1].hold;
   }
   function doAct(buzz) {
-    if (!view || view.phase !== "play" || !me) return;
+    if (!view || view.phase !== "play" || !me || me.stun > 0) return;
     anim[myIdx].reach = REACH;
     if (role === "host") act(0);
     else if (net) net.send({ t: "a", rs: guestRs, x: me.x, y: me.y, fx: me.fx, fy: me.fy });
     if (buzz && navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
   }
   function workPress(buzz) {
-    if (!view || view.phase !== "play" || !me) return;
+    if (!view || view.phase !== "play" || !me || me.stun > 0) return;
     if (!isIng(myHold())) return; // 재료를 들고 있을 때만 던지기, 빈손이면 꾹 눌러서 작업
     anim[myIdx].reach = REACH;
     if (role === "host") throwItem(0, me.ax, me.ay);
@@ -4349,7 +4556,7 @@ body.modal { overflow: hidden; }
     if (buzz && navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
   }
   function doDash(buzz) {
-    if (!view || view.phase !== "play" || !me || (me.dashCD || 0) > 0) return;
+    if (!view || view.phase !== "play" || !me || me.stun > 0 || (me.dashCD || 0) > 0) return;
     const v = inputVec();
     let dx = v.x, dy = v.y;
     if (!dx && !dy) { dx = me.ax || 0; dy = me.ay == null ? 1 : me.ay; }
@@ -4520,6 +4727,7 @@ body.modal { overflow: hidden; }
           if (p.ds != null && p.ds !== anim[i].ds) { const first = anim[i].ds === 0 && p.ds > 1; anim[i].ds = p.ds; if (!first) { anim[i].dashT = DASH_TIME; spawnDust(pos.x, pos.y, p.fx || 0, p.fy || 0); } }
         }
       });
+      smoothRats(dt);
       sprayFx(now);
       draw(now); hud(); phaseUI(); watch(now); checkSlow(raw);
       const ph = padHidden();
