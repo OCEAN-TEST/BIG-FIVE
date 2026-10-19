@@ -471,7 +471,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 20;
+  const VERSION = 21;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -1081,7 +1081,7 @@ body.modal { overflow: hidden; }
   }
 
   // 움직임 상태 (두 화면 각자 계산)
-  const anim = [0, 1, 2, 3].map(() => ({ lx: null, ly: null, phase: 0, moving: false, reach: 0, an: 0, ds: 0, dashT: 0, ddx: 0, ddy: 0, lastBit: 0, hitT: -1e9, fallT: -1e9, wasDizzy: false, deadAt: 0 }));
+  const anim = [0, 1, 2, 3].map(() => ({ lx: null, ly: null, phase: 0, moving: false, reach: 0, an: 0, ds: 0, dashT: 0, ddx: 0, ddy: 0, lastBit: 0, hitT: -1e9, fallT: -1e9, wasDizzy: false, deadAt: 0, fallAt: 0 }));
   const bubbles = [], hits = []; // 머리 위 말풍선(비켜!·채팅), 밀친 자리 번쩍
   const REACH = 0.22;
   function stepAnim(i, x, y, dt) {
@@ -2008,6 +2008,7 @@ body.modal { overflow: hidden; }
   }
   function dieMe(why) {
     why = why === "fall" ? "fall" : "train";
+    if (why === "fall" && myIdx >= 0) anim[myIdx].fallAt = performance.now();
     me.dead = DEAD_TIME; me.vx = 0; me.vy = 0; me.dashT = 0; me.kbT = 0; me.stun = 0;
     const v = $("viewBox"); v.classList.remove("shake"); void v.offsetWidth; v.classList.add("shake");
     if (navigator.vibrate) { try { navigator.vibrate([60, 40, 60]); } catch (e) {} }
@@ -2548,7 +2549,15 @@ body.modal { overflow: hidden; }
         bits.push({ x: t.x + 0.5 + (Math.random() - 0.5) * 0.4, y: t.y + 0.5, vx: (Math.random() - 0.5) * 1.6, vy: -1.4 - Math.random(), t0: now, col: "#bfe4f7" });
       }
       const a = anim[i];
-      if (isDead(i)) return;
+      const fk = fallK(i, now);
+      if (isDead(i) && fk < 0) return;
+      if (fk >= 0) { // 떨어지는 중: 그 자리에서 빙글 돌며 작아지고 흐려져요
+        const k = Math.max(0.03, 1 - fk * fk);
+        ctx.save(); ctx.globalAlpha = 1 - fk * 0.6; ctx.translate(q.x * TS, q.y * TS); ctx.rotate(fk * 8); ctx.scale(k, k); ctx.translate(-q.x * TS, -q.y * TS);
+        drawChar(ctx, TS * 1.15, q.x * TS, q.y * TS, { ch: q.ch, slot: i, fx: q.fx, fy: q.fy, hold: null, chop: false, wash: false, moving: false, phase: 0, reach: 0, dash: 0, ddx: 0, ddy: 0, now, isMe: mine || myIdx < 0 });
+        ctx.restore();
+        return;
+      }
       drawChar(ctx, TS * 1.15, q.x * TS, q.y * TS, { ch: q.ch, slot: i, fx: q.fx, fy: q.fy, hold: q.hold, chop: !!w, wash: !!(w && w.wash), moving: a.moving, phase: a.phase, reach: reachAmt(i), dash: a.dashT > 0 ? a.dashT / DASH_TIME : 0, ddx: a.ddx, ddy: a.ddy, now, isMe: mine || myIdx < 0 });
     });
     drawTalk(ctx, now, (i) => { const e = list.find((o) => o.i === i); return e ? [e.q.x * TS, e.q.y * TS - TS * 0.35, e.q.y * TS - TS * 1.05, TS] : null; });
@@ -4311,7 +4320,8 @@ body.modal { overflow: hidden; }
           if (c) { scene.remove(c.root); c.disp.forEach((g) => g.dispose()); }
           c = chars[i] = buildChar(q.ch, i); scene.add(c.root);
         }
-        c.root.visible = !isDead(i); // 기차에 치이면 다시 나올 때까지 안 보여요
+        const fk = fallK(i, now);
+        c.root.visible = !isDead(i) || fk >= 0; // 기차에 치이면 다시 나올 때까지 안 보여요. 낭떠러지는 떨어지는 동안만 보여요
         if (q.fx || q.fy) {
           let d = Math.atan2(q.fx, q.fy) - yaw3[i];
           d = Math.atan2(Math.sin(d), Math.cos(d));
@@ -4338,6 +4348,13 @@ body.modal { overflow: hidden; }
         c.root.rotation.order = "YXZ";
         c.root.rotation.x = -1.3 * ease; c.root.position.y = 0.12 * ease;
         c.root.rotation.z = dz && lie <= 0 ? Math.sin(now / 110) * 0.16 : 0; // 일어난 뒤 비틀비틀
+        if (fk >= 0) { // 낭떠러지: 팔다리 버둥대며 빙글빙글, 아래로 멀어지듯 작아져요
+          const k = Math.max(0.03, 1 - fk * fk);
+          c.root.scale.setScalar(1.3 * k);
+          c.root.rotation.y = yaw3[i] + fk * fk * 14;
+          c.root.rotation.x = 0.5 * fk; c.root.rotation.z = Math.sin(now / 60) * 0.35 * (1 - fk);
+          c.root.position.y = -0.02 * fk;
+        } else if (c.root.scale.x !== 1.3) c.root.scale.setScalar(1.3);
         // 밀쳐지면: 몸이 뒤로 휘청하고 납작해졌다 돌아와요
         const ha = (now - a.hitT) / 1000;
         if (ha < 0.35) {
@@ -4899,14 +4916,23 @@ body.modal { overflow: hidden; }
     } else if (e.fx === "chat") say(e.i, e.s, false);
     else if (e.fx === "dead") {
       say(e.i, e.why === "fall" ? "으아아" : "으악!", true); bubbles[bubbles.length - 1].dur = 2200;
+      if (e.why === "fall" && e.i !== myIdx) anim[e.i].fallAt = now;
       hits.push({ j: e.i, t0: now });
       if (e.i !== myIdx) anim[e.i].deadAt = now;
     }
   }
+  // 낭떠러지로 떨어지는 중: 빙글 돌면서 작아져요 (0~1, 아니면 -1)
+  const FALL_MS = 900;
+  function fallK(i, now) {
+    const a = anim[i];
+    if (!a.fallAt || !isDead(i)) return -1;
+    const u = (now - a.fallAt) / FALL_MS;
+    return u >= 0 && u < 1 ? u : u < 0 ? 0 : -1;
+  }
   // 기차에 치여 쓰러진 뒤 다시 나올 때까지 남은 초 (안 쓰러졌으면 0)
   function deadLeft(i, now) {
     const a = anim[i];
-    if (!isDead(i)) { a.deadAt = 0; return 0; }
+    if (!isDead(i)) { a.deadAt = 0; a.fallAt = 0; return 0; }
     if (i === myIdx && me) return me.dead;
     if (!a.deadAt) a.deadAt = now;
     return Math.max(0.05, DEAD_TIME - (now - a.deadAt) / 1000);
