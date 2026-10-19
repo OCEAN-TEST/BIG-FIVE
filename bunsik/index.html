@@ -125,7 +125,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 .opts { position: absolute; top: 34px; right: 10px; z-index: 6; display: flex; gap: 6px; }
 .sndbtn { font-family: var(--font-body); font-size: 12px; line-height: 1.6; color: #fff; background: rgba(36,26,20,.7); padding: 2px 10px; border-radius: 999px; border: 0; cursor: pointer; }
 .sndbtn[aria-pressed="false"] { color: #cdbca8; }
-#game.touch.portrait .opts { top: auto; bottom: 232px; right: 16px; }
+#game.touch.portrait .opts { top: auto; bottom: 200px; right: 16px; }
 .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .intro { background: var(--paper); border-radius: 14px; padding: 16px 26px; max-width: min(560px, 92%); display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
 .intro .lv { font-family: var(--font-ui); color: var(--soft); font-size: 16px; }
@@ -195,7 +195,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 #game.touch.portrait .orders { grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; }
 #game.touch.portrait .ticket { flex: 1 1 40%; }
 #game.touch.portrait .stage { align-items: flex-start; }
-#game.touch.portrait .peer { top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: 266px; }
+#game.touch.portrait .peer { top: auto; right: auto; left: 16px; transform: none; bottom: 204px; }
 @media (prefers-reduced-motion: reduce) { .ticket { animation: none; } }
 </style>
 </head>
@@ -1185,7 +1185,12 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   const touchIn = { x: 0, y: 0, m: 0, chop: false };
   const chopHeld = () => keys.has("ShiftLeft") || keys.has("ShiftRight") || touchIn.chop;
   function syncChop() { if (role === "host" && W) W.players[0].chop = chopHeld(); }
+  let viewRot = false; // 세로 폰 3D: 주방을 90도 돌려서 길게 보여줘요 (화면 위 = 주방 오른쪽)
   function inputVec() {
+    const v = rawInput();
+    return viewRot && (v.x || v.y) ? { x: -v.y, y: v.x } : v;
+  }
+  function rawInput() {
     if (touchIn.m > 0) { const f = touchIn.m >= 0.55 ? 1 : 0.45 + touchIn.m; return { x: touchIn.x * f, y: touchIn.y * f }; }
     let x = 0, y = 0;
     if (keys.has("KeyA") || keys.has("ArrowLeft")) x -= 1;
@@ -1255,13 +1260,16 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     const dpr = window.devicePixelRatio || 1;
     if (use3D()) { // 3D: 남는 칸을 다 쓰고, 2D 캔버스는 그 위에 막대·글자만 그려요
       w = Math.max(240, Math.floor(w)); h = Math.max(160, Math.floor(h));
-      const got = R3.resize(w, h, touchMode && window.innerHeight > window.innerWidth);
+      const tall = touchMode && window.innerHeight > window.innerWidth;
+      viewRot = tall;
+      const got = R3.resize(w, h, tall, tall);
       w = got.w; h = got.h;
       cv.style.width = w + "px"; cv.style.height = h + "px";
       cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       return;
     }
+    viewRot = false;
     cv.style.width = TS * COLS + "px"; cv.style.height = TS * ROWS + "px";
     cv.width = Math.round(TS * COLS * dpr); cv.height = Math.round(TS * ROWS * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1488,11 +1496,11 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   const CH = 0.56; // 조리대 높이
   const SIGN_FONT = '"Black Han Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
   const PAL = {
-    1: { floor: ["#ead8b4", "#e0caa0"], body: "#c47f45", top: "#e6c48f", knob: "#7a4f2c", kick: "#5a3d26", wall: ["#f4e6c8", "#e3cfa6"], band: "#d7372b", sign: "#ffcf33", ink: "#d7372b", wblk: "#9b6a45", wcap: "#c99a68" },
-    2: { floor: ["#dde7ec", "#cfdbe2"], body: "#5f86a8", top: "#e4ebee", knob: "#3d5a73", kick: "#34495a", wall: ["#e3edf3", "#c9d9e4"], band: "#3b7dd8", sign: "#ffffff", ink: "#2f64ad", wblk: "#7d9bb5", wcap: "#a9c0d3" },
-    3: { floor: ["#dcebe1", "#cde0d3"], body: "#4f9a7a", top: "#e3eee6", knob: "#2f6b52", kick: "#2c5242", wall: ["#e2f2ea", "#c6e2d3"], band: "#2f8f5b", sign: "#ffffff", ink: "#2f8f5b", wblk: "#6a9c84", wcap: "#9cc5b0" },
-    4: { floor: ["#57524c", "#4c4842"], body: "#8a3b2a", top: "#d8bf96", knob: "#5a2418", kick: "#3e1a12", wall: ["#e8742c", "#d06020"], band: "#7a2a18", sign: "#d7372b", ink: "#fff3d6", wblk: "#6b3b28", wcap: "#8a5440" },
-    5: { floor: ["#f2ddd6", "#e8cdc4"], body: "#d0675f", top: "#f6e3dc", knob: "#9c423c", kick: "#7a332e", wall: ["#fae6e1", "#efcdc4"], band: "#d7372b", sign: "#ffcf33", ink: "#d7372b", wblk: "#b8726a", wcap: "#e0a39b" }
+    1: { floor: ["#d8bf96", "#cbb085"], body: "#b06a35", top: "#cf9d63", knob: "#7a4f2c", kick: "#5a3d26", wall: ["#f4e6c8", "#e3cfa6"], band: "#d7372b", sign: "#ffcf33", ink: "#d7372b", wblk: "#9b6a45", wcap: "#c99a68" },
+    2: { floor: ["#bcc9d2", "#adbcc6"], body: "#4f7596", top: "#8aa3b3", knob: "#3d5a73", kick: "#34495a", wall: ["#e3edf3", "#c9d9e4"], band: "#3b7dd8", sign: "#ffffff", ink: "#2f64ad", wblk: "#7d9bb5", wcap: "#a9c0d3" },
+    3: { floor: ["#bed6c6", "#afcab8"], body: "#3f8a6a", top: "#8fb89d", knob: "#2f6b52", kick: "#2c5242", wall: ["#e2f2ea", "#c6e2d3"], band: "#2f8f5b", sign: "#ffffff", ink: "#2f8f5b", wblk: "#6a9c84", wcap: "#9cc5b0" },
+    4: { floor: ["#57524c", "#4c4842"], body: "#7a3324", top: "#c08f5c", knob: "#5a2418", kick: "#3e1a12", wall: ["#e8742c", "#d06020"], band: "#7a2a18", sign: "#d7372b", ink: "#fff3d6", wblk: "#6b3b28", wcap: "#8a5440" },
+    5: { floor: ["#e2c3b8", "#d6b3a6"], body: "#c25a52", top: "#d99487", knob: "#9c423c", kick: "#7a332e", wall: ["#fae6e1", "#efcdc4"], band: "#d7372b", sign: "#ffcf33", ink: "#d7372b", wblk: "#b8726a", wcap: "#e0a39b" }
   };
 
   function make3D() {
@@ -1501,9 +1509,14 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     let gl;
     try { gl = new T.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" }); } catch (e) { return null; }
     if (!gl || !gl.getContext()) return null;
+    if (T.ColorManagement) T.ColorManagement.legacyMode = false; // 색을 선형으로 계산해서 빛이 부드럽게 퍼져요
     const PR = Math.min(window.devicePixelRatio || 1, 2);
+    let curPR = PR;
     gl.setPixelRatio(PR);
     gl.setClearColor(0x000000, 0);
+    gl.outputEncoding = T.sRGBEncoding;
+    gl.toneMapping = T.ACESFilmicToneMapping;
+    gl.toneMappingExposure = 0.95;
     gl.shadowMap.enabled = true;
     gl.shadowMap.type = T.PCFSoftShadowMap;
     const el = gl.domElement;
@@ -1512,45 +1525,70 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     const ANISO = Math.min(8, gl.capabilities.getMaxAnisotropy ? gl.capabilities.getMaxAnisotropy() : 1);
     const PITCH = (47 * Math.PI) / 180; // 내려다보는 각도
 
-    // ---- 재질 ----
+    // ---- 재질: 빛을 실제처럼 받는 PBR 재질 ----
+    const ENVI = 0.75;
+    const std = (o) => new T.MeshStandardMaterial(Object.assign({ envMapIntensity: ENVI }, o));
     const MC = {};
     function mat(col, kind) {
       const key = (kind || "l") + col;
       if (MC[key]) return MC[key];
       let m;
-      if (kind === "p") m = new T.MeshPhongMaterial({ color: col, shininess: 80, specular: 0x8a8a8a });
-      else if (kind === "pd") m = new T.MeshPhongMaterial({ color: col, shininess: 80, specular: 0x8a8a8a, side: T.DoubleSide });
-      else if (kind === "g") m = new T.MeshPhongMaterial({ color: col, shininess: 40, specular: 0x3c3c3c });
-      else if (kind === "d") m = new T.MeshLambertMaterial({ color: col, side: T.DoubleSide });
-      else if (kind === "b") m = new T.MeshBasicMaterial({ color: col });
-      else m = new T.MeshLambertMaterial({ color: col });
+      if (kind === "p" || kind === "pd") m = std({ color: col, roughness: 0.3, metalness: 0.7, side: kind === "pd" ? T.DoubleSide : T.FrontSide });
+      else if (kind === "g") m = std({ color: col, roughness: 0.28 });
+      else if (kind === "d") m = std({ color: col, roughness: 0.66, side: T.DoubleSide });
+      else if (kind === "b") m = new T.MeshBasicMaterial({ color: col, toneMapped: false });
+      else m = std({ color: col, roughness: 0.66 });
       m.userData.cls = kind || "l";
       return (MC[key] = m);
     }
-    const fade = (col, op) => new T.MeshBasicMaterial({ color: col, transparent: true, opacity: op, depthWrite: false });
-    const steamM = fade(0xffffff, 0.55), smokeM = fade(0x3c3735, 0.62), smokeLM = fade(0xa09890, 0.5), bubM = fade(0xfff6e8, 0.8);
-    const VMAT = new T.MeshLambertMaterial({ vertexColors: true });
-    const VMET = new T.MeshPhongMaterial({ vertexColors: true, shininess: 60, specular: 0x555555 });
+    const fade = (col, op) => new T.MeshBasicMaterial({ color: col, transparent: true, opacity: op, depthWrite: false, toneMapped: false });
+    const steamM = fade(0xffffff, 0.5), smokeM = fade(0x3c3735, 0.62), smokeLM = fade(0xa09890, 0.5), bubM = fade(0xfff6e8, 0.8);
+    // 나뭇결·쇠 결: 아주 옅게 곱해서 밋밋하지 않게
+    function grainCanvas(kind) {
+      const c = document.createElement("canvas"); c.width = c.height = 256;
+      const g = c.getContext("2d");
+      g.fillStyle = "#ffffff"; g.fillRect(0, 0, 256, 256);
+      let seed = kind === "wood" ? 7 : 13;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      if (kind === "wood") {
+        for (let i = 0; i < 64; i++) {
+          const y = rnd() * 256, al = 0.04 + rnd() * 0.08, w = 1 + rnd() * 3, ph = rnd() * 6;
+          g.strokeStyle = "rgba(96,62,30," + al + ")"; g.lineWidth = w;
+          g.beginPath(); g.moveTo(0, y);
+          for (let x = 16; x <= 256; x += 16) g.lineTo(x, y + Math.sin(x / 41 + ph) * 3);
+          g.stroke();
+        }
+      } else {
+        for (let i = 0; i < 240; i++) { g.fillStyle = "rgba(0,0,0," + (0.02 + rnd() * 0.05) + ")"; g.fillRect(0, rnd() * 256, 256, 1); }
+      }
+      for (let i = 0; i < 1400; i++) { g.fillStyle = "rgba(0,0,0," + rnd() * 0.06 + ")"; g.fillRect(rnd() * 256, rnd() * 256, 2, 2); }
+      return c;
+    }
+    const grain = (kind) => { const t = new T.CanvasTexture(grainCanvas(kind)); t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = ANISO; return t; };
+    const VMAT = std({ vertexColors: true, roughness: 0.8, map: grain("wood") });
+    const VMET = std({ vertexColors: true, roughness: 0.36, metalness: 0.55, map: grain("steel") });
+    const VSKIN = std({ vertexColors: true, roughness: 0.6 });
     // 물건 하나를 재질별로 한 덩어리씩 합칠 때 쓰는 재질
     const CLS_MAT = {
-      l: VMAT,
-      d: new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide }),
-      p: new T.MeshPhongMaterial({ vertexColors: true, shininess: 80, specular: 0x8a8a8a }),
-      pd: new T.MeshPhongMaterial({ vertexColors: true, shininess: 80, specular: 0x8a8a8a, side: T.DoubleSide }),
-      g: new T.MeshPhongMaterial({ vertexColors: true, shininess: 40, specular: 0x3c3c3c })
+      l: std({ vertexColors: true, roughness: 0.66 }),
+      d: std({ vertexColors: true, roughness: 0.66, side: T.DoubleSide }),
+      p: std({ vertexColors: true, roughness: 0.3, metalness: 0.7 }),
+      pd: std({ vertexColors: true, roughness: 0.3, metalness: 0.7, side: T.DoubleSide }),
+      g: std({ vertexColors: true, roughness: 0.28 })
     };
-    const VFIRE = new T.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false });
+    const VFIRE = new T.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false, toneMapped: false, blending: T.AdditiveBlending });
 
     // ---- 모양 (한 번 만들어 돌려 써요) ----
     const GC = {};
     const gc = (k, f) => GC[k] || (GC[k] = f());
     const boxG = (w, h, d) => gc("b" + w + "," + h + "," + d, () => new T.BoxGeometry(w, h, d));
     const planeG = (w, h) => gc("p" + w + "," + h, () => new T.PlaneGeometry(w, h));
-    const cylG = (rt, rb, h, n, open, ts, tl) => gc(["c", rt, rb, h, n, open ? 1 : 0, ts || 0, tl || 0].join(","), () => new T.CylinderGeometry(rt, rb, h, n || 16, 1, !!open, ts || 0, tl || Math.PI * 2));
-    const sphG = (n, top) => gc("s" + n + (top ? "t" : ""), () => new T.SphereGeometry(1, n, Math.max(5, Math.round(n * (top ? 0.4 : 0.7))), 0, Math.PI * 2, 0, top ? Math.PI / 2 : Math.PI));
-    const torG = (r, t, arc, rs, ts) => gc(["t", r, t, arc || 0, rs || 8, ts || 16].join(","), () => new T.TorusGeometry(r, t, rs || 8, ts || 16, arc || Math.PI * 2));
-    const coneG = (r, h, n) => gc(["k", r, h, n || 12].join(","), () => new T.ConeGeometry(r, h, n || 12));
-    const apronG = () => gc("apron", () => new T.SphereGeometry(1, 18, 10, Math.PI / 2 - 1.15, 2.3, Math.PI * 0.42, Math.PI * 0.44));
+    const seg = (n, k, lo) => Math.max(lo, Math.round(n * k));
+    const cylG = (rt, rb, h, n, open, ts, tl) => gc(["c", rt, rb, h, n, open ? 1 : 0, ts || 0, tl || 0].join(","), () => new T.CylinderGeometry(rt, rb, h, seg(n || 16, 1.6, 20), 1, !!open, ts || 0, tl || Math.PI * 2));
+    const sphG = (n, top) => gc("s" + n + (top ? "t" : ""), () => { const w = seg(n, 1.6, 16); return new T.SphereGeometry(1, w, Math.max(8, Math.round(w * (top ? 0.4 : 0.7))), 0, Math.PI * 2, 0, top ? Math.PI / 2 : Math.PI); });
+    const torG = (r, t, arc, rs, ts) => gc(["t", r, t, arc || 0, rs || 8, ts || 16].join(","), () => new T.TorusGeometry(r, t, seg(rs || 8, 1.4, 8), seg(ts || 16, 1.6, 16), arc || Math.PI * 2));
+    const coneG = (r, h, n) => gc(["k", r, h, n || 12].join(","), () => new T.ConeGeometry(r, h, seg(n || 12, 1.6, 16)));
+    const apronG = () => gc("apron", () => new T.SphereGeometry(1, 32, 16, Math.PI / 2 - 1.15, 2.3, Math.PI * 0.42, Math.PI * 0.44));
     // 모서리가 둥근 상자
     function rboxG(w, h, d, r, seg) {
       return gc(["r", w, h, d, r, seg].join(","), () => {
@@ -1583,7 +1621,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       return _m.compose(_p.set(x, y, z), _q, _s);
     }
     class Batch {
-      constructor() { this.p = []; this.n = []; this.c = []; }
+      constructor(uv) { this.p = []; this.n = []; this.c = []; this.u = uv ? [] : null; }
       add(g, m, col) {
         const s = ni(g), pa = s.attributes.position.array, na = s.attributes.normal.array;
         _nm.getNormalMatrix(m); _c.set(col);
@@ -1591,6 +1629,12 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
           _a.set(pa[i], pa[i + 1], pa[i + 2]).applyMatrix4(m);
           _b.set(na[i], na[i + 1], na[i + 2]).applyMatrix3(_nm).normalize();
           this.p.push(_a.x, _a.y, _a.z); this.n.push(_b.x, _b.y, _b.z); this.c.push(_c.r, _c.g, _c.b);
+          if (this.u) { // 면 방향에 따라 결을 붙여요
+            const ax = Math.abs(_b.x), ay = Math.abs(_b.y), az = Math.abs(_b.z);
+            if (ay >= ax && ay >= az) this.u.push(_a.x * 0.9, _a.z * 0.9);
+            else if (ax >= az) this.u.push(_a.z * 0.9, _a.y * 0.9);
+            else this.u.push(_a.x * 0.9, _a.y * 0.9);
+          }
         }
       }
       geom() {
@@ -1598,6 +1642,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         g.setAttribute("position", new T.Float32BufferAttribute(this.p, 3));
         g.setAttribute("normal", new T.Float32BufferAttribute(this.n, 3));
         g.setAttribute("color", new T.Float32BufferAttribute(this.c, 3));
+        if (this.u) g.setAttribute("uv", new T.Float32BufferAttribute(this.u, 2));
         g.computeBoundingSphere();
         return g;
       }
@@ -1630,6 +1675,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     }
     function canvasTex(c, repeat) {
       const t = new T.CanvasTexture(c);
+      t.encoding = T.sRGBEncoding;
       t.anisotropy = ANISO;
       if (repeat) t.wrapS = T.RepeatWrapping;
       return t;
@@ -1644,7 +1690,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       g.strokeStyle = "#5b6066"; g.lineWidth = 12; g.lineCap = "round"; g.lineJoin = "round";
       for (const x0 of [22, 86]) { g.beginPath(); g.moveTo(x0, 34); g.lineTo(x0 + 24, 64); g.lineTo(x0, 94); g.stroke(); }
       beltTex = canvasTex(c, true);
-      return new T.MeshLambertMaterial({ map: beltTex });
+      return std({ map: beltTex, roughness: 0.72 });
     });
     const blobMat = () => gc("blobMat", () => {
       const c = document.createElement("canvas"); c.width = c.height = 64;
@@ -1652,7 +1698,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       const gr = g.createRadialGradient(32, 32, 3, 32, 32, 31);
       gr.addColorStop(0, "rgba(0,0,0,.4)"); gr.addColorStop(1, "rgba(0,0,0,0)");
       g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
-      return new T.MeshBasicMaterial({ map: new T.CanvasTexture(c), transparent: true, depthWrite: false });
+      return new T.MeshBasicMaterial({ map: new T.CanvasTexture(c), transparent: true, depthWrite: false, toneMapped: false });
     });
 
     // ---- 재료 ----
@@ -1719,9 +1765,9 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     // ---- 그릇·음식 ----
     function plateModel() {
       const g = new T.Group();
-      part(g, cylG(0.3, 0.25, 0.034, 28), mat("#ffffff"), 0, 0.017, 0);
-      part(g, torG(0.29, 0.015, 0, 6, 32), mat("#eee9df"), 0, 0.035, 0, Math.PI / 2, 0, 0);
-      part(g, cylG(0.22, 0.22, 0.004, 24), mat("#f7f3ec"), 0, 0.036, 0);
+      part(g, cylG(0.3, 0.25, 0.034, 28), mat("#ffffff", "g"), 0, 0.017, 0);
+      part(g, torG(0.29, 0.015, 0, 6, 32), mat("#f0ebe2", "g"), 0, 0.035, 0, Math.PI / 2, 0, 0);
+      part(g, cylG(0.22, 0.22, 0.004, 24), mat("#f8f5ef", "g"), 0, 0.036, 0);
       return g;
     }
     function dishModel(d, inCont) {
@@ -1779,59 +1825,60 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       for (const [x, z, s] of [[-0.08, -0.05, 1], [0.07, -0.06, 0.8], [-0.03, 0.08, 1.1], [0.09, 0.07, 0.7], [0, 0, 0.9]]) part(parent, sphG(6), mat(col), x * r0 * 4.4, y, z * r0 * 4.4, x * 7, z * 5, 0, 0.04 * s, 0.03 * s, 0.035 * s);
     }
 
-    // 냄비(손잡이가 긴 양은냄비)와 튀김 바구니. 손잡이는 +Z 쪽
+    // 냄비(손잡이 달린 양은냄비)와 튀김 바구니. 손잡이는 +Z 쪽, 칸을 거의 채우는 크기
+    const POT_SURF = { cook: 0.135, done: 0.14 };
     function contModel(it) {
       const g = new T.Group(), pot = it.k === "pot";
       if (pot) {
-        part(g, cylG(0.29, 0.25, 0.22, 30, true), mat("#e8b447", "pd"), 0, 0.12, 0);
-        part(g, cylG(0.25, 0.25, 0.02, 26), mat("#b98a33", "p"), 0, 0.011, 0);
-        part(g, torG(0.29, 0.018, 0, 8, 34), mat("#d4a23a", "p"), 0, 0.23, 0, Math.PI / 2, 0, 0);
-        part(g, boxG(0.07, 0.045, 0.09), mat("#a9afb2", "p"), 0, 0.18, 0.31);
-        part(g, rboxG(0.085, 0.055, 0.36, 0.025, 1), mat("#2b2522", "p"), 0, 0.2, 0.5, -0.14, 0, 0);
+        part(g, cylG(0.36, 0.31, 0.27, 40, true), mat("#e8b447", "pd"), 0, 0.148, 0);
+        part(g, cylG(0.31, 0.31, 0.024, 36), mat("#b98a33", "p"), 0, 0.013, 0);
+        part(g, torG(0.36, 0.022, 0, 10, 48), mat("#d9a63c", "p"), 0, 0.282, 0, Math.PI / 2, 0, 0);
+        part(g, boxG(0.08, 0.05, 0.09), mat("#a9afb2", "p"), 0, 0.225, 0.385);
+        part(g, rboxG(0.1, 0.066, 0.3, 0.032, 2), mat("#2b2522", "g"), 0, 0.25, 0.54, -0.2, 0, 0);
       } else { // 철망 바구니
-        const w = 0.42, d = 0.36, h = 0.17, wire = mat("#cfd5d9", "p"), rim = mat("#c3ccd1", "p");
-        for (let x = -w / 2 + 0.03; x < w / 2; x += 0.06) { part(g, boxG(0.008, 0.008, d), wire, x, 0.006, 0); part(g, boxG(0.008, h, 0.008), wire, x, h / 2, d / 2); part(g, boxG(0.008, h, 0.008), wire, x, h / 2, -d / 2); }
-        for (let z = -d / 2 + 0.03; z < d / 2; z += 0.06) { part(g, boxG(w, 0.008, 0.008), wire, 0, 0.006, z); part(g, boxG(0.008, h, 0.008), wire, w / 2, h / 2, z); part(g, boxG(0.008, h, 0.008), wire, -w / 2, h / 2, z); }
-        for (const y of [0.006, h * 0.5]) { part(g, boxG(w, 0.008, 0.008), wire, 0, y, d / 2); part(g, boxG(w, 0.008, 0.008), wire, 0, y, -d / 2); part(g, boxG(0.008, 0.008, d), wire, w / 2, y, 0); part(g, boxG(0.008, 0.008, d), wire, -w / 2, y, 0); }
-        part(g, boxG(w + 0.02, 0.02, 0.02), rim, 0, h, d / 2); part(g, boxG(w + 0.02, 0.02, 0.02), rim, 0, h, -d / 2);
-        part(g, boxG(0.02, 0.02, d), rim, w / 2, h, 0); part(g, boxG(0.02, 0.02, d), rim, -w / 2, h, 0);
-        part(g, boxG(0.04, 0.03, 0.1), rim, 0, h - 0.005, d / 2 + 0.05);
-        part(g, rboxG(0.065, 0.045, 0.3, 0.02, 1), mat("#2b2522", "p"), 0, h + 0.01, d / 2 + 0.24, -0.15, 0, 0);
+        const w = 0.56, d = 0.46, h = 0.2, wire = mat("#d3d9dd", "p"), rim = mat("#c3ccd1", "p");
+        for (let x = -w / 2 + 0.04; x < w / 2; x += 0.07) { part(g, boxG(0.01, 0.01, d), wire, x, 0.007, 0); part(g, boxG(0.01, h, 0.01), wire, x, h / 2, d / 2); part(g, boxG(0.01, h, 0.01), wire, x, h / 2, -d / 2); }
+        for (let z = -d / 2 + 0.04; z < d / 2; z += 0.07) { part(g, boxG(w, 0.01, 0.01), wire, 0, 0.007, z); part(g, boxG(0.01, h, 0.01), wire, w / 2, h / 2, z); part(g, boxG(0.01, h, 0.01), wire, -w / 2, h / 2, z); }
+        for (const y of [0.007, h * 0.5]) { part(g, boxG(w, 0.01, 0.01), wire, 0, y, d / 2); part(g, boxG(w, 0.01, 0.01), wire, 0, y, -d / 2); part(g, boxG(0.01, 0.01, d), wire, w / 2, y, 0); part(g, boxG(0.01, 0.01, d), wire, -w / 2, y, 0); }
+        part(g, boxG(w + 0.024, 0.024, 0.024), rim, 0, h, d / 2); part(g, boxG(w + 0.024, 0.024, 0.024), rim, 0, h, -d / 2);
+        part(g, boxG(0.024, 0.024, d), rim, w / 2, h, 0); part(g, boxG(0.024, 0.024, d), rim, -w / 2, h, 0);
+        part(g, boxG(0.05, 0.035, 0.1), rim, 0, h - 0.005, d / 2 + 0.05);
+        part(g, rboxG(0.085, 0.06, 0.26, 0.028, 2), mat("#2b2522", "g"), 0, h + 0.02, d / 2 + 0.2, -0.22, 0, 0);
       }
-      const inner = sub(g, 0, pot ? 0.02 : 0.01, 0);
-      const r0 = pot ? 0.245 : 0.17;
-      const disc = (col, y, kind) => part(inner, cylG(r0, r0, 0.012, 24), mat(col, kind || "g"), 0, y, 0);
-      if (it.st === "done") { const dm = dishModel(it.dish, true); dm.position.y = pot ? 0.05 : 0; inner.add(dm); }
-      else if (it.st === "burnt") { disc("#1d1916", pot ? 0.07 : 0.02, "l"); lumps(inner, "#2b2522", pot ? 0.08 : 0.03, r0); }
-      else if (it.st === "bad") { disc("#7a6a55", pot ? 0.07 : 0.02, "l"); lumps(inner, "#5e5240", pot ? 0.08 : 0.03, r0); }
+      const inner = sub(g, 0, pot ? 0.02 : 0.012, 0);
+      const r0 = pot ? 0.325 : 0.24;
+      const disc = (col, y, kind) => part(inner, cylG(r0, r0, 0.014, 32), mat(col, kind || "g"), 0, y, 0);
+      if (it.st === "done") { const dm = dishModel(it.dish, true); dm.scale.setScalar(pot ? 1.32 : 1.35); dm.position.y = pot ? 0.07 : 0; inner.add(dm); }
+      else if (it.st === "burnt") { disc("#1d1916", pot ? 0.09 : 0.02, "l"); lumps(inner, "#2b2522", pot ? 0.1 : 0.03, r0); }
+      else if (it.st === "bad") { disc("#7a6a55", pot ? 0.09 : 0.02, "l"); lumps(inner, "#5e5240", pot ? 0.1 : 0.03, r0); }
       else {
         const n = it.items.length;
         it.items.forEach((k, j) => {
           const m = ingModel(k, ING[k].chop);
-          m.scale.setScalar(pot ? 0.55 : 0.6);
-          const a = (j / Math.max(1, n)) * Math.PI * 2 + 0.4, dd = n > 1 ? 0.08 : 0;
-          m.position.set(Math.cos(a) * dd, pot ? 0.012 : 0.006, Math.sin(a) * dd); m.rotation.y = a;
+          m.scale.setScalar(pot ? 0.8 : 0.85);
+          const a = (j / Math.max(1, n)) * Math.PI * 2 + 0.4, dd = n > 1 ? 0.11 : 0;
+          m.position.set(Math.cos(a) * dd, pot ? 0.018 : 0.008, Math.sin(a) * dd); m.rotation.y = a;
           inner.add(m);
         });
-        if (it.st === "cook" && pot) disc(it.dish === "ramen" ? "#e58a3a" : "#d8452f", 0.07);
+        if (it.st === "cook" && pot) disc(it.dish === "ramen" ? "#e58a3a" : "#d8452f", 0.1);
       }
       return g;
     }
     // 보글보글 거품, 김, 연기 (움직이는 부분은 그릇마다 따로)
     function contFx(g, it) {
       const pot = it.k === "pot";
-      const surf = pot && it.st === "cook" ? 0.1 : pot && it.st === "done" ? 0.12 : -1;
+      const surf = pot ? POT_SURF[it.st] || -1 : -1;
       const bubs = [];
-      if (surf > 0) for (let k = 0; k < 4; k++) { const b = part(g, sphG(8), bubM, 0, surf, 0, 0, 0, 0, 0.001); b.castShadow = false; bubs.push(b); }
+      if (surf > 0) for (let k = 0; k < 5; k++) { const b = part(g, sphG(8), bubM, 0, surf, 0, 0, 0, 0, 0.001); b.castShadow = false; bubs.push(b); }
       const puffs = [];
       for (let k = 0; k < 4; k++) { const m = new T.Mesh(sphG(10), steamM); m.visible = false; m.renderOrder = 3; g.add(m); puffs.push(m); }
       g.userData.tick = (now, live, hot) => {
         const tt = now / 1000;
         bubs.forEach((b, k) => {
-          const ph = (tt * (hot ? 1.6 : 0.4) + k * 0.27) % 1;
-          const a = k * 2.3 + Math.floor(tt * 1.6 + k * 0.27) * 1.7;
-          b.position.set(Math.cos(a) * 0.13 * ((k % 2) + 0.4), surf + 0.006, Math.sin(a) * 0.12);
-          b.scale.setScalar(hot ? 0.004 + Math.sin(ph * Math.PI) * 0.024 : 0.001);
+          const ph = (tt * (hot ? 1.6 : 0.4) + k * 0.23) % 1;
+          const a = k * 2.3 + Math.floor(tt * 1.6 + k * 0.23) * 1.7;
+          b.position.set(Math.cos(a) * 0.18 * ((k % 2) + 0.35), surf + 0.008, Math.sin(a) * 0.17);
+          b.scale.setScalar(hot ? 0.005 + Math.sin(ph * Math.PI) * 0.032 : 0.001);
         });
         let mode = null, f = 0;
         if (live.st === "burnt") mode = "smoke";
@@ -1844,9 +1891,9 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
           p.material = mode === "smoke" || (mode === "warn" && f > 0.45) ? smokeM : mode === "steam" ? steamM : smokeLM;
           const per = mode === "steam" ? 1.2 : 0.95 - f * 0.25;
           const ph = (tt / per + k / puffs.length) % 1;
-          const rise = mode === "steam" ? 0.45 : 0.55 + f * 0.35;
-          p.position.set(Math.sin(k * 2.1 + ph * 3) * 0.07, 0.24 + ph * rise, Math.cos(k * 1.7 + ph * 2) * 0.05);
-          const base = mode === "steam" ? 0.05 : 0.07 + f * 0.05;
+          const rise = mode === "steam" ? 0.5 : 0.6 + f * 0.35;
+          p.position.set(Math.sin(k * 2.1 + ph * 3) * 0.09, 0.3 + ph * rise, Math.cos(k * 1.7 + ph * 2) * 0.06);
+          const base = mode === "steam" ? 0.065 : 0.09 + f * 0.06;
           const sz = base * (0.6 + ph * 1.2) * (ph > 0.8 ? (1 - ph) / 0.2 : 1);
           p.scale.setScalar(Math.max(0.001, sz));
         });
@@ -1867,7 +1914,10 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     const itemSig = (it) => it.k + "|" + (it.cut ? 1 : 0) + "|" + (it.items ? it.items.join(",") : "") + "|" + (it.dish || "") + "|" + (it.st || "") + "|" + Math.min(3, it.n || 0);
     // 같은 모양은 재질별로 한 덩어리로 합쳐 두고 돌려 써요 (그리는 횟수가 확 줄어요)
     const ITEM = new Map();
-    function bakeItem(raw) {
+    const K_ING = 1.7, K_PLATE = 1.4; // 재료는 1.7배, 접시는 1.4배 (냄비·바구니는 처음부터 크게)
+    const itemK = (it) => (isCont(it) ? 1 : it.k === "plate" || it.k === "dirty" ? K_PLATE : K_ING);
+    function bakeItem(raw, k) {
+      raw.scale.multiplyScalar(k || 1);
       raw.updateMatrixWorld(true);
       const bins = {}, keep = [];
       raw.traverse((o) => {
@@ -1879,23 +1929,39 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       const parts = Object.keys(bins).map((cls) => ({ geo: bins[cls].geom(), mat: CLS_MAT[cls] }));
       return parts.concat(keep);
     }
+    function fromParts(parts) {
+      const g = new T.Group();
+      parts.forEach((q) => { const m = new T.Mesh(q.geo, q.mat); if (q.mtx) m.applyMatrix4(q.mtx); m.castShadow = true; m.receiveShadow = true; g.add(m); });
+      return g;
+    }
     function itemModel(it) {
       const sig = itemSig(it);
       let parts = ITEM.get(sig);
-      if (!parts) { parts = bakeItem(rawItem(it)); ITEM.set(sig, parts); }
-      const g = new T.Group();
-      parts.forEach((q) => { const m = new T.Mesh(q.geo, q.mat); if (q.mtx) m.applyMatrix4(q.mtx); m.castShadow = true; m.receiveShadow = true; g.add(m); });
+      if (!parts) { parts = bakeItem(rawItem(it), itemK(it)); ITEM.set(sig, parts); }
+      const g = fromParts(parts);
       if (isCont(it)) contFx(g, it);
       return g;
     }
+    function cachedModel(key, build, k) {
+      let parts = ITEM.get(key);
+      if (!parts) { parts = bakeItem(build(), k); ITEM.set(key, parts); }
+      return fromParts(parts);
+    }
 
     // ---- 동물 요리사 ----
+    const _hsl = {};
+    function vivid(hex, sat, lit) {
+      _c.set(hex).getHSL(_hsl);
+      _c.setHSL(_hsl.h, Math.min(1, _hsl.s * (sat || 1.25)), Math.min(1, _hsl.l * (lit || 0.96)));
+      return "#" + _c.getHexString();
+    }
     function buildChar(k, slot) {
-      const C = CHARS[k] || CHARS.cat, AP = APRON[slot];
+      const C0 = CHARS[k] || CHARS.cat, AP = vivid(APRON[slot], 1.1, 0.95);
+      const C = { fur: vivid(C0.fur), dark: vivid(C0.dark), ear: vivid(C0.ear, 1.15), nose: C0.nose };
       const root = new T.Group();
       const blob = new T.Mesh(planeG(0.72, 0.72), blobMat());
       blob.rotation.x = -Math.PI / 2; blob.position.y = 0.006; blob.renderOrder = 1; root.add(blob);
-      const ring = new T.Mesh(gc("ringG", () => new T.RingGeometry(0.31, 0.37, 36)), gc("ringM" + slot, () => new T.MeshBasicMaterial({ color: AP, transparent: true, opacity: 0.7, depthWrite: false })));
+      const ring = new T.Mesh(gc("ringG", () => new T.RingGeometry(0.3, 0.36, 48)), gc("ringM" + slot, () => new T.MeshBasicMaterial({ color: AP, transparent: true, opacity: 0.75, depthWrite: false, toneMapped: false })));
       ring.rotation.x = -Math.PI / 2; ring.position.y = 0.009; ring.renderOrder = 1; root.add(ring);
       const bodyG = new T.Group(); root.add(bodyG);
       // 몸통과 앞치마
@@ -1906,7 +1972,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       B.add(torG(0.125, 0.017, 0, 6, 22), mtx(0, 0.55, 0, Math.PI / 2 - 0.3, 0, 0), AP);
       B.add(sphG(8), mtx(-0.045, 0.3, -0.213, 0, 0, 0.5, 0.05, 0.028, 0.02), AP);
       B.add(sphG(8), mtx(0.045, 0.3, -0.213, 0, 0, -0.5, 0.05, 0.028, 0.02), AP);
-      const torso = B.mesh(VMAT);
+      const torso = B.mesh(VSKIN);
       bodyG.add(torso);
       // 머리
       const headG = new T.Group(); headG.position.y = 0.8; bodyG.add(headG);
@@ -1941,7 +2007,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         for (const sd of [-1, 1]) for (const tl of [-0.12, 0.1]) H.add(boxG(0.12, 0.006, 0.006), mtx(sd * 0.17, -0.05 + tl * 0.2, 0.165, 0, sd * 0.45, tl * sd), "#6b5040");
         for (const dx of [-0.05, 0, 0.05]) H.add(boxG(0.024, 0.012, 0.08), mtx(dx, 0.205, 0.1, 0.45, 0, 0), C.dark);
       }
-      const head = H.mesh(VMAT);
+      const head = H.mesh(VSKIN);
       headG.add(head);
       // 꼬리
       let tail = null;
@@ -1956,7 +2022,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       } else if (k === "rabbit") part(bodyG, sphG(12), mat("#ffffff"), 0, 0.24, -0.215, 0, 0, 0, 0.07);
       else part(bodyG, sphG(10), mat(C.dark), 0, 0.24, -0.205, 0, 0, 0, 0.05);
       // 손, 칼, 발
-      const hand = (x) => { const h = sub(bodyG, x, 0.33, 0); part(h, sphG(12), mat(C.fur), 0, 0, 0, 0, 0, 0, 0.066); return h; };
+      const hand = (x) => { const h = sub(bodyG, x, 0.33, 0); part(h, sphG(12), mat(C.fur), 0, 0, 0, 0, 0, 0, 0.072); return h; };
       const handL = hand(0.26), handR = hand(-0.26);
       const knife = sub(handR);
       part(knife, boxG(0.009, 0.065, 0.19), mat("#e3e8eb", "p"), 0, -0.035, 0.11);
@@ -1964,8 +2030,8 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       knife.visible = false;
       const footL = part(root, sphG(12), mat(C.dark), 0.11, 0.045, 0.03, 0, 0, 0, 0.075, 0.05, 0.1);
       const footR = part(root, sphG(12), mat(C.dark), -0.11, 0.045, 0.03, 0, 0, 0, 0.075, 0.05, 0.1);
-      const hold = sub(bodyG, 0, 0.6, 0.42);
-      root.scale.setScalar(1.2);
+      const hold = sub(bodyG, 0, 0.6, 0.5);
+      root.scale.setScalar(1.3);
       return { k, slot, root, bodyG, headG, handL, handR, footL, footR, tail, knife, hold, ring, held: null, heldSig: "", disp: [torso.geometry, head.geometry] };
     }
     function poseChar(c, o, now) {
@@ -1986,8 +2052,8 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       c.handR.rotation.x = 0;
       if (o.hold) {
         const r = o.reach * 0.08;
-        c.handL.position.set(0.22, 0.55, 0.34 + r); c.handR.position.set(-0.22, 0.55, 0.34 + r);
-        c.hold.position.set(0, 0.52, 0.4 + r);
+        c.handL.position.set(0.24, 0.52, 0.36 + r); c.handR.position.set(-0.24, 0.52, 0.36 + r);
+        c.hold.position.set(0, 0.47, 0.5 + r);
       } else if (o.wash) {
         const a = tt * 12;
         c.handL.position.set(0.13 + Math.cos(a) * 0.05, 0.56 + Math.sin(a) * 0.03, 0.42);
@@ -2012,20 +2078,39 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     // ---- 장면 ----
     const scene = new T.Scene();
     const cam = new T.PerspectiveCamera(30, 1.6, 1, 150);
-    const hemi = new T.HemisphereLight(0xfff6e6, 0x8a7563, 0.5);
-    const amb = new T.AmbientLight(0xffffff, 0.12);
-    const sun = new T.DirectionalLight(0xfff2de, 0.52);
+    const hemi = new T.HemisphereLight(0xfff6e6, 0x8a7563, 0.3);
+    const amb = new T.AmbientLight(0xffffff, 0);
+    const sun = new T.DirectionalLight(0xfff0dc, 1.6);
     const lamp = new T.PointLight(0xffc27a, 0, 24, 1.4);
     sun.position.set(1.5, 13, 11.5);
     sun.target.position.set(COLS / 2, 0, ROWS / 2);
     sun.castShadow = true;
-    const SMAP = touchMode ? 1024 : 2048;
+    const SMAP = 2048;
     sun.shadow.mapSize.set(SMAP, SMAP);
     Object.assign(sun.shadow.camera, { left: -11, right: 11, top: 9, bottom: -9, near: 2, far: 40 });
     sun.shadow.bias = -0.0008;
     sun.shadow.normalBias = 0.02;
     lamp.position.set(COLS / 2, 3.4, ROWS / 2 + 1);
     scene.add(hemi, amb, sun, sun.target, lamp);
+    // 둘레에서 은은하게 들어오는 빛과 반사 (가상의 밝은 방을 한 번 찍어서 써요)
+    let envTex = null;
+    try {
+      const pm = new T.PMREMGenerator(gl), es = new T.Scene(), bx = new T.BoxGeometry(1, 1, 1);
+      const box = (col, k, sx, sy, sz, x, y, z, back) => {
+        const m = new T.MeshBasicMaterial({ color: col, side: back ? T.BackSide : T.FrontSide });
+        m.color.multiplyScalar(k);
+        const o = new T.Mesh(bx, m); o.scale.set(sx, sy, sz); o.position.set(x, y, z); es.add(o);
+      };
+      box(0x9a8877, 1, 40, 24, 40, 0, 10, 0, true);
+      box(0xfff4e6, 7, 14, 0.2, 10, 0, 21, 0);
+      box(0xfff0dc, 3.2, 0.2, 8, 12, -19, 10, 2);
+      box(0xffffff, 1.8, 0.2, 6, 8, 19, 9, -4);
+      box(0xffe8d0, 2.4, 12, 6, 0.2, 0, 8, 19);
+      envTex = pm.fromScene(es, 0.035).texture;
+      es.traverse((o) => { if (o.material) o.material.dispose(); });
+      bx.dispose(); pm.dispose();
+      scene.environment = envTex;
+    } catch (e) { hemi.intensity = 0.8; }
     const stageRoot = new T.Group(), dynRoot = new T.Group();
     scene.add(stageRoot, dynRoot);
 
@@ -2147,9 +2232,24 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     function sync(map, key, sig, make) {
       let e = map.get(key);
       if (!sig) { if (e) { dynRoot.remove(e.obj); map.delete(key); } return null; }
-      if (!e || e.sig !== sig) { if (e) dynRoot.remove(e.obj); e = { sig, obj: make() }; map.set(key, e); dynRoot.add(e.obj); }
+      if (!e || e.sig !== sig) { if (e) dynRoot.remove(e.obj); e = { sig, obj: make(), born: performance.now() }; map.set(key, e); dynRoot.add(e.obj); }
       return e.obj;
     }
+    // 톡: 0.5배에서 살짝 넘쳤다가 1배로 (0.24초)
+    function popAt(born, now) {
+      const u = Math.min(1, Math.max(0, (now - born) / 240));
+      if (u >= 1) return 1;
+      const c1 = 1.70158, c3 = c1 + 1, v = u - 1;
+      return 0.5 + 0.5 * (1 + c3 * v * v * v + c1 * v * v);
+    }
+    const popOf = (map, key, now) => { const e = map.get(key); return e ? popAt(e.born, now) : 1; };
+    // 물건 밑 그림자 (한 번에 그려요)
+    const iblob = new T.InstancedMesh(planeG(1, 1), blobMat(), 220);
+    iblob.frustumCulled = false; iblob.renderOrder = 1; iblob.count = 0;
+    scene.add(iblob);
+    const _bq = new T.Quaternion().setFromEuler(new T.Euler(-Math.PI / 2, 0, 0)), _bm = new T.Matrix4(), _bp = new T.Vector3(), _bs = new T.Vector3();
+    let nblob = 0;
+    function blobAt(x, y, z, s) { if (nblob >= 220) return; _bm.compose(_bp.set(x, y + 0.004, z), _bq, _bs.set(s, s, 1)); iblob.setMatrixAt(nblob++, _bm); }
     function clearDyn() { [slotO, extraO, flyO].forEach((mp) => { mp.forEach((e) => dynRoot.remove(e.obj)); mp.clear(); }); }
 
     function buildStage() {
@@ -2160,43 +2260,44 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       builtTiles = tiles; builtStage = curStage; dirty = false;
       const sid = curStage, st = stageOf(sid), P = PAL[sid] || PAL[1];
       const nightTime = sid === 4;
-      hemi.intensity = nightTime ? 0.36 : 0.42; hemi.groundColor.set(nightTime ? 0x4a3a2e : 0x8a7563);
-      amb.intensity = nightTime ? 0.05 : 0.07;
-      sun.intensity = nightTime ? 0.5 : 0.6; sun.color.set(nightTime ? 0xffd6a8 : 0xfff2de);
-      lamp.intensity = nightTime ? 0.55 : 0;
-      const A = new Batch(), M = new Batch(), F = [];
+      hemi.intensity = (envTex ? 0.22 : 0.8) * (nightTime ? 0.8 : 1); hemi.groundColor.set(nightTime ? 0x4a3a2e : 0x8a7563);
+      sun.intensity = nightTime ? 1.0 : 1.2; sun.color.set(nightTime ? 0xffd2a0 : 0xfff0dc);
+      lamp.intensity = nightTime ? 1.1 : 0;
+      Object.values(MC).concat(Object.values(CLS_MAT), [VMAT, VMET, VSKIN]).forEach((m) => { if (m.isMeshStandardMaterial) m.envMapIntensity = nightTime ? 0.6 : ENVI; });
+      const A = new Batch(true), M = new Batch(true), F = [];
 
       // 받침, 바닥, 뒷벽
       A.add(boxG(COLS + 0.6, 0.5, ROWS + 0.6), mtx(COLS / 2, -0.26, ROWS / 2), "#5a3d2a");
-      const floor = new T.Mesh(own(new T.PlaneGeometry(COLS, ROWS)), own(new T.MeshLambertMaterial({ map: own(canvasTex(floorCanvas(st))) })));
+      const floor = new T.Mesh(own(new T.PlaneGeometry(COLS, ROWS)), own(std({ map: own(canvasTex(floorCanvas(st))), roughness: 0.5 })));
       floor.rotation.x = -Math.PI / 2; floor.position.set(COLS / 2, 0, ROWS / 2); floor.receiveShadow = true;
-      const wall = new T.Mesh(own(new T.PlaneGeometry(COLS + 0.6, 3.2)), own(new T.MeshLambertMaterial({ map: own(canvasTex(wallCanvas(sid))) })));
+      const wall = new T.Mesh(own(new T.PlaneGeometry(COLS + 0.6, 3.2)), own(std({ map: own(canvasTex(wallCanvas(sid))), roughness: 0.62 })));
       wall.position.set(COLS / 2, 1.1, -0.02); wall.receiveShadow = true;
-      stageRoot.add(floor, wall);
-      A.add(boxG(COLS + 0.6, 3.2, 0.28), mtx(COLS / 2, 1.1, -0.17), "#4a3324");
-      if (nightTime) { // 전구 줄
+      stageRoot.add(floor);
+      if (!rotView) { stageRoot.add(wall); A.add(boxG(COLS + 0.6, 3.2, 0.28), mtx(COLS / 2, 1.1, -0.17), "#4a3324"); }
+      if (nightTime && !rotView) { // 전구 줄
         const LB = new Batch();
         for (let x = 0.5; x < COLS; x += 1) {
           const sag = 1.78 - Math.sin(((x % 3) / 3) * Math.PI) * 0.08;
           LB.add(sphG(10), mtx(x, sag - 0.06, 0.06, 0, 0, 0, 0.055), "#ffe2a0");
           M.add(boxG(1.0, 0.012, 0.012), mtx(x + 0.5, 1.76, 0.05), "#2b2522");
         }
-        const lb = LB.mesh(gc("bulbMat", () => new T.MeshBasicMaterial({ vertexColors: true })), false);
+        const lb = LB.mesh(gc("bulbMat", () => new T.MeshBasicMaterial({ vertexColors: true, toneMapped: false })), false);
         own(lb.geometry); stageRoot.add(lb);
       }
 
       const label = (t, text, top, bg, fg) => {
         const c = textCanvas(text, 56, bg || "rgba(36,26,20,.88)", fg || "#fff8e6");
         const h = 0.27, w = (h * c.width) / c.height;
-        const m = new T.Mesh(own(new T.PlaneGeometry(w, h)), own(new T.MeshBasicMaterial({ map: own(canvasTex(c)), transparent: true, depthWrite: false })));
-        m.rotation.x = -PITCH; m.renderOrder = 2;
-        m.position.set(t.x + 0.5, top + 0.012 + (h / 2) * Math.cos(PITCH), t.y + 0.9);
+        const m = new T.Mesh(own(new T.PlaneGeometry(w, h)), own(new T.MeshBasicMaterial({ map: own(canvasTex(c)), transparent: true, depthWrite: false, toneMapped: false })));
+        m.rotation.order = "YXZ"; m.rotation.set(-PITCH, rotView ? -Math.PI / 2 : 0, 0); m.renderOrder = 2;
+        const up = VUP(); // 카메라 쪽 = 화면 아래쪽
+        m.position.set(t.x + 0.5 - up[0] * 0.4, top + 0.012 + (h / 2) * Math.cos(PITCH), t.y + 0.5 - up[1] * 0.4);
         stageRoot.add(m);
       };
       const cabinet = (t, body, top) => {
         const cx = t.x + 0.5, cz = t.y + 0.5;
         A.add(rboxG(0.98, CH - 0.07, 0.98, 0.035, 1), mtx(cx, (CH - 0.07) / 2, cz), body || P.body);
-        A.add(rboxG(1, 0.075, 1, 0.025, 1), mtx(cx, CH - 0.0375, cz), top || P.top);
+        A.add(rboxG(1, 0.075, 1, 0.03, 2), mtx(cx, CH - 0.0375, cz), top || P.top);
         const d = openDir(t);
         if (floorAt(t.x + d[0], t.y + d[1])) {
           A.add(boxG(0.94, 0.06, 0.02), L(t, 0, 0.03, 0.492), P.kick);
@@ -2238,9 +2339,9 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
               A.add(rboxG(w, h, 0.05, 0.012, 1), mtx(px, y0 + h / 2, pz, 0, rot, 0), "#b9834a");
               A.add(boxG(w * 0.96, 0.014, 0.054), mtx(px, y0 + h * 0.55, pz, 0, rot, 0), "#8d5f2d");
             }
-            [[-0.18, -0.13, 0.3], [0.17, -0.11, -0.5], [0, 0.13, 1.1], [-0.17, 0.15, 2.2], [0.18, 0.15, -1.3]].forEach(([x, z, r], j) => {
+            [[-0.16, -0.12, 0.3], [0.15, -0.1, -0.6], [0, 0.13, 1.2]].forEach(([x, z, r], j) => {
               const g = ingModel(t.ing, false);
-              g.scale.setScalar(0.72); g.position.set(cx + x, y0 + 0.03 + (j > 2 ? 0.04 : 0), cz + z); g.rotation.y = r;
+              g.scale.setScalar(1.18); g.position.set(cx + x, y0 + 0.03 + j * 0.025, cz + z); g.rotation.y = r;
               bake(g, A);
             });
             label(t, ING[t.ing].name, y0 + h);
@@ -2326,9 +2427,9 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
           }
           case "return": {
             cabinet(t, "#5a3d26", "#7a5638");
-            A.add(rboxG(0.94, 0.46, 0.1, 0.02, 1), L(t, 0, CH + 0.23, -0.43), "#4a3220");
-            A.add(boxG(0.66, 0.3, 0.012), L(t, 0, CH + 0.19, -0.375), "#1a120d");
-            A.add(rboxG(0.98, 0.06, 0.14, 0.02, 1), L(t, 0, CH + 0.47, -0.42), "#d7372b");
+            A.add(rboxG(0.94, 0.36, 0.1, 0.02, 1), L(t, 0, CH + 0.18, -0.43), "#4a3220");
+            A.add(boxG(0.66, 0.24, 0.012), L(t, 0, CH + 0.15, -0.375), "#1a120d");
+            A.add(rboxG(0.98, 0.05, 0.13, 0.02, 1), L(t, 0, CH + 0.37, -0.42), "#d7372b");
             label(t, "반납", CH, "#5a3d26");
             return;
           }
@@ -2355,8 +2456,8 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       const h = new T.Path(); rr(h, -0.41, -0.41, 0.82, 0.82, 0.07); s.holes.push(h);
       return new T.ShapeGeometry(s, 4);
     })();
-    const hlHi = new T.MeshBasicMaterial({ color: 0xfff3b0, transparent: true, opacity: 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-    const hlLo = new T.MeshBasicMaterial({ color: 0x3a2a20, transparent: true, opacity: 0.35, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const hlHi = new T.MeshBasicMaterial({ color: 0xfff3b0, transparent: true, opacity: 0.9, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const hlLo = new T.MeshBasicMaterial({ color: 0x3a2a20, transparent: true, opacity: 0.35, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     const hl = new T.Mesh(frameGeo, hlHi);
     hl.rotation.x = -Math.PI / 2; hl.renderOrder = 4; hl.visible = false;
     scene.add(hl);
@@ -2364,15 +2465,23 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     // ---- 카메라: 주방 전체가 화면에 꽉 차게 ----
     let vw = 0, vh = 0;
     const FIT = [[-0.3, -0.5, ROWS + 0.3], [COLS + 0.3, -0.5, ROWS + 0.3], [-0.3, 1.66, -0.05], [COLS + 0.3, 1.66, -0.05], [0, CH, ROWS], [COLS, CH, ROWS]];
+    // 돌린 화면: 서쪽(왼쪽 끝)에서 동쪽을 보며 내려다봐요. 뒷벽은 옆으로 가니 빼요
+    const FIT_ROT = [[-0.3, -0.5, -0.3], [-0.3, -0.5, ROWS + 0.3], [COLS + 0.3, CH + 0.7, -0.3], [COLS + 0.3, CH + 0.7, ROWS + 0.3], [-0.3, CH + 0.7, -0.3], [-0.3, CH + 0.7, ROWS + 0.3]];
+    let rotView = false;
+    const VUP = () => (rotView ? [1, 0] : [0, -1]);   // 화면 위쪽이 주방에서 어느 방향인지
+    const VRIGHT = () => (rotView ? [0, 1] : [1, 0]); // 화면 오른쪽
     function fitCam() {
       cam.aspect = vw / vh;
+      cam.fov = rotView ? 21 : 30; // 길게 보는 화면은 원근을 줄여서 먼 쪽도 덜 작아지게
       cam.updateProjectionMatrix();
-      const tgt = new T.Vector3(COLS / 2, 0.4, ROWS / 2), dir = new T.Vector3(0, Math.sin(PITCH), Math.cos(PITCH));
+      const fitPts = rotView ? FIT_ROT : FIT;
+      const tgt = new T.Vector3(COLS / 2, 0.4, ROWS / 2);
+      const dir = rotView ? new T.Vector3(-Math.cos(PITCH), Math.sin(PITCH), 0) : new T.Vector3(0, Math.sin(PITCH), Math.cos(PITCH));
       const mx = 1 - 20 / vw, my = 1 - 20 / vh;
       const bounds = (d) => {
         cam.position.copy(tgt).addScaledVector(dir, d); cam.lookAt(tgt); cam.updateMatrixWorld(true);
         let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
-        for (const q of FIT) { _v.set(q[0], q[1], q[2]).project(cam); x0 = Math.min(x0, _v.x); x1 = Math.max(x1, _v.x); y0 = Math.min(y0, _v.y); y1 = Math.max(y1, _v.y); }
+        for (const q of fitPts) { _v.set(q[0], q[1], q[2]).project(cam); x0 = Math.min(x0, _v.x); x1 = Math.max(x1, _v.x); y0 = Math.min(y0, _v.y); y1 = Math.max(y1, _v.y); }
         return { x0, x1, y0, y1 };
       };
       let lo = 3, hi = 300;
@@ -2383,27 +2492,42 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       return ((b.y1 - b.y0) / 2) * vh + 22; // 주방이 실제로 차지하는 높이(px)
     }
     // tight = 세로 폰: 주방 높이만큼만 캔버스를 써서 위에 붙여요
-    function resize(w, h, tight) {
+    function resize(w, h, tight, rot) {
+      if (!!rot !== rotView) { rotView = !!rot; dirty = true; } // 이름표 방향을 다시 잡아요
       vw = w; vh = h;
       for (let k = 0; k < (tight ? 4 : 1); k++) {
         const need = fitCam();
         if (!tight || need >= vh - 2) break;
         vh = Math.max(120, Math.ceil(need));
       }
-      gl.setPixelRatio(PR); gl.setSize(vw, vh, false);
+      gl.setPixelRatio(curPR); gl.setSize(vw, vh, false);
       el.style.width = vw + "px"; el.style.height = vh + "px";
       return { w: vw, h: vh };
     }
     const S = (x, y, z) => { _v.set(x, y, z).project(cam); return [(_v.x + 1) * 0.5 * vw, (1 - _v.y) * 0.5 * vh]; };
-    const unit = (x, y, z) => { const a = S(x - 0.5, y, z), b = S(x + 0.5, y, z); return Math.hypot(b[0] - a[0], b[1] - a[1]); };
+    const unit = (x, y, z) => { const r = VRIGHT(), a = S(x - r[0] / 2, y, z - r[1] / 2), b = S(x + r[0] / 2, y, z + r[1] / 2); return Math.hypot(b[0] - a[0], b[1] - a[1]); };
 
     // ---- 매 화면 ----
     const chars = [null, null], yaw3 = [0, 0], bits3 = [];
     let lastT = 0;
+    // 버벅이면 해상도를 조금씩 낮춰요 (테스트 창에서는 안 해요)
+    const ADAPT = !IS_LOCAL || /[?&]autofb(&|$)/.test(location.search);
+    const ftimes = [];
+    function adaptRes(raw) {
+      if (!ADAPT || curPR <= 1 || raw <= 0 || raw > 0.5 || !view || view.phase !== "play") return;
+      ftimes.push(raw);
+      if (ftimes.length < 120) return;
+      const s = ftimes.slice().sort((a, b) => a - b), mid = s[s.length >> 1];
+      ftimes.length = 0;
+      if (mid > 0.024) { curPR = Math.max(1, curPR - 0.25); gl.setPixelRatio(curPR); gl.setSize(vw, vh, false); }
+    }
     function render3(now) {
       if (!view || !vw) return;
       if (builtTiles !== tiles || builtStage !== curStage || dirty) buildStage();
-      const dt = Math.min(0.05, Math.max(0, (now - (lastT || now)) / 1000)); lastT = now;
+      const raw = (now - (lastT || now)) / 1000;
+      const dt = Math.min(0.05, Math.max(0, raw)); lastT = now;
+      adaptRes(raw);
+      nblob = 0;
       const chopKey = chopHeld();
       const list = [];
       view.players.forEach((p, i) => {
@@ -2423,23 +2547,29 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         let x = t.x + 0.5, z = t.y + 0.5;
         if (t.type === "belt" && it.bt) { const nx = beltNext(t); if (nx >= 0 && !view.slots[nx]) { const f = Math.min(1, it.bt / BELT_STEP); x += t.dir[0] * f; z += t.dir[1] * f; } }
         if (busy.has(i)) x += Math.sin(now / 25) * 0.02;
-        o.position.set(x, surfY(t), z);
-        o.rotation.y = isCont(it) ? (t.type === "floor" ? 0 : yawOf(t)) : ((i * 0.37) % 0.5) - 0.25;
+        const y = surfY(t);
+        o.position.set(x, y, z);
+        o.scale.setScalar(popOf(slotO, i, now));
+        // 그릇 손잡이는 요리사 쪽 대각선으로 (옆 칸·요리사와 안 부딪히게)
+        o.rotation.y = isCont(it) ? (t.type === "floor" ? Math.PI / 4 : yawOf(t) + Math.PI / 4) : ((i * 0.37) % 0.5) - 0.25;
         if (o.userData.tick) o.userData.tick(now, it, (t.type === "stove" || t.type === "fryer") && CONT[it.k].station === t.type);
+        if (t.type !== "fryer") blobAt(x, y, z, isCont(it) ? 0.95 : it.k === "plate" || it.k === "dirty" ? 0.98 : 0.72);
       });
       // 접시 꽂이, 반납구, 개수대, 불, 기름
       tiles.forEach((t) => {
         if (t.type === "plates") {
           const n = view.racks ? view.racks[t.i] : -1;
-          const o = sync(extraO, "p" + t.i, "p" + n, () => plateStack(n === -1 ? 4 : Math.min(5, n || 0)));
+          const cnt = n === -1 ? 4 : Math.min(5, n || 0);
+          const o = sync(extraO, "p" + t.i, "p" + n, () => cachedModel("stack" + cnt, () => plateStack(cnt), K_PLATE));
           o.position.set(t.x + 0.5, CH, t.y + 0.5);
+          if (cnt) blobAt(t.x + 0.5, CH, t.y + 0.5, 0.98);
         } else if (t.type === "return") {
           const n = view.rets ? view.rets[t.i] || 0 : 0;
-          const o = sync(extraO, "r" + t.i, n > 0 ? "r" + Math.min(3, n) : "", () => dirtyModel(Math.min(3, n)));
-          if (o) o.position.set(t.x + 0.5, CH, t.y + 0.5);
+          const o = sync(extraO, "r" + t.i, n > 0 ? "r" + Math.min(3, n) : "", () => cachedModel("dirty" + Math.min(3, n), () => dirtyModel(Math.min(3, n)), K_PLATE));
+          if (o) { o.position.set(t.x + 0.5, CH, t.y + 0.5); o.scale.setScalar(popOf(extraO, "r" + t.i, now)); blobAt(t.x + 0.5, CH, t.y + 0.5, 0.98); }
         } else if (t.type === "sink") {
           const s = view.sinks ? view.sinks[t.i] : null, n = s ? s.n : 0;
-          const o = sync(extraO, "h" + t.i, n > 0 ? "h" + Math.min(3, n) : "", () => dirtyModel(Math.min(3, n)));
+          const o = sync(extraO, "h" + t.i, n > 0 ? "h" + Math.min(3, n) : "", () => cachedModel("dirty" + Math.min(3, n), () => dirtyModel(Math.min(3, n)), K_PLATE * 0.85));
           if (o) { o.position.set(t.x + 0.5, CH + 0.03, t.y + 0.5); o.rotation.z = 0.08; }
         } else if (t.type === "stove") {
           const it = view.slots[t.i], fl = flames[t.i];
@@ -2455,7 +2585,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
             b.visible = on;
             if (on) b.children.forEach((m, k) => {
               const ph = (now / 700 + k * 0.17) % 1, a = k * 2.4 + Math.floor(now / 700 + k * 0.17) * 1.3;
-              m.position.set(Math.cos(a) * 0.3, 0, Math.sin(a) * 0.28);
+              m.position.set(Math.cos(a) * 0.32, 0, Math.sin(a) * 0.32);
               m.scale.setScalar(0.004 + Math.sin(ph * Math.PI) * 0.03);
             });
           }
@@ -2483,15 +2613,16 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         const hs = q.hold ? itemSig(q.hold) : "";
         if (hs !== c.heldSig) {
           if (c.held) c.hold.remove(c.held);
-          c.held = q.hold ? itemModel(q.hold) : null; c.heldSig = hs;
-          if (c.held) { c.held.scale.setScalar(0.85); if (isCont(q.hold)) c.held.rotation.y = -Math.PI / 2; c.hold.add(c.held); }
+          c.held = q.hold ? itemModel(q.hold) : null; c.heldSig = hs; c.heldBorn = now;
+          if (c.held) { if (isCont(q.hold)) c.held.rotation.y = -Math.PI / 2; c.hold.add(c.held); }
         }
+        if (c.held) c.held.scale.setScalar(0.85 * popAt(c.heldBorn, now));
         if (c.held && c.held.userData.tick) c.held.userData.tick(now, q.hold, false);
         if (w && now - a.lastBit > (w.wash ? 90 : 55)) {
           a.lastBit = now;
           const tt = tiles[w.i];
-          if (w.wash) bits3.push({ x: tt.x + 0.5 + (Math.random() - 0.5) * 0.4, y: CH + 0.08, z: tt.y + 0.5 + (Math.random() - 0.5) * 0.3, vx: (Math.random() - 0.5) * 1.2, vy: 1.6 + Math.random(), vz: (Math.random() - 0.5) * 1.2, t0: now, col: "#bfe4f7" });
-          else for (let n = 0; n < 2; n++) bits3.push({ x: tt.x + 0.5 + (Math.random() - 0.5) * 0.25, y: CH + 0.1, z: tt.y + 0.5, vx: (Math.random() - 0.5) * 2, vy: 1.4 + Math.random() * 1.4, vz: (Math.random() - 0.5) * 1.6, t0: now, col: BIT_COLOR[w.it.k] || "#fff" });
+          if (w.wash) bits3.push({ x: tt.x + 0.5 + (Math.random() - 0.5) * 0.4, y: CH + 0.1, z: tt.y + 0.5 + (Math.random() - 0.5) * 0.3, vx: (Math.random() - 0.5) * 1.2, vy: 1.6 + Math.random(), vz: (Math.random() - 0.5) * 1.2, t0: now, col: "#bfe4f7" });
+          else for (let n = 0; n < 2; n++) bits3.push({ x: tt.x + 0.5 + (Math.random() - 0.5) * 0.3, y: CH + 0.16, z: tt.y + 0.5, vx: (Math.random() - 0.5) * 2, vy: 1.4 + Math.random() * 1.4, vz: (Math.random() - 0.5) * 1.6, t0: now, col: BIT_COLOR[w.it.k] || "#fff" });
         }
       }
 
@@ -2520,9 +2651,11 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         const p = Math.min(1, (f.d + FLY_SPEED * age) / FLY_MAX);
         o.position.set(x, 0.62 + Math.sin(p * Math.PI) * 0.5, y);
         o.rotation.set(now / 160, now / 90, 0);
+        blobAt(x, 0, y, 0.6);
       });
       [...flyO.keys()].forEach((k) => { if (k >= fl.length) sync(flyO, k, "", null); });
 
+      iblob.count = nblob; iblob.instanceMatrix.needsUpdate = true;
       gl.render(scene, cam);
       overlay(now, list);
     }
@@ -2567,26 +2700,26 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         const t = tiles[i], cx = t.x + 0.5, cz = t.y + 0.5, s = unit(cx, CH, cz);
         if (isCont(it)) {
           const hot = (t.type === "stove" || t.type === "fryer") && CONT[it.k].station === t.type;
-          if (hot || it.st === "burnt" || it.st === "bad") { const [x, y] = S(cx, surfY(t) + 0.42, cz); contGauge(c, it, x, y, s, now); }
+          if (hot || it.st === "burnt" || it.st === "bad") { const [x, y] = S(cx, surfY(t) + 0.62, cz); contGauge(c, it, x, y, s, now); }
           return;
         }
-        if (it.pr) { const [x, y] = S(cx, CH + 0.36, cz); bar(c, x - s * 0.4, y - s * 0.16, s * 0.8, s * 0.16, it.pr, "#4bc06a"); }
-        if (it.k === "dirty" && it.n > 1) { const [x, y] = S(cx + 0.3, surfY(t) + 0.26, cz - 0.2); badge(c, x, y, String(it.n), "#7a5a3a", s * 0.22); }
+        if (it.pr) { const [x, y] = S(cx, CH + 0.5, cz); bar(c, x - s * 0.4, y - s * 0.16, s * 0.8, s * 0.16, it.pr, "#4bc06a"); }
+        if (it.k === "dirty" && it.n > 1) { const [x, y] = S(cx + 0.36, surfY(t) + 0.32, cz - 0.24); badge(c, x, y, String(it.n), "#7a5a3a", s * 0.22); }
       });
       tiles.forEach((t) => {
         const cx = t.x + 0.5, cz = t.y + 0.5;
         if (t.type === "plates") {
           const n = view.racks ? view.racks[t.i] : -1;
-          if (n !== -1) { const [x, y] = S(cx + 0.32, CH + 0.3, cz - 0.25); badge(c, x, y, String(n || 0), n ? "#2f8f5b" : "#d7372b", unit(cx, CH, cz) * 0.22); }
+          if (n !== -1) { const [x, y] = S(cx + 0.36, CH + 0.38, cz - 0.26); badge(c, x, y, String(n || 0), n ? "#2f8f5b" : "#d7372b", unit(cx, CH, cz) * 0.22); }
         } else if (t.type === "return") {
           const n = view.rets ? view.rets[t.i] || 0 : 0;
-          if (n > 0) { const [x, y] = S(cx + 0.32, CH + 0.3, cz - 0.25); badge(c, x, y, String(n), "#7a5a3a", unit(cx, CH, cz) * 0.22); }
+          if (n > 0) { const [x, y] = S(cx + 0.36, CH + 0.38, cz - 0.26); badge(c, x, y, String(n), "#7a5a3a", unit(cx, CH, cz) * 0.22); }
         } else if (t.type === "sink") {
           const sk = view.sinks ? view.sinks[t.i] : null;
           if (sk && sk.n > 0) {
             const s = unit(cx, CH, cz);
-            const [x, y] = S(cx + 0.32, CH + 0.3, cz - 0.25); badge(c, x, y, String(sk.n), "#7a5a3a", s * 0.22);
-            if (sk.pr > 0) { const [bx, by] = S(cx, CH + 0.42, cz); bar(c, bx - s * 0.4, by - s * 0.16, s * 0.8, s * 0.16, sk.pr, "#3b9bd8"); }
+            const [x, y] = S(cx + 0.36, CH + 0.38, cz - 0.26); badge(c, x, y, String(sk.n), "#7a5a3a", s * 0.22);
+            if (sk.pr > 0) { const [bx, by] = S(cx, CH + 0.55, cz); bar(c, bx - s * 0.4, by - s * 0.16, s * 0.8, s * 0.16, sk.pr, "#3b9bd8"); }
           }
         }
       });
@@ -2594,9 +2727,10 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       list.forEach(({ q, i, mine }) => {
         const ch = chars[i];
         if (!ch) return;
-        if (q.hold && q.hold.k === "dirty" && q.hold.n > 1) { ch.hold.getWorldPosition(_w); const [x, y] = S(_w.x, _w.y + 0.2, _w.z); badge(c, x, y, String(q.hold.n), "#7a5a3a", unit(_w.x, _w.y, _w.z) * 0.22); }
-        if (q.fy < 0) return;
-        const [x, y] = S(q.x, q.ch === "rabbit" ? 1.78 : 1.48, q.y);
+        if (q.hold && q.hold.k === "dirty" && q.hold.n > 1) { ch.hold.getWorldPosition(_w); const [x, y] = S(_w.x, _w.y + 0.28, _w.z); badge(c, x, y, String(q.hold.n), "#7a5a3a", unit(_w.x, _w.y, _w.z) * 0.22); }
+        const up = VUP();
+        if (q.fx * up[0] + q.fy * up[1] > 0.5) return;
+        const [x, y] = S(q.x, q.ch === "rabbit" ? 1.95 : 1.6, q.y);
         const fs = Math.max(10, unit(q.x, 1, q.y) * 0.16);
         const text = i === 0 ? "방장" : "친구";
         c.font = Math.round(fs) + "px " + FONT_UI;
@@ -2609,7 +2743,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         const p = pops[j], ag = (now - p.t0) / 1300;
         if (ag >= 1) { pops.splice(j, 1); continue; }
         const t = tiles[p.i], fs = Math.max(14, unit(t.x + 0.5, CH, t.y + 0.5) * 0.36);
-        const pos = S(t.x + 0.5, CH + 0.55 + ag * 0.45, t.y + 0.5);
+        const pos = S(t.x + 0.5, CH + 0.7 + ag * 0.45, t.y + 0.5);
         const x = pos[0], y = Math.max(fs, pos[1]);
         c.globalAlpha = 1 - ag; c.font = Math.round(fs) + "px " + FONT_UI; c.textAlign = "center"; c.textBaseline = "middle";
         c.lineWidth = Math.max(3, fs * 0.2); c.strokeStyle = "#241a14"; c.strokeText(p.text, x, y);
@@ -2620,8 +2754,9 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 
     // ---- 대기실·간판용 캐릭터 사진 ----
     const pScene = new T.Scene();
-    pScene.add(new T.HemisphereLight(0xfff6e8, 0x7a6858, 0.72));
-    const pSun = new T.DirectionalLight(0xffffff, 0.5); pSun.position.set(-1.5, 3, 3); pScene.add(pSun);
+    pScene.environment = envTex;
+    pScene.add(new T.HemisphereLight(0xfff6e8, 0x7a6858, envTex ? 0.35 : 0.9));
+    const pSun = new T.DirectionalLight(0xfff4e8, 1.5); pSun.position.set(-1.5, 3, 3); pScene.add(pSun);
     const pCam = new T.PerspectiveCamera(30, 1, 0.1, 20);
     const pCache = {};
     function portrait(k, slot) {
@@ -2641,7 +2776,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       out.getContext("2d").drawImage(el, 0, 0);
       pScene.remove(c.root);
       c.disp.forEach((g) => g.dispose());
-      gl.setPixelRatio(PR);
+      gl.setPixelRatio(curPR);
       if (vw) gl.setSize(vw, vh, false);
       return (pCache[key] = out);
     }
@@ -3295,7 +3430,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     g.classList.toggle("touch", touchMode);
     g.classList.toggle("portrait", portrait);
     $("pad").hidden = padHidden();
-    $("rotateTip").hidden = !(touchMode && portrait);
+    $("rotateTip").hidden = !(touchMode && portrait) || use3D();
     if (!g.hidden) {
       const hudB = document.querySelector("#game .hud").getBoundingClientRect().bottom;
       zone.style.top = Math.round(hudB + 4) + "px";
