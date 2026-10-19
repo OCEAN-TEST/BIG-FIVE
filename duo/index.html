@@ -145,13 +145,14 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 /* 첫 화면 버튼 줄 (게임 방법, 설정) */
 .appnote { position: relative; margin: 0; word-break: keep-all; padding: 10px 44px 10px 14px; border-radius: 12px; border: 1.5px dashed rgba(255,207,51,.55); background: rgba(255,248,230,.08); color: #f3e6d2; font-size: 14px; line-height: 1.6; }
 .appnote b { color: var(--sign); }
+.appnote a { color: var(--sign); font-weight: 700; }
 .appnote button { position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: #cdbca8; font-size: 16px; cursor: pointer; }
 .lobbybar { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .lobbybar .btn { flex: 1 1 0; min-width: 0; max-width: 320px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .lobbybar svg { width: 20px; height: 20px; flex: none; }
 body.modal { overflow: hidden; }
 .setwrap { position: fixed; inset: 0; z-index: 60; background: rgba(20,14,10,.6); display: flex; align-items: center; justify-content: center; padding: 16px; }
-.setbox { background: var(--paper); border-radius: 14px; width: min(380px, 100%); padding: 14px 18px 8px; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
+.setbox { background: var(--paper); border-radius: 14px; width: min(380px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; padding: 14px 18px 8px; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
 .howbox { width: min(760px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; padding-bottom: 6px; }
 .howbody { overflow-y: auto; overscroll-behavior: contain; padding: 0 2px 14px; display: flex; flex-direction: column; gap: 10px; }
 .howbody h3 { margin: 10px 0 0; padding-top: 12px; border-top: 2px dashed var(--paper-line); font-family: var(--font-ui); font-weight: 400; font-size: 21px; color: var(--chili); }
@@ -161,6 +162,12 @@ body.modal { overflow: hidden; }
 .setrow { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 0; border-top: 2px dashed var(--paper-line); }
 .setrow b { display: block; font-family: var(--font-ui); font-weight: 400; font-size: 19px; color: var(--ink); }
 .setrow small { display: block; font-size: 13px; color: var(--soft); line-height: 1.45; }
+.roundrow { flex-direction: column; align-items: stretch; gap: 6px; padding-top: 10px; }
+.roundbtns { display: flex; gap: 10px; }
+.roundbtns .btn { flex: 1 1 0; font-size: 19px; padding: 9px 10px; }
+.roundfoot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.roundfoot small { flex: 1; word-break: keep-all; }
+.roundfoot .btn.ghost { flex: none; font-size: 16px; }
 .switch { position: relative; flex: none; width: 60px; height: 34px; border-radius: 999px; border: 0; background: #cdbca8; cursor: pointer; transition: background .15s; }
 .switch::after { content: ""; position: absolute; top: 4px; left: 4px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 2px 0 rgba(0,0,0,.2); transition: transform .15s; }
 .switch[aria-checked="true"] { background: var(--mint); }
@@ -399,6 +406,13 @@ body.modal { overflow: hidden; }
 <div class="setwrap" id="setPanel" hidden role="dialog" aria-modal="true" aria-labelledby="setTitle">
   <div class="setbox">
     <div class="sethead"><h2 id="setTitle">설정</h2><button class="setx" id="setClose" type="button" aria-label="설정 닫기">✕</button></div>
+    <div class="setrow roundrow" id="roundRow" hidden>
+      <div class="roundbtns" id="roundBtns">
+        <button class="btn" id="setAgain" type="button">다시 하기</button>
+        <button class="btn alt" id="setPick" type="button">맵 고르기</button>
+      </div>
+      <div class="roundfoot"><small id="roundNote"></small><button class="btn ghost" id="setQuit" type="button">방 나가기</button></div>
+    </div>
     <div class="setrow">
       <span><b id="sndLabel">게임 소리</b><small>끄면 효과음이 하나도 안 나요 (음소거). 컴퓨터는 <kbd>M</kbd> 키로도 바로 끄고 켜요.</small></span>
       <button class="switch" id="sndSwitch" type="button" role="switch" aria-checked="true" aria-labelledby="sndLabel"></button>
@@ -417,7 +431,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 8;
+  const VERSION = 9;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -3999,7 +4013,22 @@ body.modal { overflow: hidden; }
     if (modalOpener && document.body.classList.contains("ingame")) modalOpener.blur(); // 게임 중엔 버튼에 초점이 남아 스페이스가 눌리지 않게
     modalOpener = null;
   }
-  document.querySelectorAll(".setopen").forEach((b) => b.addEventListener("click", (e) => openModal("setPanel", e.currentTarget)));
+  document.querySelectorAll(".setopen").forEach((b) => b.addEventListener("click", (e) => { roundRow(); openModal("setPanel", e.currentTarget); }));
+  // 게임 중 설정: 다시 하기 · 맵 고르기(다 같이 방에 남은 채 단계 고르는 화면으로) · 방 나가기
+  function roundRow() {
+    const inGame = !$("game").hidden && !!view, spec = role === "spec";
+    $("roundRow").hidden = !inGame;
+    $("roundBtns").hidden = spec;
+    $("roundNote").textContent = spec ? "관전 중이에요." : role === "guest" ? "누르면 방장 화면도 같이 바뀌어요." : guestOn ? "친구 화면도 같이 바뀌어요." : "";
+  }
+  function roundCmd(a) {
+    closeModal();
+    if (role === "host") { if (!W || W.phase === "wait") return; if (a === "again") startRound(); else toRoom(); }
+    else if (role === "guest" && net) net.send({ t: "menu", a });
+  }
+  $("setAgain").addEventListener("click", () => roundCmd("again"));
+  $("setPick").addEventListener("click", () => roundCmd("pick"));
+  $("setQuit").addEventListener("click", () => { closeModal(); leave(); });
   $("howBtn").addEventListener("click", (e) => openModal("howPanel", e.currentTarget));
   document.querySelectorAll(".setx").forEach((b) => b.addEventListener("click", closeModal));
   ["setPanel", "howPanel"].forEach((id) => $(id).addEventListener("click", (e) => { if (e.target === $(id)) closeModal(); }));
@@ -4127,7 +4156,7 @@ body.modal { overflow: hidden; }
         if (role === "host") {
           btns = '<button class="btn" id="againBtn" type="button">다시 하기</button>' +
             (nextOpen ? '<button class="btn alt" id="nextBtn" type="button">다음 단계</button>' : "") +
-            '<button class="btn ghost" id="pickBtn" type="button">단계 고르기</button>';
+            '<button class="btn ghost" id="pickBtn" type="button">맵 고르기</button>';
         } else btns = "<p>방장이 다음 판을 고르면 바로 이어져요.</p>";
         ov.innerHTML =
           '<div class="result"><span class="lv">' + st.id + "단계 · " + st.name + "</span><h2>영업 끝!</h2>" +
@@ -4154,6 +4183,7 @@ body.modal { overflow: hidden; }
     $("room").hidden = name !== "room";
     $("game").hidden = name !== "game";
     document.body.classList.toggle("ingame", name === "game");
+    roundRow();
     if (name !== "game") { touchIn.chop = false; endStick(); $("pad").hidden = true; }
     if (name === "game") { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); requestAnimationFrame(layout); }
   }
@@ -4464,6 +4494,10 @@ body.modal { overflow: hidden; }
         } else if (d.t === "hit") { // 친구가 오토바이에 치였어요
           if (d.rs != null && d.rs !== W.rs) return;
           bikeHitHost(1);
+        } else if (d.t === "menu") { // 친구가 설정에서 다시 하기 · 맵 고르기
+          if (W.phase === "wait") return;
+          if (d.a === "again") { if (modalEl === $("setPanel")) closeModal(); startRound(); }
+          else if (d.a === "pick") { if (modalEl === $("setPanel")) closeModal(); toRoom(); }
         }
       },
       leave(id) {
@@ -4726,6 +4760,12 @@ body.modal { overflow: hidden; }
   const APPNOTE_KEY = "bunsik.appnote";
   (function appNote() {
     if (!IOS_PHONE || asApp()) return;
+    if (TEST_OPEN) { // 테스트 주소로 연 사파리: 테스트용 홈 화면 앱은 설치 화면에서 추가해야 맵이 열린 채로 열려요
+      $("appNoteText").innerHTML = "<b>테스트용 홈 화면 앱</b>은 <a href=\"test/\">테스트 설치 화면</a>에서 추가해야 맵이 열린 채로 열려요.";
+      $("appNote").hidden = false;
+      $("appNoteX").addEventListener("click", () => { $("appNote").hidden = true; });
+      return;
+    }
     try { if (localStorage.getItem(APPNOTE_KEY) === "1") return; } catch (e) {}
     $("appNoteText").innerHTML = IN_APP
       ? "<b>아이폰은 주소창 없이 꽉 차게 할 수 있어요.</b> 지금은 앱 안에서 열린 화면이라 먼저 메뉴에서 <b>사파리로 열기</b>를 하고, 사파리 <b>공유</b> 버튼 → <b>홈 화면에 추가</b>를 눌러 주세요. 그다음부터 홈 화면의 분식집 아이콘으로 들어오면 돼요."
