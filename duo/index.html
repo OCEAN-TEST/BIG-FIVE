@@ -2532,7 +2532,7 @@ body.modal { overflow: hidden; }
       const g = new T.Group();
       switch (k) {
         case "tteok": { // 떡볶이 떡: 양 끝을 어슷하게 썬 통통한 가래떡 토막 (아래 셋, 위에 둘 엇갈려)
-          const s = sub(g, 0, 0, 0, 0.35), m1 = mat("#f6ecdb", "g"), m2 = mat("#ead9bd", "g");
+          const s = sub(g, 0, 0, 0, 0.35, 0.85), m1 = mat("#f6ecdb", "g"), m2 = mat("#ead9bd", "g");
           [[0, 0.06, -0.15, 0.08, m1], [0.03, 0.06, 0, -0.06, m2], [-0.02, 0.06, 0.15, 0.1, m1], [-0.05, 0.168, -0.07, 0.62, m2], [0.06, 0.168, 0.08, -0.5, m1]]
             .forEach(([x, y, z, r, m]) => part(s, tteokG(), m, x, y, z, 0, r, Math.PI / 2));
           break;
@@ -2571,12 +2571,13 @@ body.modal { overflow: hidden; }
           for (let j = 0; j < 5; j++) part(g, waveG(), mat("#e2a526", "g"), 0, 0.132, -0.12 + j * 0.06, 0, 0, 0, 1.1, 1, 1);
           for (const sd of [-1, 1]) for (let j = 0; j < 2; j++) part(g, waveG(), mat("#e2a526", "g"), 0, 0.035 + j * 0.05, sd * 0.163, Math.PI / 2, 0, 0, 1.1, 1, 0.8);
           break;
-        case "bap": { // 공기밥: 스테인리스 공기에 소복한 흰 밥
-          part(g, cylG(0.19, 0.13, 0.13, 32, true), mat("#cfd7db", "pd"), 0, 0.065, 0);
-          part(g, cylG(0.13, 0.13, 0.012, 24), mat("#b9c2c7", "p"), 0, 0.006, 0);
-          part(g, torG(0.19, 0.013, 0, 8, 36), mat("#e6ebee", "p"), 0, 0.13, 0, Math.PI / 2, 0, 0);
-          part(g, sphG(24, true), mat("#ece7dc"), 0, 0.115, 0, 0, 0, 0, 0.18, 0.125, 0.18);
-          riceGrains(g, 0, 0.115, 0, 0.185, 0.13, 90);
+        case "bap": { // 공기밥: 스테인리스 공기에 소복한 흰 밥 (85% 크기)
+          const b = sub(g, 0, 0, 0, 0, 0.85);
+          part(b, cylG(0.19, 0.13, 0.13, 32, true), mat("#cfd7db", "pd"), 0, 0.065, 0);
+          part(b, cylG(0.13, 0.13, 0.012, 24), mat("#b9c2c7", "p"), 0, 0.006, 0);
+          part(b, torG(0.19, 0.013, 0, 8, 36), mat("#e6ebee", "p"), 0, 0.13, 0, Math.PI / 2, 0, 0);
+          part(b, sphG(24, true), mat("#ece7dc"), 0, 0.115, 0, 0, 0, 0, 0.18, 0.125, 0.18);
+          riceGrains(b, 0, 0.115, 0, 0.185, 0.13, 90);
           break;
         }
         case "gim": // 김: 크고 새까만 네모 장 여러 장
