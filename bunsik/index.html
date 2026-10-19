@@ -346,7 +346,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   const CONT = { pot: { name: "냄비", station: "stove" }, basket: { name: "튀김 바구니", station: "fryer" } };
   const PLATE_DISHES = Object.values(DISH).filter((d) => d.where === "plate");
 
-  // 맵 기호: . 바닥  C 조리대  # 벽  K 도마  S 화구+냄비  F 튀김기+바구니  W 내는 곳  T 쓰레기통
+  // 맵 기호: . 바닥  C 조리대  | 칸막이 조리대(노랑, 어디서든 넘겨요)  # 벽  K 도마  S 화구+냄비  F 튀김기+바구니  W 내는 곳  T 쓰레기통
   //          P 접시  H 개수대  R 반납구  > 컨베이어  t m p r b g d o 재료 상자
   const STAGES = [
     { id: 1, name: "골목 분식집", time: 150, menu: ["gimbap", "tteokbokki"], stars: [10000, 20000, 30000], plates: 0, gap: [13, 17], extra: 0, duo: false,
@@ -355,8 +355,8 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       map: ["CCtmCCSSCCWWCCC", "C.............C", "b.............C", "g....CCCC.....K", "d....CCCC.....K", "C.............C", "P.............T", "C.............C", "CCCCCCCCCCCCCCC"] },
     { id: 2, name: "칸막이 주방", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [14000, 28000, 40000], plates: 0, gap: [11, 15], extra: 10, duo: true,
       floor: ["#e6eef2", "#d8e3ea"], spawn: [[3.5, 4.5], [10.5, 4.5]],
-      tip: "가운데 칸막이는 못 넘어가요. 왼쪽은 재료 손질, 오른쪽은 조리와 서빙. 칸막이의 노란 창구에 올리거나 던져서 넘겨요.",
-      map: ["CtmprCC#CSSCWWC", "b......#......C", "g......C......C", "d......#......P", "K......C......C", "K......#......T", "C......C......C", "T......#......C", "CCCCCCC#CCCCCCC"] },
+      tip: "가운데 노란 칸막이는 못 넘어가요. 왼쪽은 재료 손질, 오른쪽은 조리와 서빙. 노란 칸 아무 데나 올려두거나 던져서 넘겨요.",
+      map: ["CtmprCC|CSSCWWC", "b......|......C", "g......|......C", "d......|......P", "K......|......C", "K......|......T", "C......|......C", "T......|......C", "CCCCCCC|CCCCCCC"] },
     { id: 3, name: "설거지 대란", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [12000, 24000, 36000], plates: 3, gap: [11, 15], extra: 5, duo: false,
       floor: ["#e3f1ea", "#d3e8dd"], spawn: [[3.5, 5.5], [11.5, 5.5]],
       tip: "접시가 3개뿐이에요. 음식을 내면 접시가 반납구로 돌아와요. 개수대에서 씻어야 다시 써요.",
@@ -367,19 +367,19 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       map: ["CtmproCCKKCbgdC", "C.............C", "C.............T", "C.............C", ">>>>>>>>>>>>C.C", "C.............C", "S.............W", "S.............W", "CFFPCCCCCCCCTCC"] },
     { id: 5, name: "오픈 첫날", time: 210, menu: ["gimbap", "tteokbokki", "ramen", "twigim"], stars: [16000, 34000, 50000], plates: 4, gap: [9, 13], extra: 15, duo: true,
       floor: ["#f6e7e4", "#efd8d3"], spawn: [[3.5, 4.5], [10.5, 4.5]],
-      tip: "칸막이, 설거지, 튀김까지 전부. 왼쪽은 손질·설거지·김밥, 오른쪽은 냄비·튀김·서빙이에요. 노란 창구로 넘겨요.",
-      map: ["CtmproC#CSSCWWC", "b......#......R", "g......C......F", "d......#......F", "K......C......C", "K......#......C", "H......C......C", "T......#......T", "CCPCCCC#CCCCCCC"] }
+      tip: "칸막이, 설거지, 튀김까지 전부. 왼쪽은 손질·설거지·김밥, 오른쪽은 냄비·튀김·서빙. 가운데 노란 칸에 올려서 넘겨요.",
+      map: ["CtmproC|CSSCWWC", "b......|......R", "g......|......F", "d......|......F", "K......|......C", "K......|......C", "H......|......C", "T......|......T", "CCPCCCC|CCCCCCC"] }
   ];
   const stageOf = (id) => STAGES.find((s) => s.id === id) || STAGES[0];
 
   const CRATE_CH = { t: "tteok", m: "eomuk", p: "pa", r: "ramyeon", b: "bap", g: "gim", d: "danmuji", o: "ojingeo" };
-  const TYPE_CH = { ".": "floor", C: "counter", "#": "wall", K: "board", S: "stove", F: "fryer", W: "serve", T: "trash", P: "plates", H: "sink", R: "return", ">": "belt" };
+  const TYPE_CH = { ".": "floor", C: "counter", "|": "counter", "#": "wall", K: "board", S: "stove", F: "fryer", W: "serve", T: "trash", P: "plates", H: "sink", R: "return", ">": "belt" };
   const BELT_DIR = { ">": [1, 0] };
   function buildTiles(map) {
     const out = [];
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       const ch = map[y][x];
-      out.push({ i: y * COLS + x, x, y, ch, type: CRATE_CH[ch] ? "crate" : TYPE_CH[ch], ing: CRATE_CH[ch] || null, dir: BELT_DIR[ch] || null });
+      out.push({ i: y * COLS + x, x, y, ch, type: CRATE_CH[ch] ? "crate" : TYPE_CH[ch], ing: CRATE_CH[ch] || null, dir: BELT_DIR[ch] || null, div: ch === "|" });
     }
     return out;
   }
@@ -388,12 +388,6 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   let curStage = 1;
   function loadMap(id) { curStage = id; tiles = buildTiles(stageOf(id).map); belts = tiles.filter((t) => t.type === "belt"); }
   const idx = (x, y) => y * COLS + x;
-  // 칸막이 창구: 위아래(또는 좌우)가 칸막이 벽인 조리대. vertOnly면 세로 칸막이인지만
-  function isWindow(t, vertOnly) {
-    const w = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS && tiles[y * COLS + x].type === "wall";
-    const v = w(t.x, t.y - 1) && w(t.x, t.y + 1);
-    return vertOnly ? v : v || (w(t.x - 1, t.y) && w(t.x + 1, t.y));
-  }
   const solid = (x, y) => x < 0 || y < 0 || x >= COLS || y >= ROWS || tiles[idx(x, y)].type !== "floor";
 
   const $ = (id) => document.getElementById(id);
@@ -1332,13 +1326,9 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       }
     }
     counterBase(px, py, s);
-    if (t.type === "counter" && isWindow(t)) { // 칸막이 창구: 노란 칸 + 넘기는 화살표
-      ctx.fillStyle = "#ffcf33"; ctx.fillRect(px + 1, py + 1, s - 2, s - 3);
-      ctx.save(); ctx.translate(px + s / 2, py + s / 2); if (!isWindow(t, true)) ctx.rotate(Math.PI / 2);
-      ctx.beginPath(); const u = s / 10;
-      ctx.moveTo(-4 * u, 0); ctx.lineTo(-2.2 * u, -1.6 * u); ctx.lineTo(-2.2 * u, -0.7 * u); ctx.lineTo(2.2 * u, -0.7 * u); ctx.lineTo(2.2 * u, -1.6 * u); ctx.lineTo(4 * u, 0);
-      ctx.lineTo(2.2 * u, 1.6 * u); ctx.lineTo(2.2 * u, 0.7 * u); ctx.lineTo(-2.2 * u, 0.7 * u); ctx.lineTo(-2.2 * u, 1.6 * u); ctx.closePath();
-      ctx.fillStyle = "#ffffff"; ctx.fill(); ctx.restore();
+    if (t.div) { // 칸막이 조리대: 노란 칸
+      ctx.fillStyle = "#ffcf33"; ctx.fillRect(px + 1, py + 1, s - 2, s - 4);
+      ctx.fillStyle = "#f5bf1d"; ctx.fillRect(px + 1, py + s * 0.5, s - 2, 2);
     } else if (t.type === "crate") {
       rrect(ctx, px + s * 0.1, py + s * 0.08, s * 0.8, s * 0.84, 4); ctx.fillStyle = "#8f5d2c"; ctx.fill();
       ctx.fillStyle = "#a8743a"; for (let i = 0; i < 3; i++) ctx.fillRect(px + s * 0.14, py + s * (0.14 + i * 0.26), s * 0.72, s * 0.2);
@@ -1704,15 +1694,6 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       for (const x0 of [22, 86]) { g.beginPath(); g.moveTo(x0, 34); g.lineTo(x0 + 24, 64); g.lineTo(x0, 94); g.stroke(); }
       beltTex = canvasTex(c, true);
       return std({ map: beltTex, roughness: 0.72 });
-    });
-    const arrowMat = () => gc("arrowMat", () => {
-      const c = document.createElement("canvas"); c.width = 256; c.height = 128;
-      const g = c.getContext("2d");
-      const path = () => { g.beginPath(); g.moveTo(14, 64); g.lineTo(62, 22); g.lineTo(62, 46); g.lineTo(194, 46); g.lineTo(194, 22); g.lineTo(242, 64); g.lineTo(194, 106); g.lineTo(194, 82); g.lineTo(62, 82); g.lineTo(62, 106); g.closePath(); };
-      path(); g.lineJoin = "round"; g.lineWidth = 12; g.strokeStyle = "rgba(160,100,0,.55)"; g.stroke();
-      path(); g.fillStyle = "#ffffff"; g.fill();
-      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = ANISO;
-      return new T.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     });
     const blobMat = () => gc("blobMat", () => {
       const c = document.createElement("canvas"); c.width = c.height = 64;
@@ -2340,20 +2321,12 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
             A.add(boxG(1, CH - 0.075, 1), mtx(cx, (CH - 0.075) / 2, cz), P.wblk);
             A.add(boxG(1, 0.075, 1), mtx(cx, CH - 0.0375, cz), "#4a3428");
             return;
-          case "counter": {
-            const n = at(t.x, t.y - 1), s = at(t.x, t.y + 1), w = at(t.x - 1, t.y), e = at(t.x + 1, t.y);
-            const isW = (q) => !!q && q.type === "wall";
-            const vert = isW(n) && isW(s);
-            if (vert || (isW(w) && isW(e))) { // 칸막이 창구: 같은 막대 안의 노란 칸 + 넘기는 화살표
+          case "counter":
+            if (t.div) { // 칸막이 조리대: 끊김 없이 이어지는 노란 막대 (어디서든 넘겨요)
               A.add(boxG(1, CH - 0.075, 1), mtx(cx, (CH - 0.075) / 2, cz), P.wblk);
               A.add(boxG(1, 0.075, 1), mtx(cx, CH - 0.0375, cz), "#ffcf33");
-              const ar = new T.Mesh(planeG(0.66, 0.33), arrowMat());
-              ar.rotation.order = "YXZ"; ar.rotation.set(-Math.PI / 2, vert ? 0 : Math.PI / 2, 0);
-              ar.position.set(cx, CH + 0.003, cz); ar.renderOrder = 2;
-              stageRoot.add(ar);
             } else cabinet(t);
             return;
-          }
           case "crate": {
             cabinet(t);
             const y0 = CH, h = 0.18, w = 0.82;
@@ -3099,7 +3072,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       const ch = s.map[y][x];
       const type = CRATE_CH[ch] ? "crate" : TYPE_CH[ch];
-      c.fillStyle = type === "floor" ? s.floor[(x + y) % 2] : MINI_COL[type];
+      c.fillStyle = type === "floor" ? s.floor[(x + y) % 2] : ch === "|" ? "#ffcf33" : MINI_COL[type];
       c.fillRect(x * u, y * u, u, u);
     }
   }
