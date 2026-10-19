@@ -471,7 +471,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 19;
+  const VERSION = 20;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -515,7 +515,7 @@ body.modal { overflow: hidden; }
   //          P 접시  H 개수대  R 반납구  > 컨베이어  t m p r b g d o 재료 상자
   //   장치:  ~ 얼음 바닥  } { ^ v 무빙워크(화살표 쪽으로 밀어요)  = 오토바이 길  @ $ 순간이동문(같은 기호끼리 연결)
   //          X Y 움직이는 칸막이 (X는 둘째 구간, Y는 첫째 구간에 올라와요)
-  //          ! 철길  : 차단봉 칸(기차 올 때 막혀요)  % 철길 끝(못 들어가요)  _ 낭떠러지(순간이동문으로 들어가면 떨어져요)
+  //          ! 철길  : 차단봉 칸(기차 올 때 막혀요)  % 철길 끝(못 들어가요)  _ 낭떠러지(밟으면 떨어져요)
   // 별 기준은 둘이서 할 때예요. 혼자면 SOLO_STAR배로 낮춰요.
   const STAGES = [
     { id: 1, name: "골목 분식집", time: 150, menu: ["gimbap", "tteokbokki"], stars: [15000, 33000, 60000], plates: 0, gap: [10, 13], extra: 0, duo: false,
@@ -554,12 +554,12 @@ body.modal { overflow: hidden; }
       tip: "주방 한가운데로 배달 오토바이가 지나가요. 빵빵 소리와 빨간 화살표가 뜨면 길에서 비켜요. 치이면 3초 동안 기절하고 들고 있던 음식을 뺏겨요. 길 건너로 던지거나 길가 조리대에 올려서 넘겨요.",
       map: ["CtmprbgdCKKCCCC", "C.............C", "C.............T", "C...CC...CC...C", "===============", "C...CC...CC...C", "S.............W", "S.............W", "CCPCCSSCCCCCTCC"] },
     { id: 9, name: "마법 분식집", time: 180, menu: ["ramen", "twigim"], stars: [14000, 33000, 60000], plates: 3, gap: [8, 11], extra: 12, duo: false, noRats: true,
-      ext: [8, 4], floor: ["#d3c7e4", "#c8bbdc"], spawn: [[2.5, 4.5], [11.5, 4.5]],
+      ext: [8, 0], floor: ["#d3c7e4", "#c8bbdc"], spawn: [[2.5, 4.5], [11.5, 4.5]],
       // 순간이동문 두 쌍: 쌍마다 왼쪽·오른쪽 자리 후보 중에서 every초마다 옮겨요 (화구·도마·상자·내는 곳 바로 앞은 후보에서 뺐어요)
       // 청록 문은 가끔 한쪽 끝이 가운데 낭떠러지(pit) 위로 이어져요: 들어가면 떨어져서 쓰러지고 5초 뒤 다시 나와요
       warp: { warn: 3, pit: [7, 4], pairs: [{ every: 20, L: [[5, 1], [3, 4]], R: [[9, 7], [11, 4]] }, { every: 27, L: [[5, 7], [2, 7]], R: [[9, 1], [12, 7]], trap: 0.35 }] },
-      tip: "가운데 벽은 못 넘어가요. 순간이동문을 밟으면 같은 색 문으로 넘어가고, 문 쪽으로 던진 재료도 넘어가요. 보라 문은 20초, 청록 문은 27초마다 자리를 옮기고, 옮기기 3초 전에 새 자리가 반짝여요. 청록 문이 가운데 낭떠러지로 이어질 때가 있는데, 헷갈려서 들어가면 떨어져서 5초 뒤에 처음 자리에서 다시 나와요. 그쪽으로 던진 재료도 떨어져요. 접시가 3개뿐이라 오른쪽 반납구로 돌아온 접시를 왼쪽 개수대에서 씻어야 해요.",
-      map: ["CrpoCCC#CCSSFFC", "C.....C_C.....C", "K.....C_C.....W", "K.....C_C.....W", "C.....C_C.....R", "P.....C_C.....T", "H.....C_C.....C", "C.....C_C.....C", "CCCCCCC#CCCCCCC"] },
+      tip: "가운데는 낭떠러지예요. 발을 헛디디거나 밀려나면 떨어지고, 건너편으로 던진 재료도 떨어져요. 순간이동문을 밟으면 같은 색 문으로 넘어가고, 문 쪽으로 던진 재료도 넘어가요. 보라 문은 20초, 청록 문은 27초마다 자리를 옮기고, 옮기기 3초 전에 새 자리가 반짝여요. 청록 문이 낭떠러지 위로 이어질 때도 있어요. 떨어지면 5초 뒤에 처음 자리에서 다시 나와요. 접시가 3개뿐이라 오른쪽 반납구로 돌아온 접시를 왼쪽 개수대에서 씻어야 해요.",
+      map: ["CrpoCCC#CCSSFFC", "C.....___.....C", "K.....___.....W", "K.....___.....W", "C.....___.....R", "P.....___.....T", "H.....___.....C", "C.....___.....C", "CCCCCCC#CCCCCCC"] },
     { id: 10, name: "변신 주방", time: 200, menu: ["gimbap", "tteokbokki", "twigim"], stars: [16000, 37000, 68000], plates: 0, gap: [8, 11], extra: 15, duo: false,
       gate: { period: 20, warn: 3 },
       ext: [6, 0], floor: ["#d3d6d8", "#c8cccf"], spawn: [[3.5, 2.5], [10.5, 6.5]],
@@ -647,10 +647,10 @@ body.modal { overflow: hidden; }
   const stageOf = (id) => STAGES.find((s) => s.id === id) || STAGES[0];
 
   const CRATE_CH = { t: "tteok", m: "eomuk", p: "pa", r: "ramyeon", b: "bap", g: "gim", d: "danmuji", o: "ojingeo" };
-  const TYPE_CH = { ".": "floor", C: "counter", "|": "counter", "#": "wall", K: "board", S: "stove", F: "fryer", W: "serve", T: "trash", P: "plates", H: "sink", R: "return", ">": "belt", Z: "hole", "%": "railend", _: "pit" };
+  const TYPE_CH = { ".": "floor", C: "counter", "|": "counter", "#": "wall", K: "board", S: "stove", F: "fryer", W: "serve", T: "trash", P: "plates", H: "sink", R: "return", ">": "belt", Z: "hole", "%": "railend" };
   const BELT_DIR = { ">": [1, 0] };
   // 바닥 장치: 걸어 다닐 수 있는 바닥인데 성질이 달라요
-  const FLOOR_CH = { "~": { ice: true }, "}": { push: [1, 0] }, "{": { push: [-1, 0] }, "^": { push: [0, -1] }, "v": { push: [0, 1] }, "=": { road: true }, "@": { portal: 0 }, "$": { portal: 1 }, "!": { rail: true }, ":": { bar: true } };
+  const FLOOR_CH = { "~": { ice: true }, "}": { push: [1, 0] }, "{": { push: [-1, 0] }, "^": { push: [0, -1] }, "v": { push: [0, 1] }, "=": { road: true }, "@": { portal: 0 }, "$": { portal: 1 }, "!": { rail: true }, ":": { bar: true }, _: { pit: true } };
   function buildTiles(map) {
     const out = [];
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
@@ -680,7 +680,7 @@ body.modal { overflow: hidden; }
   const solid = (x, y) => x < 0 || y < 0 || x >= COLS || y >= ROWS || tiles[idx(x, y)].type !== "floor";
   const tileUnder = (b) => { const x = Math.floor(b.x), y = Math.floor(b.y); return x < 0 || y < 0 || x >= COLS || y >= ROWS ? null : tiles[idx(x, y)]; };
   // 바닥에 물건을 내려놓을 수 있는 칸 (오토바이 길, 순간이동문, 철길·차단봉 칸은 안 돼요)
-  const canDrop = (t) => !!t && t.type === "floor" && !t.road && !t.rail && !t.bar && t.portal == null;
+  const canDrop = (t) => !!t && t.type === "floor" && !t.road && !t.rail && !t.bar && !t.pit && t.portal == null;
 
   const $ = (id) => document.getElementById(id);
   const won = (n) => (n < 0 ? "−" : "") + Math.abs(n).toLocaleString("ko-KR") + "원";
@@ -1383,7 +1383,7 @@ body.modal { overflow: hidden; }
         const s = W.slots[i];
         if (!h && s) { p.hold = s; W.slots[i] = null; delete s.bt; return; }
         if (h && !s) {
-          if (!canDrop(t)) { say(t.road ? "오토바이 길에는 못 내려놔요" : t.rail || t.bar ? "철길에는 못 내려놔요" : "순간이동문 위에는 못 내려놔요"); return; }
+          if (!canDrop(t)) { say(t.road ? "오토바이 길에는 못 내려놔요" : t.rail || t.bar ? "철길에는 못 내려놔요" : t.pit ? "낭떠러지에는 못 내려놔요" : "순간이동문 위에는 못 내려놔요"); return; }
           W.slots[i] = h; p.hold = null;
           if (t.push) ride(h);
           return;
@@ -1510,7 +1510,7 @@ body.modal { overflow: hidden; }
   function landOn(f, i) {
     const t = tiles[i], it = f.it, s = W.slots[i];
     const back = () => dropBack(f, Math.floor(f.x), Math.floor(f.y));
-    if (t.type === "trash" || t.type === "pit") return;
+    if (t.type === "trash") return;
     if (t.type === "counter" || t.type === "board" || t.type === "belt") {
       if (!s) { W.slots[i] = it; if (t.type === "belt") ride(it); return; }
       if (s.k === "plate") { if (plateCheck(s, it) === true) { plateAdd(s, it.k); return; } return back(); }
@@ -1546,11 +1546,11 @@ body.modal { overflow: hidden; }
         f.lt = ni;
         if (pt.portal != null && pt.link != null && f.pl !== pt.i) { // 순간이동문으로 들어간 재료는 짝 문에서 같은 방향으로 나와요
           const d = tiles[pt.link]; f.x = d.x + 0.5; f.y = d.y + 0.5; f.pl = d.i; f.lt = d.i;
-          if (d.type === "pit") { f.done = true; break; } // 낭떠러지로 떨어져서 사라져요
+          if (d.pit) { f.done = true; break; } // 낭떠러지로 떨어져서 사라져요
           continue;
         }
         f.x = nx; f.y = ny;
-        if (f.d >= FLY_MAX) { dropBack(f, Math.floor(f.x), Math.floor(f.y)); f.done = true; }
+        if (f.d >= FLY_MAX) { const lt = tiles[idx(Math.floor(f.x), Math.floor(f.y))]; if (!lt || !lt.pit) dropBack(f, Math.floor(f.x), Math.floor(f.y)); f.done = true; } // 낭떠러지 위에 떨어지면 사라져요
       }
     }
     W.fly = W.fly.filter((f) => !f.done);
@@ -1918,7 +1918,7 @@ body.modal { overflow: hidden; }
     p.hold = null;
     if (h && (isCont(h) || h.k === "ext")) {
       let x = Math.floor(p.x), y = Math.floor(p.y);
-      if (why === "fall") { const back = tiles.find((t) => t.portal != null && t.type !== "pit" && t.link === idx(x, y)); if (back) { x = back.x; y = back.y; } }
+      if (why === "fall") { const back = tiles.find((t) => t.portal != null && !t.pit && t.link === idx(x, y)); if (back) { x = back.x; y = back.y; } }
       dropFloor(h, x, y);
     }
     ev({ fx: "dead", i: pi, why: why || "train", snd: why === "fall" ? null : "crash" });
@@ -2093,9 +2093,12 @@ body.modal { overflow: hidden; }
       spawnDust(me.x, me.y, 0, 0);
       me.x = d.x + 0.5; me.y = d.y + 0.5; me.pLock = d.i;
       if (myIdx >= 0) anim[myIdx].lx = null;
-      if (d.type === "pit") { sfx.fall(); dieMe("fall"); return; } // 낭떠러지로 이어진 문: 떨어져요
+      if (d.pit) { sfx.fall(); dieMe("fall"); return; } // 낭떠러지로 이어진 문: 떨어져요
       spawnDust(me.x, me.y, 0, 0); sfx.portal();
     }
+    // 낭떠러지: 몸 가운데가 넘어가면 떨어져요 (걷다가, 밀려나서, 대시하다가)
+    const tf = tileUnder(me);
+    if (tf && tf.pit) { sfx.fall(); dieMe("fall"); return; }
     // 칸막이가 올라온 자리에 서 있으면 밀려나요
     unstick(me);
     view.players.forEach((other, k) => {
@@ -2246,10 +2249,12 @@ body.modal { overflow: hidden; }
     if (t.gate) { drawGateTile(t, px, py, s, now, v, st); return; }
     if (t.rail || t.type === "railend") { drawRail(ctx, px, py, s); if (t.type === "railend") { ctx.fillStyle = "rgba(20,14,10,.45)"; ctx.fillRect(px, py, s, s); } return; }
     if (t.bar) { drawBarTile(t, px, py, s, st, st.rail || { col: 7 }); return; }
-    if (t.type === "pit") { // 낭떠러지: 가운데로 갈수록 깜깜
+    if (t.pit) { // 낭떠러지: 가운데로 갈수록 깜깜
+      const pl = (dx) => { const q = tiles[idx(t.x + dx, t.y)]; return !!(q && q.pit); }; // 옆도 낭떠러지면 그쪽 테두리 없이 이어져요
       const g = ctx.createLinearGradient(px, 0, px + s, 0);
-      g.addColorStop(0, "#3a2c55"); g.addColorStop(0.25, "#0d0915"); g.addColorStop(0.75, "#0d0915"); g.addColorStop(1, "#3a2c55");
+      g.addColorStop(0, pl(-1) ? "#0d0915" : "#3a2c55"); g.addColorStop(0.25, "#0d0915"); g.addColorStop(0.75, "#0d0915"); g.addColorStop(1, pl(1) ? "#0d0915" : "#3a2c55");
       ctx.fillStyle = g; ctx.fillRect(px, py, s, s);
+      if (t.portal != null) drawFloorFx(t, px, py, s, now, st); // 낭떠러지 위로 이어진 문
       return;
     }
     switch (t.type) {
@@ -2503,7 +2508,7 @@ body.modal { overflow: hidden; }
       if (i >= 0) {
         const t = tiles[i];
         const mineHold = view.players[myIdx] && view.players[myIdx].hold;
-        const show = t.type !== "floor" ? !NO_HL[t.type] : !!(view.slots[i] || mineHold);
+        const show = t.type !== "floor" ? !NO_HL[t.type] : !t.pit && !!(view.slots[i] || mineHold);
         if (show) { ctx.save(); ctx.setLineDash([6, 4]); rrect(ctx, t.x * TS + 2, t.y * TS + 2, TS - 4, TS - 4, 6); ctx.strokeStyle = t.type === "floor" ? "rgba(36,26,20,.4)" : "rgba(255,255,255,.95)"; ctx.lineWidth = 3; ctx.stroke(); ctx.restore(); }
       }
     }
@@ -3484,9 +3489,10 @@ body.modal { overflow: hidden; }
         } else if (t.rail || t.type === "railend") { // 자갈
           g.fillStyle = "#8d877d"; g.fillRect(x0, y0, u, u);
           for (let k = 0; k < 70; k++) { const r = ((t.i * 131 + k * 977) % 1000) / 1000, q = ((t.i * 71 + k * 613) % 1000) / 1000; g.fillStyle = k % 3 ? "rgba(255,255,255,.16)" : "rgba(0,0,0,.18)"; g.fillRect(x0 + r * u, y0 + q * u, 3, 3); }
-        } else if (t.type === "pit") { // 낭떠러지
+        } else if (t.pit) { // 낭떠러지
           const gr = g.createLinearGradient(x0, 0, x0 + u, 0);
-          gr.addColorStop(0, "#2a1f3f"); gr.addColorStop(0.22, "#07050b"); gr.addColorStop(0.78, "#07050b"); gr.addColorStop(1, "#2a1f3f");
+          const pl = (dx) => { const q = at(t.x + dx, t.y); return !!(q && q.pit); };
+          gr.addColorStop(0, pl(-1) ? "#07050b" : "#2a1f3f"); gr.addColorStop(0.22, "#07050b"); gr.addColorStop(0.78, "#07050b"); gr.addColorStop(1, pl(1) ? "#07050b" : "#2a1f3f");
           g.fillStyle = gr; g.fillRect(x0, y0, u, u);
           for (let k = 0; k < 6; k++) { const r = ((t.i * 37 + k * 211) % 100) / 100, q = ((t.i * 53 + k * 97) % 100) / 100; g.fillStyle = "rgba(190,170,255," + (0.25 + r * 0.4) + ")"; g.fillRect(x0 + u * (0.3 + r * 0.4), y0 + q * u, 2, 2); }
         } else if (t.bar) { // 바깥쪽 노란 정지선
@@ -3501,7 +3507,7 @@ body.modal { overflow: hidden; }
           g.restore();
         }
       });
-      const solidAt = (x, y) => { const t = at(x, y); return !t || (t.type !== "floor" && !t.gate && !t.bar && t.type !== "railend" && t.type !== "pit"); };
+      const solidAt = (x, y) => { const t = at(x, y); return !t || (t.type !== "floor" && !t.gate && !t.bar && t.type !== "railend"); };
       const ao = u * 0.32;
       for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
         if (solidAt(x, y)) continue;
@@ -3935,7 +3941,7 @@ body.modal { overflow: hidden; }
       tiles.forEach((t) => {
         const cx = t.x + 0.5, cz = t.y + 0.5;
         if (t.gate) { buildGate(t); return; }
-        if (t.bar || t.rail || t.type === "railend" || t.type === "pit") return;
+        if (t.bar || t.rail || t.type === "railend" || t.pit) return;
         switch (t.type) {
           case "floor":
             if (t.push) buildWalk(t);
@@ -4353,7 +4359,7 @@ body.modal { overflow: hidden; }
         if (ti >= 0) {
           const t = tiles[ti];
           const mineHold = view.players[myIdx] && view.players[myIdx].hold;
-          const show = t.type !== "floor" ? !NO_HL[t.type] : !!(view.slots[ti] || mineHold);
+          const show = t.type !== "floor" ? !NO_HL[t.type] : !t.pit && !!(view.slots[ti] || mineHold);
           if (show) {
             hl.visible = true; hl.material = t.type === "floor" ? hlLo : hlHi;
             hl.position.set(t.x + 0.5, topY(t) + 0.004, t.y + 0.5);
