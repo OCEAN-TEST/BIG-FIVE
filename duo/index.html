@@ -312,7 +312,6 @@ body.modal { overflow: hidden; }
 <div class="wrap" id="lobby">
   <header class="sign">
     <h1>둘이서 분식집</h1>
-    <p>각자 폰이나 컴퓨터로 접속해서 같이 차리는 분식집. 열 단계를 차례로 깨 나가요. 뒤로 갈수록 메뉴보다 맵 장치가 어려워져요.</p>
     <canvas class="crew" id="crew" width="760" height="230" aria-label="고양이, 강아지, 토끼, 곰 요리사"></canvas>
   </header>
 
@@ -321,13 +320,11 @@ body.modal { overflow: hidden; }
   <div class="row">
     <section class="card">
       <h2>방 만들기</h2>
-      <p>방을 만들면 4자리 코드가 나와요. 친구한테 코드를 알려주세요. 같은 코드로 4명까지 관전도 할 수 있어요.</p>
       <button class="btn" id="hostBtn" type="button">방 만들기</button>
       <p class="status" id="hostStatus" aria-live="polite"></p>
     </section>
     <section class="card">
       <h2>방 들어가기</h2>
-      <p>친구한테 받은 코드를 넣어주세요. 자리가 차 있으면 관전으로 들어가요.</p>
       <form class="join" id="joinForm">
         <input id="codeInput" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="0000" aria-label="방 코드 4자리">
         <button class="btn alt" id="joinBtn" type="submit">들어가기</button>
@@ -474,7 +471,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 12;
+  const VERSION = 13;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -572,14 +569,69 @@ body.modal { overflow: hidden; }
       map: ["CtmprCC%CCSSCCC", "b.....:!:.....W", "g.....:!:.....W", "d..CC.:!:.CC..C", "o..CC.:!:.CC..F", "K.....:!:.....F", "K.....:!:.....T", "T.....:!:.....C", "CCCCCCC%CCCSCPC"] }
   ];
   const SOLO_STAR = 0.6;
+  // 3명·4명: 주문이 더 빨리·더 급하게 오고, 별 기준이 높아요. 접시도 모자라서 설거지를 해야 해요
+  const MAX_P = 4;
+  const PARTY = { 3: { gap: 0.72, limit: 0.88, star: 1.3 }, 4: { gap: 0.6, limit: 0.8, star: 1.5 } };
   // 맵·메뉴·규칙 지문: 한쪽만 새 버전이면 같이 못 하게 막아요 (버전 숫자를 깜빡해도 걸러져요)
   const RULES = (() => {
-    const src = JSON.stringify([STAGES, DISH, ING, CHOP_TIME, WASH_TIME, SPEED, R, SAFE, WARN, DASH_TIME, DASH_MUL, FLY_SPEED, FLY_MAX, BELT_STEP, WALK, ICE_GRIP, ICE_GLIDE, MISS, TIP, FIRE_SPREAD, EXT_TIME, FIRE_REGROW, EXT_RANGE]);
+    const src = JSON.stringify([STAGES, DISH, ING, CHOP_TIME, WASH_TIME, SPEED, R, SAFE, WARN, DASH_TIME, DASH_MUL, FLY_SPEED, FLY_MAX, BELT_STEP, WALK, ICE_GRIP, ICE_GLIDE, MISS, TIP, FIRE_SPREAD, EXT_TIME, FIRE_REGROW, EXT_RANGE, MAX_P, PARTY]);
     let h = 2166136261;
     for (let i = 0; i < src.length; i++) { h ^= src.charCodeAt(i); h = Math.imul(h, 16777619); }
     return (h >>> 0).toString(36);
   })();
-  const starsOf = (st, solo) => (solo ? st.stars.map((v) => Math.round((v * SOLO_STAR) / 1000) * 1000) : st.stars);
+  // 별 기준: 둘이 기본. 혼자면 낮게, 3·4명이면 높게 (np = 판을 시작할 때 사람 수)
+  const starsOf = (st, np) => { const k = np <= 1 ? SOLO_STAR : PARTY[np] ? PARTY[np].star : 1; return k === 1 ? st.stars : st.stars.map((v) => Math.round((v * k) / 1000) * 1000); };
+  const partyOf = (np) => PARTY[Math.min(MAX_P, np)] || null;
+  // 접시 개수: 0이면 무한. 3명부터는 모든 단계에 접시가 모자라요
+  const platesOf = (st, np) => (np >= 3 ? (st.plates ? st.plates + np - 2 : np + 1) : st.plates);
+  // 3명부터 개수대·반납구가 없는 맵엔 내는 곳 가까운 조리대를 반납구로, 접시 가까운 조리대를 개수대로 바꿔요
+  const NB4C = [[1, 0], [-1, 0], [0, 1], [0, -1]], WALK_CH = ".~}{^v";
+  const partyMaps = {};
+  function mapOf(st, np) {
+    if (np < 3) return st.map;
+    if (partyMaps[st.id]) return partyMaps[st.id];
+    const m = st.map.map((r) => r.split(""));
+    const ch = (x, y) => (x < 0 || y < 0 || x >= COLS || y >= ROWS ? "#" : m[y][x]);
+    const has = (c) => m.some((r) => r.includes(c));
+    const ext = st.ext ? st.ext[0] + "," + st.ext[1] : "";
+    const cands = [];
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      if (m[y][x] !== "C" || x + "," + y === ext) continue;
+      if (NB4C.some(([dx, dy]) => "!%:".includes(ch(x + dx, y + dy)))) continue; // 철길 옆 조리대(차단기 기둥 자리)는 빼요
+      if (NB4C.some(([dx, dy]) => WALK_CH.includes(ch(x + dx, y + dy)))) cands.push([x, y]);
+    }
+    const dist = (x, y, c) => { let b = 99; for (let yy = 0; yy < ROWS; yy++) for (let xx = 0; xx < COLS; xx++) if (m[yy][xx] === c) b = Math.min(b, Math.abs(xx - x) + Math.abs(yy - y)); return b; };
+    const pick = (c, avoid) => { let bp = null, bd = 99; cands.forEach(([x, y]) => { if (avoid && avoid[0] === x && avoid[1] === y) return; const d = dist(x, y, c); if (d < bd) { bd = d; bp = [x, y]; } }); return bp; };
+    let r = null;
+    if (!has("R")) { r = pick("W"); if (r) m[r[1]][r[0]] = "R"; }
+    if (!has("H")) { const h = pick("P", r); if (h) m[h[1]][h[0]] = "H"; }
+    return (partyMaps[st.id] = m.map((row) => row.join("")));
+  }
+  // 시작 자리: 단계에 적힌 두 자리 + 3·4번째는 1·2번째 바로 옆 바닥 (같은 쪽 구역)
+  const spawnCache = {};
+  function spawnPos(st, i) {
+    if (!spawnCache[st.id]) {
+      const list = st.spawn.slice(0, 2), used = new Set(list.map(([x, y]) => Math.floor(x) + "," + Math.floor(y)));
+      const ok = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS && WALK_CH.includes(st.map[y][x]);
+      for (let k = 2; k < MAX_P; k++) {
+        const b = list[k - 2], sx = Math.floor(b[0]), sy = Math.floor(b[1]);
+        const seen = new Set([sx + "," + sy]), q = [[sx, sy]];
+        let got = null;
+        for (let h = 0; h < q.length && !got; h++) {
+          const [x, y] = q[h];
+          for (const [dx, dy] of NB4C) {
+            const nx = x + dx, ny = y + dy, key = nx + "," + ny;
+            if (seen.has(key) || !ok(nx, ny)) continue;
+            seen.add(key); q.push([nx, ny]);
+            if (!used.has(key)) { got = [nx + 0.5, ny + 0.5]; break; }
+          }
+        }
+        got = got || b.slice(); used.add(Math.floor(got[0]) + "," + Math.floor(got[1])); list.push(got);
+      }
+      spawnCache[st.id] = list;
+    }
+    return spawnCache[st.id][i] || spawnCache[st.id][0];
+  }
   const stageOf = (id) => STAGES.find((s) => s.id === id) || STAGES[0];
 
   const CRATE_CH = { t: "tteok", m: "eomuk", p: "pa", r: "ramyeon", b: "bap", g: "gim", d: "danmuji", o: "ojingeo" };
@@ -601,9 +653,9 @@ body.modal { overflow: hidden; }
   }
   let tiles = buildTiles(STAGES[0].map);
   let belts = [], gates = [], bars = [];
-  let curStage = 1;
-  function loadMap(id) {
-    curStage = id; tiles = buildTiles(stageOf(id).map);
+  let curStage = 1, curNp = 1;
+  function loadMap(id, np) {
+    curStage = id; curNp = np || 1; tiles = buildTiles(mapOf(stageOf(id), curNp));
     belts = tiles.filter((t) => t.type === "belt" || t.push); // 벨트와 무빙워크는 위에 놓인 물건을 실어 날라요
     gates = tiles.filter((t) => t.gate);
     bars = tiles.filter((t) => t.bar);
@@ -869,8 +921,8 @@ body.modal { overflow: hidden; }
     bear:   { name: "곰",     fur: "#9a6440", dark: "#5e3a24", ear: "#d1a57c", nose: "#2b1d16" }
   };
   const CHAR_KEYS = Object.keys(CHARS);
-  const APRON = ["#d7372b", "#2f8f5b"];
-  const APRON_NAME = ["빨간 앞치마", "초록 앞치마"];
+  const APRON = ["#d7372b", "#2f8f5b", "#2f6fd1", "#8e4fc9"];
+  const APRON_NAME = ["빨간 앞치마", "초록 앞치마", "파란 앞치마", "보라 앞치마"];
 
   function drawEars(c, ch, S, back) {
     const C = CHARS[ch];
@@ -1013,7 +1065,7 @@ body.modal { overflow: hidden; }
   }
 
   // 움직임 상태 (두 화면 각자 계산)
-  const anim = [0, 1].map(() => ({ lx: null, ly: null, phase: 0, moving: false, reach: 0, an: 0, ds: 0, dashT: 0, ddx: 0, ddy: 0, lastBit: 0, hitT: -1e9, fallT: -1e9, wasDizzy: false, deadAt: 0 }));
+  const anim = [0, 1, 2, 3].map(() => ({ lx: null, ly: null, phase: 0, moving: false, reach: 0, an: 0, ds: 0, dashT: 0, ddx: 0, ddy: 0, lastBit: 0, hitT: -1e9, fallT: -1e9, wasDizzy: false, deadAt: 0 }));
   const bubbles = [], hits = []; // 머리 위 말풍선(비켜!·채팅), 밀친 자리 번쩍
   const REACH = 0.22;
   function stepAnim(i, x, y, dt) {
@@ -1043,14 +1095,15 @@ body.modal { overflow: hidden; }
   const plateEmpty = (p) => !!(p && p.k === "plate" && !p.dish && !p.items.length);
 
   function spawn(i, st) {
-    const sp = (st || STAGES[0]).spawn[i];
-    return { x: sp[0], y: sp[1], fx: 0, fy: 1, ax: 0, ay: 1, hold: null, chop: false, on: i === 0, ch: i ? "dog" : "cat", an: 0, ds: 0 };
+    const sp = spawnPos(st || STAGES[0], i);
+    return { x: sp[0], y: sp[1], fx: 0, fy: 1, ax: 0, ay: 1, hold: null, chop: false, on: i === 0, ch: CHAR_KEYS[i] || "cat", an: 0, ds: 0 };
   }
+  const onCount = (v) => (v && v.players ? v.players.filter((p) => p && p.on).length : 1);
   function newWorld() {
     return {
       phase: "wait", stage: 1, rs: 0, left: 0, cd: 0, score: 0, combo: 1, served: 0, missed: 0,
       slots: new Array(COLS * ROWS).fill(null), racks: {}, rets: {}, sinks: {}, returns: [], fly: [], fire: {},
-      orders: [], oid: 1, nextOrder: 0, players: [spawn(0), spawn(1)], prog: loadProg(), last: null
+      orders: [], oid: 1, nextOrder: 0, players: [0, 1, 2, 3].map((i) => spawn(i)), prog: loadProg(), last: null, np: 1
     };
   }
 
@@ -1059,15 +1112,18 @@ body.modal { overflow: hidden; }
   let W = null;           // 방장: 실제 세계
   let view = null;        // 화면에 그릴 상태 (방장은 W, 친구·관전은 받은 스냅샷)
   let me = null;          // 내 캐릭터 (내 컴퓨터가 위치를 정함). 관전은 없음
-  let myIdx = 0;          // 관전은 -1
-  let guestOn = false;
+  let myIdx = 0;          // 관전은 -1. 방장 0, 친구 1~3
+  let guestOn = false;    // 방장: 친구가 한 명이라도 있나
   const MAX_SPEC = 4;     // 관전은 최대 4명
-  let guestId = null;     // 방장: 친구 연결 번호
+  const seats = [null, null, null, null]; // 방장: 자리별 친구 연결 번호 (0은 방장 자리)
   const specs = new Set(); // 방장: 관전 연결 번호들
   let specN = 0;          // 지금 관전하는 사람 수 (모두 화면에 표시)
   // 남의 캐릭터는 받은 위치를 따라 부드럽게 움직여요 (관전은 둘 다)
-  const remotes = [0, 1].map(() => ({ x: 0, y: 0, init: false }));
-  let pendingGuestEvents = [], pendingSpecEvents = [];
+  const remotes = [0, 1, 2, 3].map(() => ({ x: 0, y: 0, init: false }));
+  const pendingEv = [[], [], [], []]; // 자리별로 보낼 알림
+  let pendingSpecEvents = [];
+  const seatOf = (id) => (id ? seats.indexOf(id) : -1);
+  const syncSeats = () => { guestOn = seats.some(Boolean); };
   let guestRs = -1; // 친구가 마지막으로 본 판 번호
 
   // 바라보는 칸 고르기. 바로 앞 칸이 기본이고, 거기에 손에 맞는 게 없으면
@@ -1113,20 +1169,21 @@ body.modal { overflow: hidden; }
 
   function ev(e) {
     if (e.to == null || e.to === 0) showEvent(e);
-    if (guestOn && (e.to == null || e.to === 1)) pendingGuestEvents.push(e);
+    for (let k = 1; k < MAX_P; k++) if (seats[k] && (e.to == null || e.to === k || e.to === "guests")) pendingEv[k].push(e);
     if (specs.size && (e.to == null || e.to === "spec")) pendingSpecEvents.push(e);
   }
 
   function addOrder() {
-    const st = stageOf(W.stage);
+    const st = stageOf(W.stage), pt = partyOf(W.np);
     const d = st.menu[Math.floor(Math.random() * st.menu.length)];
-    const lim = DISH[d].limit + (st.extra || 0);
+    const lim = Math.round((DISH[d].limit + (st.extra || 0)) * (pt ? pt.limit : 1));
     W.orders.push({ id: W.oid++, dish: d, left: lim, limit: lim });
   }
 
   function startRound() {
     const st = stageOf(W.stage);
-    loadMap(st.id);
+    W.np = onCount(W); W.plates = platesOf(st, W.np);
+    loadMap(st.id, W.np);
     W.slots = new Array(COLS * ROWS).fill(null);
     W.racks = {}; W.rets = {}; W.sinks = {}; W.returns = []; W.fly = []; W.fire = {}; W.rats = []; W.ratNext = 0;
     if (st.ext) W.slots[idx(st.ext[0], st.ext[1])] = { k: "ext" }; // 소화기
@@ -1134,15 +1191,14 @@ body.modal { overflow: hidden; }
     tiles.forEach((t) => {
       if (t.ch === "S") W.slots[t.i] = freshCont("pot");
       if (t.ch === "F") W.slots[t.i] = freshCont("basket");
-      if (t.type === "plates") { W.racks[t.i] = st.plates ? (first ? st.plates : 0) : -1; first = false; }
+      if (t.type === "plates") { W.racks[t.i] = W.plates ? (first ? W.plates : 0) : -1; first = false; }
       if (t.type === "return") W.rets[t.i] = 0;
       if (t.type === "sink") W.sinks[t.i] = { n: 0, pr: 0 };
     });
     W.orders = []; W.score = 0; W.combo = 1; W.served = 0; W.missed = 0; W.left = st.time; W.last = null;
-    W.solo = !guestOn; // 혼자 시작한 판은 별 기준이 낮아요
     applyGates(W); applyBars(W);
     const keep = W.players.map((p) => ({ on: p.on, ch: p.ch, an: p.an, ds: p.ds }));
-    W.players = [spawn(0, st), spawn(1, st)];
+    W.players = W.players.map((p, i) => spawn(i, st));
     W.players.forEach((p, i) => Object.assign(p, keep[i]));
     W.rs++; W.phase = "count"; W.cd = 4;
     me = W.players[0];
@@ -1153,7 +1209,7 @@ body.modal { overflow: hidden; }
   function endRound() {
     W.left = 0; W.phase = "end"; W.fly = [];
     const st = stageOf(W.stage);
-    const stars = starsOf(st, W.solo).filter((v) => W.score >= v).length;
+    const stars = starsOf(st, W.np).filter((v) => W.score >= v).length;
     const before = W.prog[st.id] || 0;
     if (stars > before) { W.prog[st.id] = stars; saveProg(W.prog); }
     W.last = { stars, newBest: stars > before, opened: before === 0 && stars >= 1 && !!STAGES.find((x) => x.id === st.id + 1) };
@@ -1234,8 +1290,9 @@ body.modal { overflow: hidden; }
       gone.forEach((o) => { W.score -= MISS; W.missed++; ev({ m: DISH[o.dish].name + " 주문을 놓쳤어요 " + won(-MISS), bad: true, snd: "miss" }); });
     }
     W.nextOrder -= dt;
-    if (W.orders.length < 2 && W.nextOrder > 4) W.nextOrder = 4;
-    if (W.nextOrder <= 0) { if (W.orders.length < MAX_ORDERS) addOrder(); W.nextOrder = st.gap[0] + Math.random() * (st.gap[1] - st.gap[0]); }
+    const pt = partyOf(W.np), gk = pt ? pt.gap : 1;
+    if (W.orders.length < (pt ? 3 : 2) && W.nextOrder > 4 * gk) W.nextOrder = 4 * gk;
+    if (W.nextOrder <= 0) { if (W.orders.length < MAX_ORDERS) addOrder(); W.nextOrder = (st.gap[0] + Math.random() * (st.gap[1] - st.gap[0])) * gk; }
 
     if (W.left <= 0) endRound();
   }
@@ -1381,7 +1438,7 @@ body.modal { overflow: hidden; }
         W.orders = W.orders.filter((x) => x !== o);
         W.combo = inOrder ? Math.min(4, W.combo + 1) : 1;
         p.hold = null;
-        if (stageOf(W.stage).plates) W.returns.push(RETURN_DELAY);
+        if (W.plates) W.returns.push(RETURN_DELAY);
         ev({ pop: { i, text: "+" + won(pts) + (used > 1 ? " ×" + used : "") } });
         return;
       }
@@ -1454,7 +1511,7 @@ body.modal { overflow: hidden; }
         const st = Math.min(0.1, rem); rem -= st;
         const nx = f.x + f.dx * st, ny = f.y + f.dy * st;
         f.d += st;
-        for (let j = 0; j < 2 && !f.done; j++) {
+        for (let j = 0; j < W.players.length && !f.done; j++) {
           if (j === f.by) continue;
           const q = W.players[j];
           if (!q.on || q.dd || q.dead > 0) continue;
@@ -1531,18 +1588,23 @@ body.modal { overflow: hidden; }
 
   // ===== 오토바이에 치였을 때: 들고 있던 음식은 뺏겨요 (냄비·바구니·소화기는 그 자리에 떨어뜨려요) =====
   // 밀치기: 빈손인 사람이 친구를 밀어요. 친구가 뭘 들고 있으면 뺏어와요
-  function shoveHost(i) {
-    const p = W.players[i], j = 1 - i, q = W.players[j], now = performance.now();
-    if (W.phase !== "play" || !p || !q || !q.on || q.dd || q.dead > 0 || p.dd || p.dead > 0 || p.hold || (p.stun || 0) > 0 || p.sn) return false;
+  function shoveHost(i, want) {
+    const p = W.players[i], now = performance.now();
+    if (W.phase !== "play" || !p || p.dd || p.dead > 0 || p.hold || (p.stun || 0) > 0 || p.sn) return false;
     if (now - (p.shAt || 0) < SHOVE_CD) return false;
-    const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy);
+    const alive = (k) => k !== i && W.players[k] && W.players[k].on && !W.players[k].dd && !(W.players[k].dead > 0);
+    const far = (k) => Math.hypot(W.players[k].x - p.x, W.players[k].y - p.y);
+    let j = want != null && alive(want) ? want : -1;
+    if (j < 0) W.players.forEach((q, k) => { if (alive(k) && (j < 0 || far(k) < far(j))) j = k; });
+    if (j < 0) return false;
+    const q = W.players[j], dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy);
     if (d > SHOVE_R + 0.45) return false; // 화면마다 위치가 조금 달라서 넉넉히
     p.shAt = now;
     const ux = d > 0.02 ? dx / d : p.fx || 0, uy = d > 0.02 ? dy / d : p.fy || 1;
     const took = !!q.hold;
     if (took) { p.hold = q.hold; q.hold = null; }
     if (j === 0) knockMe(ux, uy);
-    else if (guestId) net.send(guestId, { t: "kb", x: ux, y: uy, rs: W.rs });
+    else if (seats[j]) net.send(seats[j], { t: "kb", x: ux, y: uy, rs: W.rs });
     ev({ fx: "shove", i, j, x: ux, y: uy, took, snd: "whack" });
     return true;
   }
@@ -1797,7 +1859,7 @@ body.modal { overflow: hidden; }
     W.slots.forEach((it, i) => { if (it) sl.push([i, it]); });
     return {
       t: "s", ph: W.phase, st: W.stage, rs: W.rs, left: W.left, cd: W.cd, sc: W.score, cb: W.combo, sv: W.served, ms: W.missed,
-      sl, racks: W.racks, rets: W.rets, sinks: W.sinks, od: W.orders, prog: W.prog, last: W.last, so: !!W.solo,
+      sl, racks: W.racks, rets: W.rets, sinks: W.sinks, od: W.orders, prog: W.prog, last: W.last, np: W.np || 1,
       fi: Object.keys(W.fire).map((i) => [+i, Math.round(W.fire[i].hp * 100) / 100]),
       fly: W.fly.map((f) => ({ it: f.it, x: f.x, y: f.y, dx: f.dx, dy: f.dy, d: f.d })),
       pl: W.players.map((p) => ({ x: p.x, y: p.y, fx: p.fx, fy: p.fy, hold: p.hold, chop: p.chop, on: p.on, ch: p.ch, an: p.an, ds: p.ds, sn: p.sn || p.stun > 0 ? 1 : 0, dd: p.dd || p.dead > 0 ? 1 : 0 })),
@@ -1809,7 +1871,7 @@ body.modal { overflow: hidden; }
     const slots = new Array(COLS * ROWS).fill(null);
     s.sl.forEach(([i, it]) => (slots[i] = it));
     specN = s.sp || 0;
-    return { phase: s.ph, stage: s.st, rs: s.rs, left: s.left, cd: s.cd, score: s.sc, combo: s.cb, served: s.sv, missed: s.ms, slots, racks: s.racks, rets: s.rets, sinks: s.sinks, orders: s.od, prog: s.prog, last: s.last, solo: !!s.so, rats: s.rt || [], fire: Object.fromEntries((s.fi || []).map(([i, hp]) => [i, { hp }])), fly: s.fly, players: s.pl, at: performance.now() };
+    return { phase: s.ph, stage: s.st, rs: s.rs, left: s.left, cd: s.cd, score: s.sc, combo: s.cb, served: s.sv, missed: s.ms, slots, racks: s.racks, rets: s.rets, sinks: s.sinks, orders: s.od, prog: s.prog, last: s.last, np: s.np || 1, rats: s.rt || [], fire: Object.fromEntries((s.fi || []).map(([i, hp]) => [i, { hp }])), fly: s.fly, players: s.pl, at: performance.now() };
   }
 
   // ===== 이동 =====
@@ -1886,7 +1948,7 @@ body.modal { overflow: hidden; }
     if (me.dead > 0) { // 기차에 치여 쓰러진 동안: 안 보이고 못 움직여요. 5초 뒤 처음 자리에서 다시
       me.dead = Math.max(0, me.dead - dt);
       if (me.dead <= 0) {
-        const sp = stageOf(view.stage).spawn[myIdx] || [2.5, 4.5];
+        const sp = spawnPos(stageOf(view.stage), myIdx);
         me.x = sp[0]; me.y = sp[1]; me.fx = 0; me.fy = 1;
         if (myIdx >= 0) anim[myIdx].lx = null;
         spawnDust(me.x, me.y, 0, 0); sfx.portal();
@@ -1960,12 +2022,12 @@ body.modal { overflow: hidden; }
     }
     // 칸막이가 올라온 자리에 서 있으면 밀려나요
     unstick(me);
-    const other = view.players[1 - myIdx];
-    if (other && other.on && !isDead(1 - myIdx)) {
-      const r = remotes[1 - myIdx], ox = role === "host" ? other.x : r.x, oy = role === "host" ? other.y : r.y;
+    view.players.forEach((other, k) => {
+      if (k === myIdx || !other || !other.on || isDead(k)) return;
+      const r = remotes[k], ox = role === "host" ? other.x : r.x, oy = role === "host" ? other.y : r.y;
       const dx = me.x - ox, dy = me.y - oy, d = Math.hypot(dx, dy);
       if (d < 0.62 && d > 1e-4) { const push = 0.62 - d; moveBy(me, (dx / d) * push, (dy / d) * push); }
-    }
+    });
   }
 
   // ===== 화면 =====
@@ -2398,7 +2460,7 @@ body.modal { overflow: hidden; }
       drawChar(ctx, TS * 1.15, q.x * TS, q.y * TS, { ch: q.ch, slot: i, fx: q.fx, fy: q.fy, hold: q.hold, chop: !!w, wash: !!(w && w.wash), moving: a.moving, phase: a.phase, reach: reachAmt(i), dash: a.dashT > 0 ? a.dashT / DASH_TIME : 0, ddx: a.ddx, ddy: a.ddy, now, isMe: mine || myIdx < 0 });
     });
     drawTalk(ctx, now, (i) => { const e = list.find((o) => o.i === i); return e ? [e.q.x * TS, e.q.y * TS - TS * 0.35, e.q.y * TS - TS * 1.05, TS] : null; });
-    list.forEach(({ i }) => { const left = deadLeft(i, now); if (left) { const sp = st.spawn[i] || [2.5, 4.5]; drawRespawn(ctx, sp[0] * TS, sp[1] * TS, TS * 0.42, left, APRON[i]); } });
+    list.forEach(({ i }) => { const left = deadLeft(i, now); if (left) { const sp = spawnPos(st, i); drawRespawn(ctx, sp[0] * TS, sp[1] * TS, TS * 0.42, left, APRON[i]); } });
 
     // 진행 막대·완성·탐 표시
     const ob = lateUI; lateUI = null;
@@ -3977,7 +4039,7 @@ body.modal { overflow: hidden; }
     const unit = (x, y, z) => { const r = VRIGHT(), a = S(x - r[0] / 2, y, z - r[1] / 2), b = S(x + r[0] / 2, y, z + r[1] / 2); return Math.hypot(b[0] - a[0], b[1] - a[1]); };
 
     // ---- 매 화면 ----
-    const chars = [null, null], yaw3 = [0, 0], bits3 = [];
+    const chars = [null, null, null, null], yaw3 = [0, 0, 0, 0], bits3 = [];
     let lastT = 0;
     // 버벅이면 해상도를 조금씩 낮춰요 (테스트 창에서는 안 해요)
     const ADAPT = !IS_LOCAL || /[?&]autofb(&|$)/.test(location.search);
@@ -4115,7 +4177,7 @@ body.modal { overflow: hidden; }
       }
 
       // 요리사
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < MAX_P; i++) {
         const entry = list.find((o) => o.i === i);
         let c = chars[i];
         if (!entry) { if (c) c.root.visible = false; continue; }
@@ -4285,7 +4347,7 @@ body.modal { overflow: hidden; }
         const rn = railNow(view, now);
         if (rn.bell && !rn.train && Math.floor(now / 210) % 2 === 0) [1.2, ROWS - 1.2].forEach((z) => { const [px, py] = S(stR.col + 0.5, 1.2, z); pill(c, px, py, "!", "#ff3b30", Math.max(13, unit(stR.col + 0.5, 1.2, z) * 0.26), false); });
       }
-      list.forEach(({ i }) => { const left = deadLeft(i, now); if (!left) return; const sp = stageOf(view.stage).spawn[i] || [2.5, 4.5], [px, py] = S(sp[0], 0.05, sp[1]); drawRespawn(c, px, py, unit(sp[0], 0.05, sp[1]) * 0.42, left, APRON[i]); });
+      list.forEach(({ i }) => { const left = deadLeft(i, now); if (!left) return; const sp = spawnPos(stageOf(view.stage), i), [px, py] = S(sp[0], 0.05, sp[1]); drawRespawn(c, px, py, unit(sp[0], 0.05, sp[1]) * 0.42, left, APRON[i]); });
       // 대시 바람
       list.forEach(({ q, i }) => {
         const a = anim[i];
@@ -4791,16 +4853,16 @@ body.modal { overflow: hidden; }
       const key = "c" + view.rs + ":" + n;
       if (ov.dataset.k !== key) {
         ov.dataset.k = key;
-        const thr = starsOf(st, view.solo);
+        const thr = starsOf(st, view.np), npTag = npLabel(view.np);
         ov.innerHTML = '<div class="intro"><span class="lv">' + st.id + "단계</span><h2>" + st.name + "</h2><p>" + st.tip + '</p><div class="dishes">' +
           st.menu.map((d) => '<span><img src="' + iconURL(d) + '" alt="">' + DISH[d].name + "</span>").join("") + "</div>" +
-          '<p class="goal">★ ' + won(thr[0]) + " · ★★ " + won(thr[1]) + " · ★★★ " + won(thr[2]) + (view.solo ? " (혼자 기준)" : "") + "</p>" +
+          '<p class="goal">★ ' + won(thr[0]) + " · ★★ " + won(thr[1]) + " · ★★★ " + won(thr[2]) + (npTag ? " (" + npTag + ")" : "") + "</p>" +
           '<span class="count">' + n + "</span></div>";
       }
     } else if (view.phase === "end") {
       if (shownPhase !== "end") {
         ov.hidden = false; ov.dataset.k = "";
-        const thr = starsOf(st, view.solo);
+        const thr = starsOf(st, view.np), npTag = npLabel(view.np);
         const stars = thr.filter((v) => view.score >= v).length;
         const next = STAGES.find((x) => x.id === st.id + 1);
         const nextOpen = !!(next && unlocked(next.id, view.prog || {}));
@@ -4817,7 +4879,7 @@ body.modal { overflow: hidden; }
           '<div class="big">' + won(view.score) + "</div>" +
           (best ? '<p class="best">최고 기록이에요!' + (opened ? " 다음 단계가 열렸어요." : "") + "</p>" : "") +
           "<p>낸 음식 " + view.served + "그릇 · 놓친 주문 " + view.missed + "개</p>" +
-          '<p class="note">' + (view.solo ? "혼자 기준 · " : "") + "별 하나 " + won(thr[0]) + " · 둘 " + won(thr[1]) + " · 셋 " + won(thr[2]) + "</p>" +
+          '<p class="note">' + (npTag ? npTag + " · " : "") + "별 하나 " + won(thr[0]) + " · 둘 " + won(thr[1]) + " · 셋 " + won(thr[2]) + "</p>" +
           '<div class="btns">' + btns + '<button class="btn ghost" id="quitBtn" type="button">나가기</button></div></div>';
         const again = $("againBtn"), nextB = $("nextBtn"), pickB = $("pickBtn");
         if (again) again.addEventListener("click", () => startRound());
@@ -4842,6 +4904,8 @@ body.modal { overflow: hidden; }
     if (name === "game") { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); requestAnimationFrame(layout); }
   }
 
+  const npLabel = (np) => (np <= 1 ? "혼자 기준" : np >= 3 ? np + "명 기준" : "");
+  const seatName = (i) => (i === 0 ? "방장" : APRON_NAME[i].replace(" 앞치마", "") + " 친구");
   // 대기실: 캐릭터
   let pickKey = "";
   function renderPicker() {
@@ -4850,9 +4914,9 @@ body.modal { overflow: hidden; }
     roomExtras();
     if (myIdx < 0) { renderPickerSpec(st); return; }
     $("pickTitle").textContent = "내 캐릭터 고르기";
-    const mine = st.players[myIdx], other = st.players[1 - myIdx];
-    const otherOn = !!(other && other.on);
-    const key = myIdx + ":" + mine.ch + ":" + (otherOn ? other.ch : "-");
+    const mine = st.players[myIdx];
+    const others = st.players.map((q, i) => ({ q, i })).filter(({ q, i }) => i !== myIdx && q && q.on);
+    const key = myIdx + ":" + mine.ch + ":" + others.map(({ q, i }) => i + q.ch).join(",");
     if (key === pickKey) return;
     pickKey = key;
     const box = $("chars");
@@ -4860,32 +4924,32 @@ body.modal { overflow: hidden; }
     CHAR_KEYS.forEach((k) => {
       const b = document.createElement("button");
       b.type = "button"; b.className = "charbtn";
-      const taken = otherOn && other.ch === k;
+      const by = others.find(({ q }) => q.ch === k), taken = !!by;
       b.disabled = taken;
       b.setAttribute("aria-pressed", String(mine.ch === k));
       const c2 = document.createElement("canvas"); c2.width = c2.height = 176;
-      const pic = portraitOf(k, myIdx);
+      const sl = taken ? by.i : myIdx, pic = portraitOf(k, sl); // 남이 고른 캐릭터는 그 사람 앞치마 색으로
       if (pic) c2.getContext("2d").drawImage(pic, 0, 0, 176, 176);
-      else drawChar(c2.getContext("2d"), 150, 88, 116, { ch: k, slot: myIdx, fx: 0, fy: 1, now: 0 });
+      else drawChar(c2.getContext("2d"), 150, 88, 116, { ch: k, slot: sl, fx: 0, fy: 1, now: 0 });
       const nm = document.createElement("span"); nm.textContent = CHARS[k].name;
-      const sm = document.createElement("small"); sm.textContent = taken ? (myIdx === 0 ? "친구가 골랐어요" : "방장이 골랐어요") : mine.ch === k ? "내 캐릭터" : "";
+      const sm = document.createElement("small"); sm.textContent = taken ? seatName(by.i) + "가 골랐어요".replace("가", by.i === 0 ? "이" : "가") : mine.ch === k ? "내 캐릭터" : "";
       b.append(c2, nm, sm);
       b.addEventListener("click", () => pickChar(k));
       box.appendChild(b);
     });
-    $("pickNote").textContent = "내 앞치마는 " + iyeyo(APRON_NAME[myIdx]) + "." + (otherOn ? " " + (myIdx === 0 ? "친구는 " : "방장은 ") + iyeyo(CHARS[other.ch].name) + "." : "");
+    $("pickNote").textContent = "내 앞치마는 " + iyeyo(APRON_NAME[myIdx]) + "." + (others.length ? " 지금 " + (others.length + 1) + "명이에요." + (others.length >= 2 ? " 3명부터는 접시가 모자라서 설거지를 해야 하고 주문이 더 빨리 와요." : "") : "");
   }
-  // 관전: 두 사람이 고른 캐릭터만 보여줘요 (못 골라요)
+  // 관전: 요리사들이 고른 캐릭터만 보여줘요 (못 골라요)
   function renderPickerSpec(st) {
-    const p0 = st.players[0], p1 = st.players[1], on1 = !!(p1 && p1.on);
-    const key = "spec:" + p0.ch + ":" + (on1 ? p1.ch : "-");
+    const ons = st.players.map((q, i) => ({ q, i })).filter(({ q }) => q && q.on);
+    const key = "spec:" + ons.map(({ q, i }) => i + q.ch).join(",");
     if (key === pickKey) return;
     pickKey = key;
     $("pickTitle").textContent = "오늘의 요리사";
     const box = $("chars");
     box.innerHTML = "";
     CHAR_KEYS.forEach((k) => {
-      const who = p0.ch === k ? 0 : on1 && p1.ch === k ? 1 : -1;
+      const f = ons.find(({ q }) => q.ch === k), who = f ? f.i : -1;
       const b = document.createElement("button");
       b.type = "button"; b.className = "charbtn ro"; b.disabled = true;
       b.setAttribute("aria-pressed", String(who >= 0));
@@ -4894,11 +4958,11 @@ body.modal { overflow: hidden; }
       if (pic) c2.getContext("2d").drawImage(pic, 0, 0, 176, 176);
       else drawChar(c2.getContext("2d"), 150, 88, 116, { ch: k, slot: Math.max(0, who), fx: 0, fy: 1, now: 0 });
       const nm = document.createElement("span"); nm.textContent = CHARS[k].name;
-      const sm = document.createElement("small"); sm.textContent = who === 0 ? "방장" : who === 1 ? "친구" : "";
+      const sm = document.createElement("small"); sm.textContent = who >= 0 ? seatName(who) : "";
       b.append(c2, nm, sm);
       box.appendChild(b);
     });
-    $("pickNote").textContent = "방장은 " + iyeyo(CHARS[p0.ch].name) + ". " + (on1 ? "친구는 " + iyeyo(CHARS[p1.ch].name) + "." : "친구 자리는 아직 비어 있어요.");
+    $("pickNote").textContent = "요리사 " + ons.length + "명" + (ons.length < MAX_P ? " · 빈자리 " + (MAX_P - ons.length) + "개" : "") + ".";
   }
   // 대기실: 관전 인원, 빈자리 앉기 버튼
   function roomExtras() {
@@ -4907,20 +4971,20 @@ body.modal { overflow: hidden; }
     note.hidden = !n && role !== "spec";
     note.textContent = role === "spec" ? "관전 중 · 지금 " + Math.max(1, n) + "명이 보고 있어요" : "관전 " + n + "명이 보고 있어요";
     const st = role === "host" ? W : view;
-    $("sitBtn").hidden = !(role === "spec" && st && st.phase === "wait" && st.players[1] && !st.players[1].on);
+    $("sitBtn").hidden = !(role === "spec" && st && st.phase === "wait" && st.players.some((q, i) => i > 0 && q && !q.on));
   }
   function pickChar(k) {
-    if (role === "host") { if (guestOn && W.players[1].ch === k) return; W.players[0].ch = k; renderPicker(); }
+    if (role === "host") { if (W.players.some((q, i) => i > 0 && q.on && q.ch === k)) return; W.players[0].ch = k; renderPicker(); }
     else if (net) net.send({ t: "ch", c: k });
   }
 
   // 대기실: 단계
   const MINI_COL = { counter: "#c98b4f", wall: "#6d4a30", crate: "#8f5d2c", board: "#f0d6a4", stove: "#2f3336", fryer: "#e5b347", serve: "#d7372b", trash: "#6f7a7c", plates: "#ffffff", sink: "#8fc3e0", return: "#5a3d26", belt: "#34373a", hole: "#2a1d14", railend: "#6a645b" };
   const MINI_CH = { "~": "#cfe8f5", "}": "#7d868c", "{": "#7d868c", "^": "#7d868c", v: "#7d868c", "=": "#45484d", "@": "#a855f7", "$": "#14b8a6", X: "#f2b31b", Y: "#f2b31b", "!": "#8a847a", ":": "#f2c21b" };
-  function drawMini(c, s) {
-    const u = 10;
+  function drawMini(c, s, np) {
+    const u = 10, mp = mapOf(s, np || 1);
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-      const ch = s.map[y][x];
+      const ch = mp[y][x];
       const type = CRATE_CH[ch] ? "crate" : TYPE_CH[ch];
       c.fillStyle = MINI_CH[ch] || (type === "floor" ? s.floor[(x + y) % 2] : ch === "|" ? "#ffcf33" : MINI_COL[type]);
       c.fillRect(x * u, y * u, u, u);
@@ -4933,7 +4997,8 @@ body.modal { overflow: hidden; }
     const prog = st.prog || {};
     roomExtras();
     $("stageTitle").textContent = role === "host" ? "단계 고르기" : "방장이 고르는 단계";
-    const key = role + ":" + st.stage + ":" + JSON.stringify(prog) + ":" + guestOn;
+    const npNow = onCount(st);
+    const key = role + ":" + st.stage + ":" + JSON.stringify(prog) + ":" + npNow;
     if (key !== stageKey) {
       stageKey = key;
       const box = $("stages");
@@ -4945,12 +5010,12 @@ body.modal { overflow: hidden; }
         b.disabled = !open;
         b.setAttribute("aria-pressed", String(st.stage === s.id));
         const c2 = document.createElement("canvas"); c2.width = COLS * 10; c2.height = ROWS * 10;
-        drawMini(c2.getContext("2d"), s);
+        drawMini(c2.getContext("2d"), s, npNow);
         const nm = document.createElement("b"); nm.textContent = s.id + "단계 · " + s.name;
         const meta = document.createElement("div"); meta.className = "meta";
         const stars = prog[s.id] || 0;
         const sp = document.createElement("span"); sp.className = "st"; sp.textContent = "★".repeat(stars) + "☆".repeat(3 - stars);
-        const info = document.createElement("span"); info.textContent = open ? (s.duo ? "둘이서만" : "혼자도 가능") : "앞 단계 별 1개";
+        const info = document.createElement("span"); info.textContent = open ? (s.duo ? "2명 이상" : "혼자도 가능") : "앞 단계 별 1개";
         meta.append(sp, info);
         b.append(c2, nm, meta);
         if (role === "host") b.addEventListener("click", () => { if (!open) return; W.stage = s.id; renderStages(); });
@@ -4958,7 +5023,8 @@ body.modal { overflow: hidden; }
       });
     }
     const cur = stageOf(st.stage);
-    $("stageTip").textContent = cur.id + "단계: " + cur.tip + " 메뉴는 " + cur.menu.map((d) => DISH[d].name).join(", ") + ".";
+    $("stageTip").textContent = cur.id + "단계: " + cur.tip + " 메뉴는 " + cur.menu.map((d) => DISH[d].name).join(", ") + "." +
+      (npNow >= 3 ? " " + npNow + "명이라 접시가 " + platesOf(cur, npNow) + "개뿐이에요. 반납구로 돌아온 접시는 개수대에서 씻어요. 주문도 더 빨리 와요." : "");
     updateStart();
   }
   function updateStart() {
@@ -4966,13 +5032,13 @@ body.modal { overflow: hidden; }
     const s = stageOf(W.stage), b = $("startBtn");
     b.hidden = false;
     if (s.duo && !guestOn && !TEST_OPEN) { b.disabled = true; b.textContent = "친구가 들어와야 해요"; }
-    else { b.disabled = false; b.textContent = guestOn ? "영업 시작" : "혼자 시작"; }
+    else { b.disabled = false; b.textContent = guestOn ? "영업 시작 (" + onCount(W) + "명)" : "혼자 시작"; }
   }
   function toRoom() {
     if (role !== "host" || !W) return;
     W.phase = "wait"; W.fly = [];
     stageKey = ""; pickKey = "";
-    $("roomStatus").textContent = guestOn ? "친구와 연결돼 있어요. 단계를 고르고 시작해요." : "친구가 이 코드를 넣으면 연결돼요.";
+    $("roomStatus").textContent = guestOn ? "지금 " + onCount(W) + "명이에요. 단계를 고르고 시작해요." : "친구가 이 코드를 넣으면 연결돼요.";
     showScreen("room");
     renderPicker(); renderStages();
   }
@@ -5014,7 +5080,7 @@ body.modal { overflow: hidden; }
     let n = 0;
     peer.on("open", () => h.ready());
     peer.on("connection", (c) => {
-      if (conns.size >= MAX_SPEC + 3) { c.on("open", () => { c.send({ t: "full" }); setTimeout(() => c.close(), 500); }); return; }
+      if (conns.size >= MAX_SPEC + MAX_P + 2) { c.on("open", () => { c.send({ t: "full" }); setTimeout(() => c.close(), 500); }); return; }
       const id = "c" + ++n;
       conns.set(id, c);
       c.on("data", (d) => { if (conns.get(id) === c) h.data(id, d); });
@@ -5073,8 +5139,8 @@ body.modal { overflow: hidden; }
     showScreen("lobby");
   }
   function resetPeers() {
-    guestOn = false; guestId = null; specs.clear(); specN = 0;
-    pendingGuestEvents = []; pendingSpecEvents = [];
+    seats.fill(null); syncSeats(); specs.clear(); specN = 0;
+    pendingEv.forEach((q) => (q.length = 0)); pendingSpecEvents = [];
     remotes.forEach((r) => (r.init = false));
   }
   // 관전이면 조작 안내와 조작 버튼을 숨겨요
@@ -5093,14 +5159,21 @@ body.modal { overflow: hidden; }
     role = "host"; myIdx = 0; W = newWorld(); view = W; me = W.players[0];
     resetPeers(); applyRole();
     const seen = new Map(); // 연결마다 마지막으로 소식이 온 때
+    const freeSeat = () => seats.findIndex((x, k) => k > 0 && !x);
     const seatGuest = (id) => {
-      guestId = id; guestOn = true; remotes[1].init = false; pendingGuestEvents = [];
-      W.players[1] = Object.assign(spawn(1, stageOf(W.stage)), { on: true, ch: ["dog", "cat", "rabbit", "bear"].find((k) => k !== W.players[0].ch) });
-      net.send(id, { t: "welcome", as: "guest" });
-      if (W.phase === "wait") $("roomStatus").textContent = "친구가 들어왔어요! 단계를 고르고 시작해요.";
-      ev({ m: "친구가 들어왔어요", to: 0 });
+      const k = freeSeat();
+      if (k < 0) return false;
+      seats[k] = id; syncSeats(); remotes[k].init = false; pendingEv[k].length = 0;
+      const used = W.players.filter((p, j) => j !== k && p.on).map((p) => p.ch);
+      W.players[k] = Object.assign(spawn(k, stageOf(W.stage)), { on: true, ch: CHAR_KEYS.find((c) => !used.includes(c)) || CHAR_KEYS[k] });
+      net.send(id, { t: "welcome", as: "guest", slot: k });
+      const n = onCount(W);
+      if (W.phase === "wait") $("roomStatus").textContent = "친구가 들어왔어요! 지금 " + n + "명이에요. 단계를 고르고 시작해요.";
+      ev({ m: APRON_NAME[k] + " 친구가 들어왔어요 (" + n + "명)", to: 0 });
+      for (let j = 1; j < MAX_P; j++) if (j !== k && seats[j]) ev({ m: APRON_NAME[k] + " 친구가 들어왔어요 (" + n + "명)", to: j });
       ev({ m: "친구가 자리에 앉았어요", to: "spec" });
       renderPicker(); renderStages();
+      return true;
     };
     net = hostTransport(code, {
       ready() {
@@ -5116,44 +5189,46 @@ body.modal { overflow: hidden; }
         seen.set(id, performance.now());
         if (d.t === "hi") {
           if (d.v !== VERSION || d.h !== RULES) { net.send(id, { t: "ver" }); net.drop(id); return; }
-          if (id === guestId || specs.has(id)) return;
-          if (d.want !== "spec" && !guestOn) { seatGuest(id); return; }
+          if (seatOf(id) > 0 || specs.has(id)) return;
+          if (d.want !== "spec" && freeSeat() > 0) { seatGuest(id); return; }
           if (specs.size >= MAX_SPEC) { net.send(id, { t: "full", spec: true }); net.drop(id); return; }
           specs.add(id);
           net.send(id, { t: "welcome", as: "spec", auto: d.want !== "spec" });
           ev({ m: "관전하는 사람이 들어왔어요 (" + specs.size + "명)", to: 0 });
-          if (guestOn) ev({ m: "관전하는 사람이 들어왔어요 (" + specs.size + "명)", to: 1 });
+          if (guestOn) ev({ m: "관전하는 사람이 들어왔어요 (" + specs.size + "명)", to: "guests" });
           renderPicker();
           return;
         }
         if (d.t === "sit") { // 관전하던 사람이 빈 친구 자리에 앉아요 (대기실에서만)
-          if (!specs.has(id) || guestOn || W.phase !== "wait") return;
+          if (!specs.has(id) || freeSeat() < 0 || W.phase !== "wait") return;
           specs.delete(id); if (!specs.size) pendingSpecEvents = [];
           seatGuest(id);
           return;
         }
-        if (id !== guestId) return; // 관전은 조작을 못 해요
+        const k = seatOf(id);
+        if (k < 1) return; // 관전은 조작을 못 해요
+        const p = W.players[k];
         if (d.t === "ch") {
-          if (CHARS[d.c] && d.c !== W.players[0].ch) W.players[1].ch = d.c;
+          if (CHARS[d.c] && !W.players.some((q, j) => j !== k && q.on && q.ch === d.c)) p.ch = d.c;
           renderPicker();
         } else if (d.t === "p") {
           if (d.rs != null && d.rs !== W.rs) return;
-          const p = W.players[1]; p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; p.chop = !!d.ch; p.sn = !!d.sn; p.dd = !!d.dd; if (d.ds != null) p.ds = d.ds;
+          p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; p.chop = !!d.ch; p.sn = !!d.sn; p.dd = !!d.dd; if (d.ds != null) p.ds = d.ds;
         } else if (d.t === "a") {
           if (d.rs != null && d.rs !== W.rs) return;
-          const p = W.players[1]; p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; act(1);
+          p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; act(k);
         } else if (d.t === "th") {
           if (d.rs != null && d.rs !== W.rs) return;
-          const p = W.players[1]; p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; throwItem(1, d.ax, d.ay);
+          p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; throwItem(k, d.ax, d.ay);
         } else if (d.t === "hit") { // 친구가 오토바이·기차에 치였어요
           if (d.rs != null && d.rs !== W.rs) return;
-          if (d.k === "train") { W.players[1].dd = true; trainHitHost(1); } else bikeHitHost(1);
+          if (d.k === "train") { p.dd = true; trainHitHost(k); } else bikeHitHost(k);
         } else if (d.t === "sh") { // 친구가 밀쳤어요
           if (d.rs != null && d.rs !== W.rs) return;
-          const p = W.players[1]; p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; shoveHost(1);
+          p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; shoveHost(k, d.j);
         } else if (d.t === "chat") { // 친구 채팅 (3글자까지)
           const txt = chatClean(d.s);
-          if (txt && W.phase !== "wait") ev({ fx: "chat", i: 1, s: txt });
+          if (txt && W.phase !== "wait") ev({ fx: "chat", i: k, s: txt });
         } else if (d.t === "menu") { // 친구가 설정에서 다시 하기 · 맵 고르기
           if (W.phase === "wait") return;
           if (d.a === "again") { if (modalEl === $("setPanel")) closeModal(); startRound(); }
@@ -5163,9 +5238,15 @@ body.modal { overflow: hidden; }
       leave(id) {
         if (!W) return;
         if (specs.delete(id)) { if (!specs.size) pendingSpecEvents = []; renderPicker(); return; }
-        if (id !== guestId) return;
-        guestId = null; guestOn = false; W.players[1].on = false; W.players[1].hold = null; pendingGuestEvents = [];
-        if (W.phase === "wait") $("roomStatus").textContent = "친구가 나갔어요. 다시 들어오길 기다리는 중이에요.";
+        const k = seatOf(id);
+        if (k < 1) return;
+        seats[k] = null; syncSeats(); pendingEv[k].length = 0;
+        const p = W.players[k], h = p.hold;
+        p.on = false; p.hold = null; p.dd = false;
+        if (h && W.phase === "play" && (isCont(h) || h.k === "ext")) dropFloor(h, Math.floor(p.x), Math.floor(p.y)); // 냄비·바구니는 그 자리에 두고 가요
+        const n = onCount(W);
+        if (W.phase === "wait") $("roomStatus").textContent = guestOn ? APRON_NAME[k] + " 친구가 나갔어요. 지금 " + n + "명이에요." : "친구가 나갔어요. 다시 들어오길 기다리는 중이에요.";
+        else ev({ m: APRON_NAME[k] + " 친구가 나갔어요", bad: true });
         ev({ m: "친구가 나갔어요", bad: true, to: "spec" });
         renderPicker(); renderStages();
       },
@@ -5190,7 +5271,7 @@ body.modal { overflow: hidden; }
     timers.push(setInterval(() => {
       if (!W || !net || (!guestOn && !specs.size)) return;
       const s = snapshot();
-      if (guestOn) net.send(guestId, Object.assign({}, s, { ev: pendingGuestEvents.splice(0) }));
+      for (let k = 1; k < MAX_P; k++) if (seats[k]) net.send(seats[k], Object.assign({}, s, { ev: pendingEv[k].splice(0) }));
       if (specs.size) { const s2 = Object.assign({}, s, { ev: pendingSpecEvents.splice(0) }); specs.forEach((id) => net.send(id, s2)); }
     }, 50));
     // 관전 화면이 말없이 사라지면(폰 잠김, 앱 종료) 12초 뒤 자리를 비워요
@@ -5212,18 +5293,18 @@ body.modal { overflow: hidden; }
     role = "guest"; myIdx = 1; me = null; view = null;
     resetPeers();
     let lastRs = -1, welcomed = false;
-    const freshMe = () => ({ x: 11.5, y: 5.5, fx: 0, fy: -1, ax: 0, ay: 1, dashT: 0, dashCD: 0, ds: 0 });
+    const freshMe = () => { const sp = spawnPos(STAGES[0], myIdx); return { x: sp[0], y: sp[1], fx: 0, fy: -1, ax: 0, ay: 1, dashT: 0, dashCD: 0, ds: 0 }; };
     net = guestTransport(code, {
       ready() { net.send({ t: "hi", v: VERSION, h: RULES, want }); },
       data(d) {
         if (!d || !d.t) return;
-        if (d.t === "full") { failJoin(d.spec ? "자리도 관전석(" + MAX_SPEC + "명)도 다 찼어요." : "이미 두 명이 들어가 있는 방이에요."); return; }
+        if (d.t === "full") { failJoin(d.spec ? "자리도 관전석(" + MAX_SPEC + "명)도 다 찼어요." : "이미 " + MAX_P + "명이 들어가 있는 방이에요."); return; }
         if (d.t === "ver") { failJoin("이 화면이나 방장 화면이 예전 버전이에요. 둘 다 새로고침해주세요."); return; }
         if (d.t === "welcome") {
           const seated = welcomed; // 관전하다가 빈자리에 앉은 경우
           welcomed = true;
           if (d.as === "spec") { role = "spec"; myIdx = -1; me = null; }
-          else { role = "guest"; myIdx = 1; me = freshMe(); lastRs = -1; }
+          else { role = "guest"; myIdx = d.slot >= 1 && d.slot < MAX_P ? d.slot : 1; me = freshMe(); lastRs = -1; }
           pickKey = ""; stageKey = "";
           anim.forEach((a) => { a.lx = null; a.dashT = 0; });
           remotes.forEach((r) => (r.init = false));
@@ -5231,7 +5312,7 @@ body.modal { overflow: hidden; }
           $("roomTitle").textContent = role === "spec" ? "관전 중인 방" : "들어온 방";
           $("roomCode").textContent = code;
           $("roomStatus").textContent = role === "spec"
-            ? (d.auto ? "친구 자리가 이미 차 있어서 관전으로 들어왔어요. 두 사람이 시작하면 같이 볼 수 있어요." : "관전으로 들어왔어요. 방장이 시작하면 같이 볼 수 있어요.")
+            ? (d.auto ? "자리(" + MAX_P + "명)가 다 차 있어서 관전으로 들어왔어요. 시작하면 같이 볼 수 있어요." : "관전으로 들어왔어요. 방장이 시작하면 같이 볼 수 있어요.")
             : seated ? "자리에 앉았어요! 캐릭터를 고르면 방장이 시작해요." : "연결됐어요! 방장이 단계를 고르고 시작하면 바로 시작돼요.";
           $("startBtn").hidden = true;
           applyRole();
@@ -5241,12 +5322,12 @@ body.modal { overflow: hidden; }
         if (d.t === "kb") { if (me && d.rs === guestRs) knockMe(d.x, d.y); return; } // 방장이 밀쳤어요
         if (d.t === "s") {
           if (!welcomed) return;
-          if (d.st !== curStage) loadMap(d.st);
+          if (d.st !== curStage || (d.np || 1) !== curNp) loadMap(d.st, d.np || 1);
           view = viewFromSnapshot(d);
           if (d.rs !== lastRs) {
             lastRs = d.rs; guestRs = d.rs;
             if (me) {
-              const mine = view.players[1], sp = stageOf(d.st).spawn[1];
+              const mine = view.players[myIdx], sp = spawnPos(stageOf(d.st), myIdx);
               if (d.ph === "count") Object.assign(me, { x: sp[0], y: sp[1], fx: 0, fy: 1 });
               else Object.assign(me, { x: mine.x, y: mine.y, fx: mine.fx, fy: mine.fy });
               Object.assign(me, { dashT: 0, dashCD: 0, vx: 0, vy: 0, stun: 0, pLock: null, dead: 0, kbT: 0 });
@@ -5279,7 +5360,7 @@ body.modal { overflow: hidden; }
   // ===== 입력 =====
   function myHold() {
     if (!view) return null;
-    return role === "host" ? W.players[0].hold : view.players[1] && view.players[1].hold;
+    return role === "host" ? W.players[0].hold : view.players[myIdx] && view.players[myIdx].hold;
   }
   function doAct(buzz) {
     if (!view || view.phase !== "play" || !me || me.stun > 0 || me.kbT > 0 || me.dead > 0) return;
@@ -5288,25 +5369,28 @@ body.modal { overflow: hidden; }
     else if (net) net.send({ t: "a", rs: guestRs, x: me.x, y: me.y, fx: me.fx, fy: me.fy });
     if (buzz && navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
   }
-  // 바로 앞(정면 45° 안, 1칸 안)에 친구가 있으면 밀칠 수 있어요
+  // 바로 앞(정면 45° 안, 1칸 안)에 친구가 있으면 밀칠 수 있어요. 여럿이면 가장 가까운 사람 (없으면 -1)
   function shoveTarget() {
-    if (myIdx < 0 || !view) return false;
-    const o = 1 - myIdx, q = view.players[o];
-    if (!q || !q.on || isDead(o)) return false;
-    const ox = role === "host" ? q.x : remotes[o].x, oy = role === "host" ? q.y : remotes[o].y;
-    const dx = ox - me.x, dy = oy - me.y, d = Math.hypot(dx, dy);
-    if (d > SHOVE_R) return false;
-    if (d < 0.05) return true;
-    const fl = Math.hypot(me.fx || 0, me.fy || 0) || 1;
-    return (dx * (me.fx || 0) + dy * (me.fy || 0)) / (d * fl) > 0.7;
+    if (myIdx < 0 || !view) return -1;
+    let best = -1, bd = 99;
+    view.players.forEach((q, o) => {
+      if (o === myIdx || !q || !q.on || isDead(o)) return;
+      const ox = role === "host" ? q.x : remotes[o].x, oy = role === "host" ? q.y : remotes[o].y;
+      const dx = ox - me.x, dy = oy - me.y, d = Math.hypot(dx, dy);
+      if (d > SHOVE_R || d >= bd) return;
+      const fl = Math.hypot(me.fx || 0, me.fy || 0) || 1;
+      if (d < 0.05 || (dx * (me.fx || 0) + dy * (me.fy || 0)) / (d * fl) > 0.7) { best = o; bd = d; }
+    });
+    return best;
   }
   function workPress(buzz) {
     if (!view || view.phase !== "play" || !me || me.stun > 0 || me.kbT > 0 || me.dead > 0) return;
     if (!myHold()) { // 빈손: 친구가 바로 앞이면 밀치기, 아니면 꾹 눌러서 썰기·설거지
-      if (!shoveTarget()) return;
+      const tj = shoveTarget();
+      if (tj < 0) return;
       anim[myIdx].reach = REACH;
-      if (role === "host") shoveHost(0);
-      else if (net) net.send({ t: "sh", rs: guestRs, x: me.x, y: me.y, fx: me.fx, fy: me.fy });
+      if (role === "host") shoveHost(0, tj);
+      else if (net) net.send({ t: "sh", rs: guestRs, x: me.x, y: me.y, fx: me.fx, fy: me.fy, j: tj });
       if (buzz && navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
       return;
     }
@@ -5563,10 +5647,9 @@ body.modal { overflow: hidden; }
       const sn = role === "host" ? specs.size : specN;
       if (role === "spec") {
         $("peerTag").textContent = "관전 중 · " + Math.max(1, sn) + "명이 보는 중";
-        const p0 = view.players[0], p1 = view.players[1];
-        $("whoami").textContent = "방장 " + (CHARS[p0.ch] || CHARS.cat).name + (p1 && p1.on ? " · 친구 " + (CHARS[p1.ch] || CHARS.dog).name : " · 혼자 하는 중");
+        $("whoami").textContent = view.players.map((p, i) => (p && p.on ? seatName(i) + " " + (CHARS[p.ch] || CHARS.cat).name : "")).filter(Boolean).join(" · ");
       } else {
-        $("peerTag").textContent = (role === "host" ? (guestOn ? "친구 연결됨" : "혼자 하는 중") : "방장과 연결됨") + (sn ? " · 관전 " + sn + "명" : "");
+        $("peerTag").textContent = (role === "host" ? (guestOn ? onCount(view) + "명이 함께" : "혼자 하는 중") : "방장과 연결됨") + (sn ? " · 관전 " + sn + "명" : "");
         const mc = CHARS[view.players[myIdx].ch] || CHARS.cat;
         $("whoami").textContent = "나는 " + mc.name + " · " + APRON_NAME[myIdx] + (role === "host" ? " (방장)" : " (친구)");
       }
