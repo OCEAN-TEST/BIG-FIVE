@@ -471,14 +471,14 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 14;
+  const VERSION = 15;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
   const CHOP_TIME = 1.2, WASH_TIME = 2, SPEED = 4.3, R = 0.3;
   const SAFE = 2, WARN = 4; // 다 익은 뒤 SAFE초는 안전, 그다음 WARN초 동안 타기 시작해서 다 타요 (모두 6초)
   const DASH_TIME = 0.16, DASH_CD = 0.6, DASH_MUL = 3.1;
-  const FLY_SPEED = 11, FLY_MAX = 3.7, BELT_STEP = 0.65, RETURN_DELAY = 7;
+  const FLY_SPEED = 11, FLY_MAX = 2.7, BELT_STEP = 0.65, RETURN_DELAY = 7;
   const WALK = 2.4, WALK_STEP = 1 / WALK;       // 무빙워크가 미는 빠르기 (칸/초)
   const ICE_GRIP = 2.2, ICE_GLIDE = 0.55;      // 얼음: 누를 때 붙는 정도, 뗐을 때 멈추는 정도 (작을수록 미끄러워요)
   const BIKE_STUN = 3;                         // 오토바이에 치이면 3초 기절 (들고 있던 음식은 뺏겨요)
