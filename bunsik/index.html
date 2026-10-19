@@ -2322,9 +2322,11 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
             A.add(boxG(1, 0.075, 1), mtx(cx, CH - 0.0375, cz), "#4a3428");
             return;
           case "counter":
-            if (t.div) { // 칸막이 조리대: 끊김 없이 이어지는 노란 막대 (어디서든 넘겨요)
-              A.add(boxG(1, CH - 0.075, 1), mtx(cx, (CH - 0.075) / 2, cz), P.wblk);
-              A.add(boxG(1, 0.075, 1), mtx(cx, CH - 0.0375, cz), "#ffcf33");
+            if (t.div) { // 칸막이 조리대: 일자로 이어진 노란 칸들. 칸마다 경계선이 보이게
+              cabinet(t, P.wblk, "#ffbf1f");
+              const dv = (x, y) => { const q = at(x, y); return !!q && q.div; };
+              if (dv(t.x, t.y - 1)) A.add(boxG(0.98, 0.014, 0.04), mtx(cx, CH + 0.002, t.y), "#b97c08");
+              if (dv(t.x - 1, t.y)) A.add(boxG(0.04, 0.014, 0.98), mtx(t.x, CH + 0.002, cz), "#b97c08");
             } else cabinet(t);
             return;
           case "crate": {
