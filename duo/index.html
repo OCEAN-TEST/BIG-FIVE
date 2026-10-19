@@ -4,6 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>둘이서 분식집</title>
+<link rel="manifest" id="appManifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" id="appTitle" content="분식집">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#2a201a">
+<script>
+// ?test로 열었으면 홈 화면에 추가할 때도 ?test로 열리게
+if (/[?&]test(?:[=&]|$)/.test(location.search)) { document.getElementById("appManifest").href = "manifest-test.webmanifest"; document.getElementById("appTitle").content = "분식집 테스트"; }
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Gothic+A1:wght@400;700&display=swap">
@@ -131,6 +143,9 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 .sndbtn[aria-pressed="false"] { color: #cdbca8; }
 .sndbtn svg { width: 13px; height: 13px; vertical-align: -2px; margin-right: 4px; }
 /* 첫 화면 버튼 줄 (게임 방법, 설정) */
+.appnote { position: relative; margin: 0; word-break: keep-all; padding: 10px 44px 10px 14px; border-radius: 12px; border: 1.5px dashed rgba(255,207,51,.55); background: rgba(255,248,230,.08); color: #f3e6d2; font-size: 14px; line-height: 1.6; }
+.appnote b { color: var(--sign); }
+.appnote button { position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: #cdbca8; font-size: 16px; cursor: pointer; }
 .lobbybar { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .lobbybar .btn { flex: 1 1 0; min-width: 0; max-width: 320px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .lobbybar svg { width: 20px; height: 20px; flex: none; }
@@ -209,18 +224,25 @@ body.modal { overflow: hidden; }
 .stick { position: absolute; width: 124px; height: 124px; margin: -62px 0 0 -62px; border-radius: 50%; background: rgba(255,248,230,.14); border: 3px solid rgba(255,248,230,.45); opacity: .7; transition: opacity .15s; }
 .stick.active { opacity: 1; transition: none; }
 .knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: rgba(255,207,51,.92); box-shadow: 0 4px 0 #c99a12; }
-.pbtns { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(14px, env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 10px; align-items: center; pointer-events: auto; touch-action: none; }
+.pbtns { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(14px, env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: auto auto; grid-template-areas: ". dash" "work grab"; gap: 10px 12px; align-items: end; justify-items: center; pointer-events: auto; touch-action: none; }
+.pbtn.dash { grid-area: dash; }
+.pbtn.work { grid-area: work; margin-bottom: 8px; }
+.pbtn.grab { grid-area: grab; }
 .pbtn { border-radius: 50%; border: 0; font-family: var(--font-ui); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; -webkit-tap-highlight-color: transparent; }
 .pbtn small { font-size: 11px; opacity: .9; }
 .pbtn.grab { width: 90px; height: 90px; background: var(--sign); color: var(--ink); font-size: 24px; box-shadow: 0 6px 0 #c99a12; }
 .pbtn.work { width: 74px; height: 74px; background: var(--chili); color: #fff; font-size: 19px; box-shadow: 0 6px 0 var(--chili-dark); }
 .pbtn.dash { width: 62px; height: 62px; background: var(--sky); color: #fff; font-size: 17px; box-shadow: 0 5px 0 #275ba3; }
 .pbtn.on { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
-#game.portrait .pbtns { display: grid; grid-template-columns: auto auto; grid-template-areas: ". dash" "work grab"; gap: 12px; align-items: end; justify-items: center; }
-#game.portrait .pbtn.dash { grid-area: dash; }
-#game.portrait .pbtn.work { grid-area: work; margin-bottom: 8px; }
-#game.portrait .pbtn.grab { grid-area: grab; }
 #game.touch .foot { display: none; }
+#game.touch:not(.portrait) .peer, #game.touch:not(.portrait) .opts { right: auto; left: 10px; }
+@media (max-height: 360px) {
+  .pbtns { gap: 8px 10px; bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
+  .pbtn.grab { width: 76px; height: 76px; font-size: 21px; }
+  .pbtn.work { width: 64px; height: 64px; font-size: 17px; margin-bottom: 6px; }
+  .pbtn.work small { font-size: 9.5px; }
+  .pbtn.dash { width: 54px; height: 54px; font-size: 15px; }
+}
 #game.touch .hud { gap: 8px; }
 #game.touch .meter { min-width: 82px; padding: 2px 10px; border-radius: 8px; }
 #game.touch .meter span { font-size: 10.5px; }
@@ -251,6 +273,8 @@ body.modal { overflow: hidden; }
     <p>각자 폰이나 컴퓨터로 접속해서 같이 차리는 분식집. 열 단계를 차례로 깨 나가요. 뒤로 갈수록 메뉴보다 맵 장치가 어려워져요.</p>
     <canvas class="crew" id="crew" width="760" height="230" aria-label="고양이, 강아지, 토끼, 곰 요리사"></canvas>
   </header>
+
+  <p class="appnote" id="appNote" hidden><span id="appNoteText"></span><button type="button" id="appNoteX" aria-label="안내 닫기">✕</button></p>
 
   <div class="row">
     <section class="card">
@@ -368,7 +392,7 @@ body.modal { overflow: hidden; }
       <dt><kbd>시프트</kbd> 또는 <kbd>Q</kbd></dt><dd>대시 (짧게 휙 미끄러지기)</dd>
       <dt>폰</dt><dd>왼쪽 화면을 누른 채 끌어서 이동, 오른쪽 <b>집기</b>·<b>작업</b>·<b>대시</b> 버튼</dd>
     </dl>
-    <p class="note">폰이랑 컴퓨터끼리도 같이 할 수 있어요. 폰은 가로로 돌리면 더 크게 보여요. 한/영 상태와 상관없이 움직여요. 첫 화면·대기실·게임 화면의 <b>설정</b>에서 게임 소리를 끄거나(음소거), 버벅이면 2D 화면으로 바꿀 수 있어요.</p>
+    <p class="note">폰이랑 컴퓨터끼리도 같이 할 수 있어요. 폰은 가로로 돌리면 더 크게 보여요. 아이폰은 사파리 <b>공유</b> 버튼 → <b>홈 화면에 추가</b>로 깔고 그 아이콘으로 들어오면 주소창 없이 꽉 찬 화면으로 해요. 한/영 상태와 상관없이 움직여요. 첫 화면·대기실·게임 화면의 <b>설정</b>에서 게임 소리를 끄거나(음소거), 버벅이면 2D 화면으로 바꿀 수 있어요.</p>
     </div>
   </div>
 </div>
@@ -4695,6 +4719,20 @@ body.modal { overflow: hidden; }
     try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
     try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch (e) {}
   }
+  // 아이폰 사파리는 웹페이지가 주소창을 못 숨겨요. 홈 화면에 추가해서 열면 주소창 없이 열려요
+  const IOS_PHONE = /iPhone|iPod/.test(navigator.userAgent);
+  const IN_APP = /KAKAOTALK|NAVER\(inapp|Instagram|FBAN|FBAV|Line\//i.test(navigator.userAgent);
+  const asApp = () => navigator.standalone === true || !!(window.matchMedia && window.matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches);
+  const APPNOTE_KEY = "bunsik.appnote";
+  (function appNote() {
+    if (!IOS_PHONE || asApp()) return;
+    try { if (localStorage.getItem(APPNOTE_KEY) === "1") return; } catch (e) {}
+    $("appNoteText").innerHTML = IN_APP
+      ? "<b>아이폰은 주소창 없이 꽉 차게 할 수 있어요.</b> 지금은 앱 안에서 열린 화면이라 먼저 메뉴에서 <b>사파리로 열기</b>를 하고, 사파리 <b>공유</b> 버튼 → <b>홈 화면에 추가</b>를 눌러 주세요. 그다음부터 홈 화면의 분식집 아이콘으로 들어오면 돼요."
+      : "<b>아이폰은 주소창 없이 꽉 차게 할 수 있어요.</b> 사파리 <b>공유</b> 버튼(안 보이면 ⋯ 안에) → <b>홈 화면에 추가</b>를 누르고, 홈 화면에 생긴 분식집 아이콘으로 들어오세요.";
+    $("appNote").hidden = false;
+    $("appNoteX").addEventListener("click", () => { $("appNote").hidden = true; try { localStorage.setItem(APPNOTE_KEY, "1"); } catch (e) {} });
+  })();
   $("rotKeep").addEventListener("click", () => { try { sessionStorage.setItem(PORTRAIT_KEY, "1"); } catch (e) {} layout(); });
   ["hostBtn", "joinBtn", "watchBtn", "startBtn"].forEach((id) => $(id).addEventListener("click", goLandscape, true));
 
