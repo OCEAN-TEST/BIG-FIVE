@@ -191,6 +191,16 @@ body.modal { overflow: hidden; }
 .toast.bad { background: var(--chili); }
 .toast.hide { opacity: 0; }
 .peer { position: absolute; top: 8px; right: 10px; font-size: 12px; color: #fff; background: rgba(36,26,20,.7); padding: 2px 10px; border-radius: 999px; }
+/* 폰 세로일 때 가로로 돌려 달라는 화면 */
+.rotask { position: fixed; inset: 0; z-index: 50; background: rgba(28,20,15,.94); display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; }
+.rotbox { display: flex; flex-direction: column; align-items: center; gap: 10px; color: #fff; max-width: 320px; }
+.rotbox b { font-family: var(--font-ui); font-weight: 400; font-size: 26px; color: var(--sign); }
+.rotbox small { font-size: 14px; line-height: 1.55; color: #e9dccb; }
+.rotbox .btn.ghost { color: #cdbca8; margin-top: 6px; }
+.rotphone { width: 92px; height: 92px; color: #fff; animation: rotphone 2.2s ease-in-out infinite; }
+.rotphone svg { width: 100%; height: 100%; }
+@keyframes rotphone { 0%, 25% { transform: rotate(0deg); } 55%, 100% { transform: rotate(-90deg); } }
+@media (prefers-reduced-motion: reduce) { .rotphone { animation: none; transform: rotate(-90deg); } }
 .rotate-tip { position: absolute; left: 50%; transform: translateX(-50%); bottom: 300px; background: rgba(36,26,20,.8); color: #fff; font-family: var(--font-ui); font-size: 14px; padding: 3px 12px; border-radius: 999px; white-space: nowrap; pointer-events: none; }
 
 /* 폰 조작 */
@@ -311,6 +321,14 @@ body.modal { overflow: hidden; }
     <div class="toast hide" id="toast"></div>
     <div class="overlay" id="overlay" hidden></div>
     <span class="rotate-tip" id="rotateTip" hidden>폰을 가로로 돌리면 더 크게 보여요</span>
+    <div class="rotask" id="rotAsk" hidden role="dialog" aria-labelledby="rotTitle">
+      <div class="rotbox">
+        <div class="rotphone"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="20" y="6" width="24" height="44" rx="5" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="32" cy="43" r="2.6" fill="currentColor"/></svg></div>
+        <b id="rotTitle">폰을 가로로 돌려 주세요</b>
+        <small>가로로 하면 주방이 크게 보이고 버튼도 편해요. 안 돌아가면 폰의 '화면 회전 잠금'을 꺼 주세요.</small>
+        <button class="btn ghost" id="rotKeep" type="button">그냥 세로로 할게요</button>
+      </div>
+    </div>
   </div>
   <div class="pad" id="pad" hidden>
     <div class="zone" id="zone" aria-label="이동 조이스틱"><div class="stick" id="stick"><div class="knob" id="knob"></div></div></div>
@@ -4337,6 +4355,7 @@ body.modal { overflow: hidden; }
 
   function leave() {
     pickKey = ""; stageKey = "";
+    leaveLandscape();
     if (net) { try { net.close(); } catch (e) {} }
     net = null; role = null; W = null; view = null; me = null; myIdx = 0; guestRs = -1;
     resetPeers();
@@ -4647,7 +4666,9 @@ body.modal { overflow: hidden; }
     g.classList.toggle("touch", touchMode);
     g.classList.toggle("portrait", portrait);
     $("pad").hidden = padHidden();
-    $("rotateTip").hidden = !(touchMode && portrait) || use3D();
+    $("rotateTip").hidden = true;
+    // 폰을 세로로 들고 게임 중이면 가로로 돌려 달라고 해요 (아이폰은 웹에서 화면을 강제로 못 돌려요)
+    $("rotAsk").hidden = !(isPhone() && portrait && !g.hidden && !keepPortrait());
     if (!g.hidden) {
       const hudB = document.querySelector("#game .hud").getBoundingClientRect().bottom;
       zone.style.top = Math.round(hudB + 4) + "px";
@@ -4655,6 +4676,27 @@ body.modal { overflow: hidden; }
       stickRest();
     }
   }
+
+  // ===== 폰은 가로로 =====
+  // 안드로이드: 버튼을 누르는 순간 전체화면 + 가로 고정. 아이폰은 막혀 있어서 세로면 안내 화면을 띄워요
+  const isPhone = () => touchMode && Math.min(screen.width, screen.height) <= 540;
+  const PORTRAIT_KEY = "bunsik.portrait";
+  const keepPortrait = () => { try { return sessionStorage.getItem(PORTRAIT_KEY) === "1"; } catch (e) { return false; } };
+  function goLandscape() {
+    if (!isPhone()) return;
+    const el = document.documentElement;
+    const lock = () => { try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock("landscape").catch(() => {}); } catch (e) {} };
+    try {
+      if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen({ navigationUI: "hide" }).then(lock, () => {});
+      else lock();
+    } catch (e) {}
+  }
+  function leaveLandscape() {
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+    try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch (e) {}
+  }
+  $("rotKeep").addEventListener("click", () => { try { sessionStorage.setItem(PORTRAIT_KEY, "1"); } catch (e) {} layout(); });
+  ["hostBtn", "joinBtn", "watchBtn", "startBtn"].forEach((id) => $(id).addEventListener("click", goLandscape, true));
 
   $("hostBtn").addEventListener("click", () => host(0));
   $("joinForm").addEventListener("submit", (e) => {
