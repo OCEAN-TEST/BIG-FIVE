@@ -129,6 +129,32 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 .opts { position: absolute; top: 34px; right: 10px; z-index: 6; display: flex; gap: 6px; }
 .sndbtn { font-family: var(--font-body); font-size: 12px; line-height: 1.6; color: #fff; background: rgba(36,26,20,.7); padding: 2px 10px; border-radius: 999px; border: 0; cursor: pointer; }
 .sndbtn[aria-pressed="false"] { color: #cdbca8; }
+.sndbtn svg { width: 13px; height: 13px; vertical-align: -2px; margin-right: 4px; }
+/* 첫 화면 버튼 줄 (게임 방법, 설정) */
+.lobbybar { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.lobbybar .btn { flex: 1 1 0; min-width: 0; max-width: 320px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.lobbybar svg { width: 20px; height: 20px; flex: none; }
+body.modal { overflow: hidden; }
+.setwrap { position: fixed; inset: 0; z-index: 60; background: rgba(20,14,10,.6); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.setbox { background: var(--paper); border-radius: 14px; width: min(380px, 100%); padding: 14px 18px 8px; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
+.howbox { width: min(760px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; padding-bottom: 6px; }
+.howbody { overflow-y: auto; overscroll-behavior: contain; padding: 0 2px 14px; display: flex; flex-direction: column; gap: 10px; }
+.howbody h3 { margin: 10px 0 0; padding-top: 12px; border-top: 2px dashed var(--paper-line); font-family: var(--font-ui); font-weight: 400; font-size: 21px; color: var(--chili); }
+.sethead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.sethead h2 { margin: 0; font-family: var(--font-ui); font-weight: 400; font-size: 24px; color: var(--chili); }
+.setx { width: 38px; height: 38px; border-radius: 50%; border: 0; background: transparent; color: var(--soft); font-size: 22px; line-height: 1; cursor: pointer; }
+.setrow { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 0; border-top: 2px dashed var(--paper-line); }
+.setrow b { display: block; font-family: var(--font-ui); font-weight: 400; font-size: 19px; color: var(--ink); }
+.setrow small { display: block; font-size: 13px; color: var(--soft); line-height: 1.45; }
+.switch { position: relative; flex: none; width: 60px; height: 34px; border-radius: 999px; border: 0; background: #cdbca8; cursor: pointer; transition: background .15s; }
+.switch::after { content: ""; position: absolute; top: 4px; left: 4px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 2px 0 rgba(0,0,0,.2); transition: transform .15s; }
+.switch[aria-checked="true"] { background: var(--mint); }
+.switch[aria-checked="true"]::after { transform: translateX(26px); }
+.switch:focus-visible, .seg button:focus-visible, .setx:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+.seg { display: flex; flex: none; border: 2px solid var(--paper-line); border-radius: 10px; overflow: hidden; }
+.seg button { font-family: var(--font-ui); font-size: 17px; padding: 5px 16px; border: 0; background: #fff; color: var(--ink); cursor: pointer; }
+.seg button + button { border-left: 2px solid var(--paper-line); }
+.seg button[aria-pressed="true"] { background: var(--sign); }
 #game.touch.portrait .opts { top: auto; bottom: 200px; right: 16px; }
 .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .intro { background: var(--paper); border-radius: 14px; padding: 16px 26px; max-width: min(560px, 92%); display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
@@ -235,30 +261,10 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     </section>
   </div>
 
-  <section class="card">
-    <h2>메뉴판</h2>
-    <div class="recipes" id="menu"></div>
-    <ul class="rules">
-      <li>어묵, 파, 단무지, 오징어는 도마에서 먼저 썰어요.</li>
-      <li>냄비와 튀김 바구니는 들고 다닐 수 있어요. 화구나 튀김기에 올려야 익어요.</li>
-      <li>초록 막대가 다 차면 <b>완성!</b> 표시가 떠요. 그대로 두면 잠시 뒤 불꽃 막대가 차오르면서 삐삐 울리고, 끝까지 차면 타요. 화구에서 내리면 안 타요.</li>
-      <li>타면 <b>불</b>이 나요. 불은 옆 조리대로 번지고, 불난 칸은 못 써요. 주방마다 있는 빨간 <b>소화기</b>를 들고 작업 버튼을 꾹 누르면 바라보는 쪽으로 뿌려서 꺼요. 뿌리다 멈추면 불이 다시 커져요.</li>
-      <li>엉뚱한 재료를 넣거나 타면 망해요. 쓰레기통에 가져가서 비워요.</li>
-      <li>주문을 왼쪽부터 순서대로 내면 콤보가 쌓여서 팁이 최대 4배가 돼요.</li>
-    </ul>
-  </section>
-
-  <section class="card">
-    <h2>조작법</h2>
-    <dl class="keys">
-      <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 또는 <kbd>방향키</kbd></dt><dd>이동</dd>
-      <dt><kbd>스페이스</kbd></dt><dd>집기 · 놓기 · 넣기 · 담기 · 내기 (바라보는 칸에. 바닥에도 놓을 수 있어요)</dd>
-      <dt><kbd>시프트</kbd></dt><dd>작업. 빈손으로 꾹 누르면 썰기·설거지, 재료를 들고 누르면 던지기, 소화기를 들고 꾹 누르면 불 끄기</dd>
-      <dt><kbd>E</kbd> 또는 <kbd>Q</kbd></dt><dd>대시 (짧게 휙 미끄러지기)</dd>
-      <dt>폰</dt><dd>왼쪽 화면을 누른 채 끌어서 이동, 오른쪽 <b>집기</b>·<b>작업</b>·<b>대시</b> 버튼</dd>
-    </dl>
-    <p class="note">폰이랑 컴퓨터끼리도 같이 할 수 있어요. 폰은 가로로 돌리면 더 크게 보여요. 한/영 상태와 상관없이 움직여요. 게임 화면 오른쪽 위에서 소리를 끄거나, 버벅이면 2D 화면으로 바꿀 수 있어요.</p>
-  </section>
+  <div class="lobbybar">
+    <button class="btn watch" id="howBtn" type="button" aria-haspopup="dialog" aria-controls="howPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5a1 1 0 0 0 0 2H20v2H6.5A2.5 2.5 0 0 1 4 19.5zM8 6v2h8V6zm0 4v2h6v-2z"/></svg>게임 방법</button>
+    <button class="btn watch setopen" id="setBtnTop" type="button" aria-haspopup="dialog" aria-controls="setPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg><span class="setlabel">설정</span></button>
+  </div>
 </div>
 
 <!-- 대기실 -->
@@ -284,6 +290,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     <div class="btns">
       <button class="btn" id="startBtn" type="button" hidden>영업 시작</button>
       <button class="btn alt" id="sitBtn" type="button" hidden>빈자리에 앉아서 같이 하기</button>
+      <button class="btn ghost setopen" id="setBtnRoom" type="button" aria-haspopup="dialog" aria-controls="setPanel"><span class="setlabel">설정</span></button>
       <button class="btn ghost" id="leaveBtn" type="button">나가기</button>
     </div>
   </section>
@@ -299,7 +306,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   <div class="stage" id="stage">
     <div class="view" id="viewBox"><canvas id="kitchen" aria-label="주방"></canvas></div>
     <span class="peer" id="peerTag"></span>
-    <div class="opts"><button class="sndbtn" id="viewBtn" type="button" hidden>2D로 보기</button><button class="sndbtn" id="sndBtn" type="button" aria-pressed="true">소리 켬</button></div>
+    <div class="opts"><button class="sndbtn setopen" id="setBtnGame" type="button" aria-haspopup="dialog" aria-controls="setPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg><span class="setlabel">설정</span></button></div>
     <div class="toast hide" id="toast"></div>
     <div class="overlay" id="overlay" hidden></div>
     <span class="rotate-tip" id="rotateTip" hidden>폰을 가로로 돌리면 더 크게 보여요</span>
@@ -315,6 +322,48 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   <div class="foot">
     <span id="keysHint"><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동 · <kbd>스페이스</kbd> 집기·놓기 · <kbd>시프트</kbd> 썰기·설거지·불끄기(꾹)·던지기 · <kbd>E</kbd> 대시</span>
     <span id="whoami"></span>
+  </div>
+</div>
+
+<!-- 설정 -->
+<div class="setwrap" id="howPanel" hidden role="dialog" aria-modal="true" aria-labelledby="howTitle">
+  <div class="setbox howbox">
+    <div class="sethead"><h2 id="howTitle">게임 방법</h2><button class="setx" type="button" aria-label="게임 방법 닫기">✕</button></div>
+    <div class="howbody">
+      <h3>메뉴판</h3>
+    <div class="recipes" id="menu"></div>
+    <ul class="rules">
+      <li>어묵, 파, 단무지, 오징어는 도마에서 먼저 썰어요.</li>
+      <li>냄비와 튀김 바구니는 들고 다닐 수 있어요. 화구나 튀김기에 올려야 익어요.</li>
+      <li>초록 막대가 다 차면 <b>완성!</b> 표시가 떠요. 그대로 두면 잠시 뒤 불꽃 막대가 차오르면서 삐삐 울리고, 끝까지 차면 타요. 화구에서 내리면 안 타요.</li>
+      <li>타면 <b>불</b>이 나요. 불은 옆 조리대로 번지고, 불난 칸은 못 써요. 주방마다 있는 빨간 <b>소화기</b>를 들고 작업 버튼을 꾹 누르면 바라보는 쪽으로 뿌려서 꺼요. 뿌리다 멈추면 불이 다시 커져요.</li>
+      <li>엉뚱한 재료를 넣거나 타면 망해요. 쓰레기통에 가져가서 비워요.</li>
+      <li>주문을 왼쪽부터 순서대로 내면 콤보가 쌓여서 팁이 최대 4배가 돼요.</li>
+    </ul>
+
+      <h3>조작법</h3>
+    <dl class="keys">
+      <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 또는 <kbd>방향키</kbd></dt><dd>이동</dd>
+      <dt><kbd>스페이스</kbd></dt><dd>집기 · 놓기 · 넣기 · 담기 · 내기 (바라보는 칸에. 바닥에도 놓을 수 있어요)</dd>
+      <dt><kbd>시프트</kbd></dt><dd>작업. 빈손으로 꾹 누르면 썰기·설거지, 재료를 들고 누르면 던지기, 소화기를 들고 꾹 누르면 불 끄기</dd>
+      <dt><kbd>E</kbd> 또는 <kbd>Q</kbd></dt><dd>대시 (짧게 휙 미끄러지기)</dd>
+      <dt>폰</dt><dd>왼쪽 화면을 누른 채 끌어서 이동, 오른쪽 <b>집기</b>·<b>작업</b>·<b>대시</b> 버튼</dd>
+    </dl>
+    <p class="note">폰이랑 컴퓨터끼리도 같이 할 수 있어요. 폰은 가로로 돌리면 더 크게 보여요. 한/영 상태와 상관없이 움직여요. 첫 화면·대기실·게임 화면의 <b>설정</b>에서 게임 소리를 끄거나(음소거), 버벅이면 2D 화면으로 바꿀 수 있어요.</p>
+    </div>
+  </div>
+</div>
+<div class="setwrap" id="setPanel" hidden role="dialog" aria-modal="true" aria-labelledby="setTitle">
+  <div class="setbox">
+    <div class="sethead"><h2 id="setTitle">설정</h2><button class="setx" id="setClose" type="button" aria-label="설정 닫기">✕</button></div>
+    <div class="setrow">
+      <span><b id="sndLabel">게임 소리</b><small>끄면 효과음이 하나도 안 나요 (음소거). 컴퓨터는 <kbd>M</kbd> 키로도 바로 끄고 켜요.</small></span>
+      <button class="switch" id="sndSwitch" type="button" role="switch" aria-checked="true" aria-labelledby="sndLabel"></button>
+    </div>
+    <div class="setrow" id="viewRow">
+      <span><b>화면</b><small>버벅이면 2D로 바꿔요. 이 기기에만 저장돼요.</small></span>
+      <div class="seg" role="group" aria-label="화면 방식"><button type="button" id="view3d" aria-pressed="true">3D</button><button type="button" id="view2d" aria-pressed="false">2D</button></div>
+    </div>
   </div>
 </div>
 
@@ -3568,8 +3617,9 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     const on = use3D();
     $("viewBox").classList.toggle("three", on);
     if (R3) R3.el.style.display = on ? "" : "none";
-    $("viewBtn").hidden = !R3;
-    $("viewBtn").textContent = on ? "2D로 보기" : "3D로 보기";
+    $("viewRow").hidden = !R3; // 3D가 안 되는 기기는 화면 고르기를 숨겨요
+    $("view3d").setAttribute("aria-pressed", String(on));
+    $("view2d").setAttribute("aria-pressed", String(!on));
     if (!$("game").hidden) layout();
   }
   function setView(on, save) {
@@ -3577,7 +3627,8 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     if (save) { try { localStorage.setItem(VIEW_KEY, on ? "3d" : "2d"); } catch (e) {} }
     applyView();
   }
-  $("viewBtn").addEventListener("click", (e) => { setView(!want3D, true); e.currentTarget.blur(); });
+  $("view3d").addEventListener("click", () => setView(true, true));
+  $("view2d").addEventListener("click", () => setView(false, true));
   applyView();
   function drop3D(err) { // 3D에서 오류가 나면 2D로 바꿔요
     console.error("3D 화면을 끄고 2D로 그려요", err);
@@ -3665,15 +3716,47 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     out() { tone(660, 0.1, "sine", 0.1); tone(990, 0.2, "sine", 0.1, 0.09); }
   };
   ["pointerdown", "keydown"].forEach((t) => window.addEventListener(t, () => { if (sndOn) audio(); }, true));
+  // 음소거: 이 기기에서만, 다음에 와도 기억해요
   function setSound(on) {
     sndOn = on;
     try { localStorage.setItem(SND_KEY, on ? "1" : "0"); } catch (e) {}
-    const b = $("sndBtn");
-    b.setAttribute("aria-pressed", String(on));
-    b.textContent = on ? "소리 켬" : "소리 끔";
+    if (!on && actx && actx.state === "running") { try { actx.suspend(); } catch (e) {} } // 나던 소리도 바로 멈춰요
+    $("sndSwitch").setAttribute("aria-checked", String(on));
+    document.querySelectorAll(".setlabel").forEach((el) => (el.textContent = on ? "설정" : "설정 · 음소거"));
   }
-  $("sndBtn").addEventListener("click", (e) => { setSound(!sndOn); e.currentTarget.blur(); if (sndOn) sfx.order(); });
+  $("sndSwitch").addEventListener("click", () => { setSound(!sndOn); if (sndOn) sfx.order(); });
   setSound(sndOn);
+
+  // 창 (설정, 게임 방법): 하나씩만 열리고, 바깥을 누르거나 ✕·Esc로 닫혀요
+  let modalEl = null, modalOpener = null;
+  const setOpen = () => !!modalEl;
+  function openModal(id, from) {
+    if (modalEl) closeModal();
+    modalEl = $(id); modalOpener = from || null;
+    modalEl.hidden = false;
+    document.body.classList.add("modal");
+    keys.clear(); touchIn.chop = false; endStick(); syncChop(); // 창 여는 동안 캐릭터가 계속 걷지 않게
+    const first = id === "setPanel" ? $("sndSwitch") : modalEl.querySelector(".setx");
+    if (first) first.focus({ preventScroll: true });
+    const body = modalEl.querySelector(".howbody"); if (body) body.scrollTop = 0;
+  }
+  function closeModal() {
+    if (!modalEl) return;
+    modalEl.hidden = true; modalEl = null;
+    document.body.classList.remove("modal");
+    if (modalOpener && modalOpener.focus) modalOpener.focus({ preventScroll: true });
+    if (modalOpener && document.body.classList.contains("ingame")) modalOpener.blur(); // 게임 중엔 버튼에 초점이 남아 스페이스가 눌리지 않게
+    modalOpener = null;
+  }
+  document.querySelectorAll(".setopen").forEach((b) => b.addEventListener("click", (e) => openModal("setPanel", e.currentTarget)));
+  $("howBtn").addEventListener("click", (e) => openModal("howPanel", e.currentTarget));
+  document.querySelectorAll(".setx").forEach((b) => b.addEventListener("click", closeModal));
+  ["setPanel", "howPanel"].forEach((id) => $(id).addEventListener("click", (e) => { if (e.target === $(id)) closeModal(); }));
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Escape" && setOpen()) { e.preventDefault(); closeModal(); return; }
+    // M 키로 바로 음소거 (글자 입력칸에서는 빼고)
+    if (e.code === "KeyM" && !e.repeat && !(e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA"))) { setSound(!sndOn); if (sndOn) sfx.order(); if (!setOpen()) toast(sndOn ? "소리를 켰어요" : "소리를 껐어요 (음소거)"); }
+  }, true);
 
   // 화구 위 그릇이 다 익고, 타기 시작하고, 다 탔을 때 소리 (두 화면 각자)
   const contSeen = {};
@@ -4280,7 +4363,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
 
   const GAME_KEYS = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space", "ShiftLeft", "ShiftRight", "KeyE", "KeyQ"]);
   window.addEventListener("keydown", (e) => {
-    if ($("game").hidden || !GAME_KEYS.has(e.code)) return;
+    if ($("game").hidden || !GAME_KEYS.has(e.code) || setOpen()) return;
     e.preventDefault();
     keys.add(e.code);
     if (!e.repeat) {
