@@ -2581,7 +2581,7 @@ body.modal { overflow: hidden; }
       const g = new T.Group();
       switch (k) {
         case "tteok": { // 떡볶이 떡: 양 끝을 어슷하게 썬 통통한 가래떡 토막 (아래 셋, 위에 둘 엇갈려)
-          const s = sub(g, 0, 0, 0, 0.35, 0.85), m1 = mat("#f6ecdb", "g"), m2 = mat("#ead9bd", "g");
+          const s = sub(g, 0, 0, 0, 0.35, 0.7), m1 = mat("#f6ecdb", "g"), m2 = mat("#ead9bd", "g");
           [[0, 0.06, -0.15, 0.08, m1], [0.03, 0.06, 0, -0.06, m2], [-0.02, 0.06, 0.15, 0.1, m1], [-0.05, 0.168, -0.07, 0.62, m2], [0.06, 0.168, 0.08, -0.5, m1]]
             .forEach(([x, y, z, r, m]) => part(s, tteokG(), m, x, y, z, 0, r, Math.PI / 2));
           break;
@@ -2621,7 +2621,7 @@ body.modal { overflow: hidden; }
           for (const sd of [-1, 1]) for (let j = 0; j < 2; j++) part(g, waveG(), mat("#e2a526", "g"), 0, 0.035 + j * 0.05, sd * 0.163, Math.PI / 2, 0, 0, 1.1, 1, 0.8);
           break;
         case "bap": { // 공기밥: 스테인리스 공기에 소복한 흰 밥 (85% 크기)
-          const b = sub(g, 0, 0, 0, 0, 0.85);
+          const b = sub(g, 0, 0, 0, 0, 0.7);
           part(b, cylG(0.19, 0.13, 0.13, 32, true), mat("#cfd7db", "pd"), 0, 0.065, 0);
           part(b, cylG(0.13, 0.13, 0.012, 24), mat("#b9c2c7", "p"), 0, 0.006, 0);
           part(b, torG(0.19, 0.013, 0, 8, 36), mat("#e6ebee", "p"), 0, 0.13, 0, Math.PI / 2, 0, 0);
@@ -2635,7 +2635,7 @@ body.modal { overflow: hidden; }
           break;
         case "danmuji":
           if (!cut) part(g, rboxG(0.46, 0.12, 0.12, 0.05, 2), mat("#ffd012", "g"), 0, 0.06, 0, 0, 0.3); // 샛노란 통 단무지
-          else for (const [x, z, r] of [[-0.09, -0.06, 0.2], [0.08, -0.07, 1.1], [-0.05, 0.08, 2.3], [0.09, 0.06, -0.6], [0, 0, 1.6]]) part(g, cylG(0.065, 0.065, 0.04, 16, false, 0, Math.PI), mat("#ffd012", "d"), x, 0.02, z, 0, r, 0);
+          else for (const [z, y, r] of [[-0.05, 0.02, 0.28], [0.0, 0.02, 0.3], [0.05, 0.02, 0.32], [-0.025, 0.058, 0.3]]) part(g, rboxG(0.3, 0.036, 0.036, 0.011, 1), mat("#ffd012", "g"), 0, y, z, 0, r, 0); // 썬 단무지: 김밥용 긴 막대 (칸 안에 들어가게)
           break;
         case "ojingeo":
           if (!cut) { // 오징어: 분홍빛 몸통, 큰 눈, 다리
@@ -2654,6 +2654,18 @@ body.modal { overflow: hidden; }
     }
 
     // ---- 그릇·음식 ----
+    // 김밥 싸는 중: 접시 위에 김을 길게 깔고 → 그 위에 밥을 길게 펴고 → 단무지를 일자로 쭉 (넣은 순서와 상관없이 이 순서로 쌓아요)
+    function gimbapLayers(g, items) {
+      let y = 0.038;
+      if (items.includes("gim")) { part(g, boxG(0.42, 0.008, 0.26), mat("#16301f", "g"), 0, y + 0.004, 0); part(g, boxG(0.4, 0.002, 0.012), mat("#2c5a3c"), 0, y + 0.009, -0.06); y += 0.008; }
+      if (items.includes("bap")) {
+        part(g, rboxG(0.38, 0.03, 0.2, 0.012, 1), mat("#efe9dc"), 0, y + 0.015, 0.01);
+        const w = mat("#ffffff"), w2 = mat("#f6f2e8");
+        for (let j = 0; j < 46; j++) { const x = -0.17 + ((j * 0.37) % 1) * 0.34, z = -0.08 + ((j * 0.61) % 1) * 0.18; part(g, grainG(), j % 3 ? w : w2, x, y + 0.031, z + 0.01, 0, j * 1.3, 0, 0.018, 0.008, 0.009); }
+        y += 0.03;
+      }
+      if (items.includes("danmuji")) part(g, rboxG(0.36, 0.035, 0.035, 0.01, 1), mat("#ffd012", "g"), 0, y + 0.018, 0.005);
+    }
     function plateModel() {
       const g = new T.Group();
       part(g, cylG(0.3, 0.25, 0.034, 28), mat("#ffffff", "g"), 0, 0.017, 0);
@@ -2796,6 +2808,7 @@ body.modal { overflow: hidden; }
       if (it.k === "plate") {
         const g = plateModel();
         if (it.dish) { const d = dishModel(it.dish, false); d.position.y = 0.036; g.add(d); }
+        else if (it.items.every((k) => k === "gim" || k === "bap" || k === "danmuji")) gimbapLayers(g, it.items);
         else it.items.forEach((k, j) => { const m = ingModel(k, ING[k].chop); m.scale.setScalar(0.6); const sp = [[-0.07, -0.04], [0.07, 0.03], [0, 0.09]][j] || [0, 0]; m.position.set(sp[0], 0.036 + j * 0.012, sp[1]); g.add(m); });
         return g;
       }
@@ -3012,8 +3025,8 @@ body.modal { overflow: hidden; }
       const hand = (x) => { const h = sub(bodyG, x, 0.33, 0); part(h, sphG(12), mat(C.fur), 0, 0, 0, 0, 0, 0, 0.072); return h; };
       const handL = hand(0.26), handR = hand(-0.26);
       const knife = sub(handR);
-      part(knife, boxG(0.009, 0.065, 0.19), mat("#e3e8eb", "p"), 0, -0.035, 0.11);
-      part(knife, rboxG(0.028, 0.035, 0.09, 0.01, 1), mat("#6b4a2b"), 0, 0, -0.01);
+      part(knife, boxG(0.011, 0.1, 0.27), mat("#e3e8eb", "p"), 0, -0.05, 0.16);
+      part(knife, rboxG(0.032, 0.042, 0.12, 0.012, 1), mat("#6b4a2b"), 0, 0, -0.02);
       knife.visible = false;
       const footL = part(root, sphG(12), mat(C.dark), 0.11, 0.045, 0.03, 0, 0, 0, 0.075, 0.05, 0.1);
       const footR = part(root, sphG(12), mat(C.dark), -0.11, 0.045, 0.03, 0, 0, 0, 0.075, 0.05, 0.1);
@@ -3576,10 +3589,13 @@ body.modal { overflow: hidden; }
             A.add(rboxG(0.8, 0.045, 0.64, 0.02, 1), mtx(cx, CH + 0.0225, cz, 0, yawOf(t), 0), "#f3dcae");
             A.add(boxG(0.66, 0.002, 0.5), mtx(cx, CH + 0.046, cz, 0, yawOf(t), 0), "#ead0a0");
             const kn = sub(stageRoot);
-            part(kn, boxG(0.055, 0.008, 0.2), mat("#dfe5e8", "p"), 0, 0.004, 0.06);
-            part(kn, rboxG(0.035, 0.025, 0.09, 0.01, 1), mat("#6b4a2b"), 0, 0.012, -0.08);
+            part(kn, boxG(0.11, 0.01, 0.3), mat("#dfe5e8", "p"), 0, 0.005, 0.1);
+            part(kn, boxG(0.078, 0.01, 0.1), mat("#dfe5e8", "p"), -0.016, 0.005, 0.29, 0, 0.35, 0);
+            part(kn, boxG(0.012, 0.011, 0.3), mat("#f5f8f9", "p"), 0.05, 0.005, 0.1);
+            part(kn, rboxG(0.05, 0.04, 0.16, 0.014, 1), mat("#6b4a2b"), 0, 0.02, -0.14);
+            for (const z of [-0.18, -0.1]) part(kn, cylG(0.008, 0.008, 0.042, 8), mat("#c9d0d4", "p"), 0, 0.02, z, 0, 0, Math.PI / 2);
             const a = yawOf(t);
-            kn.position.set(cx + Math.cos(a) * 0.3 + Math.sin(a) * -0.05, CH + 0.046, cz - Math.sin(a) * 0.3 + Math.cos(a) * -0.05);
+            kn.position.set(cx + Math.cos(a) * 0.28 + Math.sin(a) * -0.04, CH + 0.046, cz - Math.sin(a) * 0.28 + Math.cos(a) * -0.04);
             kn.rotation.y = a + 0.25;
             knives[t.i] = kn;
             return;
