@@ -242,6 +242,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       <li>어묵, 파, 단무지, 오징어는 도마에서 먼저 썰어요.</li>
       <li>냄비와 튀김 바구니는 들고 다닐 수 있어요. 화구나 튀김기에 올려야 익어요.</li>
       <li>초록 막대가 다 차면 <b>완성!</b> 표시가 떠요. 그대로 두면 잠시 뒤 불꽃 막대가 차오르면서 삐삐 울리고, 끝까지 차면 타요. 화구에서 내리면 안 타요.</li>
+      <li>타면 <b>불</b>이 나요. 불은 옆 조리대로 번지고, 불난 칸은 못 써요. 주방마다 있는 빨간 <b>소화기</b>를 들고 작업 버튼을 꾹 누르면 바라보는 쪽으로 뿌려서 꺼요. 뿌리다 멈추면 불이 다시 커져요.</li>
       <li>엉뚱한 재료를 넣거나 타면 망해요. 쓰레기통에 가져가서 비워요.</li>
       <li>주문을 왼쪽부터 순서대로 내면 콤보가 쌓여서 팁이 최대 4배가 돼요.</li>
     </ul>
@@ -252,7 +253,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     <dl class="keys">
       <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 또는 <kbd>방향키</kbd></dt><dd>이동</dd>
       <dt><kbd>스페이스</kbd></dt><dd>집기 · 놓기 · 넣기 · 담기 · 내기 (바라보는 칸에. 바닥에도 놓을 수 있어요)</dd>
-      <dt><kbd>시프트</kbd></dt><dd>작업. 빈손으로 꾹 누르면 썰기·설거지, 재료를 들고 누르면 던지기</dd>
+      <dt><kbd>시프트</kbd></dt><dd>작업. 빈손으로 꾹 누르면 썰기·설거지, 재료를 들고 누르면 던지기, 소화기를 들고 꾹 누르면 불 끄기</dd>
       <dt><kbd>E</kbd> 또는 <kbd>Q</kbd></dt><dd>대시 (짧게 휙 미끄러지기)</dd>
       <dt>폰</dt><dd>왼쪽 화면을 누른 채 끌어서 이동, 오른쪽 <b>집기</b>·<b>작업</b>·<b>대시</b> 버튼</dd>
     </dl>
@@ -307,12 +308,12 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     <div class="zone" id="zone" aria-label="이동 조이스틱"><div class="stick" id="stick"><div class="knob" id="knob"></div></div></div>
     <div class="pbtns">
       <button class="pbtn dash" id="dashBtn" type="button">대시</button>
-      <button class="pbtn work" id="workBtn" type="button">작업<small>썰기·던지기</small></button>
+      <button class="pbtn work" id="workBtn" type="button">작업<small>썰기·던지기<br>불 끄기</small></button>
       <button class="pbtn grab" id="grabBtn" type="button">집기</button>
     </div>
   </div>
   <div class="foot">
-    <span id="keysHint"><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동 · <kbd>스페이스</kbd> 집기·놓기 · <kbd>시프트</kbd> 썰기·설거지(꾹)·던지기 · <kbd>E</kbd> 대시</span>
+    <span id="keysHint"><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동 · <kbd>스페이스</kbd> 집기·놓기 · <kbd>시프트</kbd> 썰기·설거지·불끄기(꾹)·던지기 · <kbd>E</kbd> 대시</span>
     <span id="whoami"></span>
   </div>
 </div>
@@ -324,7 +325,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 5;
+  const VERSION = 6;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const CHOP_TIME = 1.2, WASH_TIME = 2, SPEED = 4.3, R = 0.3;
@@ -334,6 +335,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   const WALK = 2.4, WALK_STEP = 1 / WALK;       // 무빙워크가 미는 빠르기 (칸/초)
   const ICE_GRIP = 2.2, ICE_GLIDE = 0.55;      // 얼음: 누를 때 붙는 정도, 뗐을 때 멈추는 정도 (작을수록 미끄러워요)
   const BIKE_STUN = 0.6;                       // 오토바이에 치이면 잠깐 못 움직여요
+  const FIRE_SPREAD = 6, EXT_TIME = 0.8, FIRE_REGROW = 0.25, EXT_RANGE = 2.4; // 불: 몇 초마다 옆 칸으로 번지는지, 한 칸 끄는 데 뿌리는 시간, 멈추면 다시 커지는 빠르기, 소화기 닿는 거리
   const MISS = 1000, TIP = 1000, MAX_ORDERS = 4;
   const COLS = 15, ROWS = 9;
   const FONT_UI = '"Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
@@ -350,10 +352,10 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     ojingeo: { name: "오징어", chop: true }
   };
   const DISH = {
-    gimbap:     { name: "김밥", where: "plate", need: ["bap", "gim", "danmuji"], pts: 3000, limit: 60, how: "밥 + 김 + 썬 단무지 → 접시" },
-    tteokbokki: { name: "떡볶이", where: "pot", need: ["tteok", "eomuk"], cook: 7, pts: 4000, limit: 70, how: "떡 + 썬 어묵 → 냄비" },
-    ramen:      { name: "라면", where: "pot", need: ["ramyeon", "pa"], cook: 6, pts: 3500, limit: 65, how: "라면 사리 + 썬 파 → 냄비" },
-    twigim:     { name: "오징어튀김", where: "basket", need: ["ojingeo"], cook: 5, pts: 3000, limit: 60, how: "썬 오징어 → 튀김 바구니" }
+    gimbap:     { name: "김밥", where: "plate", need: ["bap", "gim", "danmuji"], pts: 3000, limit: 50, how: "밥 + 김 + 썬 단무지 → 접시" },
+    tteokbokki: { name: "떡볶이", where: "pot", need: ["tteok", "eomuk"], cook: 7, pts: 4000, limit: 60, how: "떡 + 썬 어묵 → 냄비" },
+    ramen:      { name: "라면", where: "pot", need: ["ramyeon", "pa"], cook: 6, pts: 3500, limit: 55, how: "라면 사리 + 썬 파 → 냄비" },
+    twigim:     { name: "오징어튀김", where: "basket", need: ["ojingeo"], cook: 5, pts: 3000, limit: 50, how: "썬 오징어 → 튀김 바구니" }
   };
   Object.keys(DISH).forEach((k) => (DISH[k].id = k));
   const CONT = { pot: { name: "냄비", station: "stove" }, basket: { name: "튀김 바구니", station: "fryer" } };
@@ -366,53 +368,53 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   // 별 기준은 둘이서 할 때예요. 혼자면 SOLO_STAR배로 낮춰요.
   const STAGES = [
     { id: 1, name: "골목 분식집", time: 150, menu: ["gimbap", "tteokbokki"], stars: [15000, 33000, 60000], plates: 0, gap: [13, 17], extra: 0, duo: false,
-      floor: ["#f4ecda", "#ece2cc"], spawn: [[3.5, 5.5], [11.5, 5.5]],
+      ext: [9, 0], floor: ["#f4ecda", "#ece2cc"], spawn: [[3.5, 5.5], [11.5, 5.5]],
       tip: "기본기 익히기. 썰고, 냄비에 넣어 끓이고, 접시에 담아서 내요.",
       map: ["CCtmCCSSCCWWCCC", "C.............C", "b.............C", "g....CCCC.....K", "d....CCCC.....K", "C.............C", "P.............T", "C.............C", "CCCCCCCCCCCCCCC"] },
     { id: 2, name: "칸막이 주방", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [17000, 38000, 68000], plates: 0, gap: [11, 15], extra: 10, duo: true,
-      floor: ["#e6eef2", "#d8e3ea"], spawn: [[3.5, 4.5], [10.5, 4.5]],
+      ext: [14, 1], floor: ["#e6eef2", "#d8e3ea"], spawn: [[3.5, 4.5], [10.5, 4.5]],
       tip: "가운데 노란 칸막이는 못 넘어가요. 왼쪽은 재료 손질, 오른쪽은 조리와 서빙. 노란 칸 아무 데나 올려두거나 던져서 넘겨요.",
       map: ["CtmprCC|CSSCWWC", "b......|......C", "g......|......C", "d......|......P", "K......|......C", "K......|......T", "C......|......C", "T......|......C", "CCCCCCC|CCCCCCC"] },
     { id: 3, name: "설거지 대란", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [14000, 32000, 58000], plates: 3, gap: [11, 15], extra: 5, duo: false,
-      floor: ["#e3f1ea", "#d3e8dd"], spawn: [[3.5, 5.5], [11.5, 5.5]],
+      ext: [9, 0], floor: ["#e3f1ea", "#d3e8dd"], spawn: [[3.5, 5.5], [11.5, 5.5]],
       tip: "접시가 3개뿐이에요. 음식을 내면 접시가 반납구로 돌아와요. 개수대에서 씻어야 다시 써요.",
       map: ["CtmprCSSCCWWRCC", "C.............C", "b.............K", "g...CCC.CCC...K", "d.............C", "C.............C", "H.............T", "P.............C", "CCCCCCCCCCCCCCC"] },
     { id: 4, name: "포장마차 컨베이어", time: 180, menu: ["tteokbokki", "ramen", "gimbap", "twigim"], stars: [15000, 34000, 62000], plates: 0, gap: [10, 14], extra: 10, duo: false,
-      floor: ["#4d4a47", "#45423f"], spawn: [[4.5, 2.5], [4.5, 6.5]],
+      ext: [6, 8], floor: ["#4d4a47", "#45423f"], spawn: [[4.5, 2.5], [4.5, 6.5]],
       tip: "위는 손질, 아래는 조리. 가운데 벨트가 물건을 오른쪽 끝까지 옮겨줘요. 오른쪽 틈으로 건너갈 수도 있어요.",
       map: ["CtmproCCKKCbgdC", "C.............C", "C.............T", "C.............C", ">>>>>>>>>>>>C.C", "C.............C", "S.............W", "S.............W", "CFFPCCCCCCCCTCC"] },
     { id: 5, name: "오픈 첫날", time: 210, menu: ["gimbap", "tteokbokki", "ramen", "twigim"], stars: [17000, 38000, 68000], plates: 4, gap: [9, 13], extra: 15, duo: true,
-      floor: ["#f6e7e4", "#efd8d3"], spawn: [[3.5, 4.5], [10.5, 4.5]],
+      ext: [14, 5], floor: ["#f6e7e4", "#efd8d3"], spawn: [[3.5, 4.5], [10.5, 4.5]],
       tip: "칸막이, 설거지, 튀김까지 전부. 왼쪽은 손질·설거지·김밥, 오른쪽은 냄비·튀김·서빙. 가운데 노란 칸에 올려서 넘겨요.",
       map: ["CtmproC|CSSCWWC", "b......|......R", "g......|......F", "d......|......F", "K......|......C", "K......|......C", "H......|......C", "T......|......T", "CCPCCCC|CCCCCCC"] },
     // ---- 6단계부터는 메뉴는 2~3개로 두고, 맵 장치가 어려움을 만들어요 ----
     { id: 6, name: "무빙워크 푸드코트", time: 180, menu: ["gimbap", "ramen"], stars: [16000, 38000, 70000], plates: 0, gap: [11, 15], extra: 10, duo: false,
-      floor: ["#e9edf0", "#dfe4e8"], spawn: [[2.5, 4.5], [12.5, 4.5]],
+      ext: [14, 4], floor: ["#e9edf0", "#dfe4e8"], spawn: [[2.5, 4.5], [12.5, 4.5]],
       tip: "바닥 무빙워크가 화살표 쪽으로 밀어줘요. 위 길은 오른쪽 화구로, 아래 길은 왼쪽 내는 곳으로 흘러요. 거꾸로 걸으면 느려지고, 재료를 내려놓으면 같이 실려 가요.",
       map: ["CbgdCCrpCCSSSCC", "C.............C", "C}}}}}}}}}}}}.C", "K...CCCCCCC...T", "K...CCCCCCC...C", "P.............C", "C.{{{{{{{{{{{{C", "C.............C", "CCCCCWWCCCCCCCC"] },
     { id: 7, name: "꽁꽁 야시장", time: 180, menu: ["tteokbokki", "twigim"], stars: [15000, 34000, 62000], plates: 0, gap: [11, 15], extra: 15, duo: false,
-      floor: ["#5d6672", "#555e69"], spawn: [[1.5, 4.5], [13.5, 4.5]],
+      ext: [12, 0], floor: ["#5d6672", "#555e69"], spawn: [[1.5, 4.5], [13.5, 4.5]],
       tip: "가운데가 꽁꽁 언 빙판이에요. 한번 미끄러지면 잘 안 멈춰요. 매트 위에서만 딱 서요. 빙판 건너편으로 재료를 던지면 빨라요.",
       map: ["CtmCCSSCFFCCCCC", "C...~..~..~...C", "K..~~~~~~~~~..W", "K..~~~~~~~~~..W", "o..~~~CCC~~~..C", "C..~~~CCC~~~..T", "P..~~~~~~~~~..C", "C...~~~~~~~...C", "CCCCCCCCCCCCCCC"] },
     { id: 8, name: "배달 골목", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [15000, 34000, 62000], plates: 0, gap: [11, 15], extra: 15, duo: false,
       road: { row: 4, first: 7, warn: 1.6, speed: 12, gap: [5, 9] },
-      floor: ["#c9c2b6", "#bfb8ab"], spawn: [[3.5, 2.5], [10.5, 6.5]],
+      ext: [8, 8], floor: ["#c9c2b6", "#bfb8ab"], spawn: [[3.5, 2.5], [10.5, 6.5]],
       tip: "주방 한가운데로 배달 오토바이가 지나가요. 빵빵 소리와 빨간 화살표가 뜨면 길에서 비켜요. 치이면 밀려나요. 길 건너로 던지거나 길가 조리대에 올려서 넘겨요.",
       map: ["CtmprbgdCKKCCCC", "C.............C", "C.............T", "C...CC...CC...C", "===============", "C...CC...CC...C", "S.............W", "S.............W", "CCPCCSSCCCCCTCC"] },
     { id: 9, name: "마법 분식집", time: 180, menu: ["ramen", "twigim"], stars: [15000, 35000, 64000], plates: 0, gap: [11, 15], extra: 10, duo: false,
-      floor: ["#d3c7e4", "#c8bbdc"], spawn: [[2.5, 4.5], [11.5, 4.5]],
+      ext: [8, 4], floor: ["#d3c7e4", "#c8bbdc"], spawn: [[2.5, 4.5], [11.5, 4.5]],
       tip: "가운데 벽은 못 넘어가요. 바닥의 순간이동문을 밟으면 같은 색 문으로 휙 넘어가요. 재료를 문 쪽으로 던지면 재료도 넘어가요.",
       map: ["CrpoCCC#CSSCFFC", "C....@C#C$....C", "K.....C#C.....W", "K.....C#C.....W", "C.....C#C.....C", "P.....C#C.....T", "T.....C#C.....C", "C....$C#C@....C", "CCCCCCC#CCCCCCC"] },
     { id: 10, name: "변신 주방", time: 200, menu: ["gimbap", "tteokbokki", "twigim"], stars: [16000, 37000, 68000], plates: 0, gap: [11, 15], extra: 15, duo: false,
       gate: { period: 20, warn: 3 },
-      floor: ["#d3d6d8", "#c8cccf"], spawn: [[3.5, 2.5], [10.5, 6.5]],
+      ext: [6, 0], floor: ["#d3d6d8", "#c8cccf"], spawn: [[3.5, 2.5], [10.5, 6.5]],
       tip: "20초마다 주방이 바뀌어요. 처음엔 가로 칸막이가 위아래를, 다음엔 세로 칸막이가 좌우를 나눠요. 노랑·검정 줄이 깜빡이면 곧 바뀌니 비켜요. 칸막이 위로 넘겨줘요.",
       map: ["CtmoCCCCCSSCCCC", "K......X......W", "C......X......W", "C......X......C", "CYYYYYYCYYYYYYC", "C......X......T", "F......X......K", "F......X......C", "CPPCCCCCCbgdCCC"] }
   ];
   const SOLO_STAR = 0.6;
   // 맵·메뉴·규칙 지문: 한쪽만 새 버전이면 같이 못 하게 막아요 (버전 숫자를 깜빡해도 걸러져요)
   const RULES = (() => {
-    const src = JSON.stringify([STAGES, DISH, ING, CHOP_TIME, WASH_TIME, SPEED, R, SAFE, WARN, DASH_TIME, DASH_MUL, FLY_SPEED, FLY_MAX, BELT_STEP, WALK, ICE_GRIP, ICE_GLIDE, MISS, TIP]);
+    const src = JSON.stringify([STAGES, DISH, ING, CHOP_TIME, WASH_TIME, SPEED, R, SAFE, WARN, DASH_TIME, DASH_MUL, FLY_SPEED, FLY_MAX, BELT_STEP, WALK, ICE_GRIP, ICE_GLIDE, MISS, TIP, FIRE_SPREAD, EXT_TIME, FIRE_REGROW, EXT_RANGE]);
     let h = 2166136261;
     for (let i = 0; i < src.length; i++) { h ^= src.charCodeAt(i); h = Math.imul(h, 16777619); }
     return (h >>> 0).toString(36);
@@ -532,6 +534,16 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         } else {
           [[-2.2, -1.6], [1.8, -1.8], [-0.4, 1.9], [2.6, 1.6]].forEach(([x, y]) => { c.beginPath(); c.arc(x * u, y * u, 1.3 * u, 0, Math.PI * 2); c.strokeStyle = "#f0cbb9"; c.lineWidth = 0.9 * u; c.stroke(); });
         }
+        break;
+      case "ext": // 소화기
+        c.fillStyle = "#3d4246"; c.fillRect(-2.6 * u, -4.7 * u, 3.4 * u, 0.7 * u);
+        rrect(c, -1.1 * u, -4.2 * u, 2.2 * u, 1.8 * u, 0.4 * u); c.fillStyle = "#2b2e31"; c.fill();
+        c.strokeStyle = "#2b2e31"; c.lineWidth = 0.75 * u; c.beginPath(); c.moveTo(0.9 * u, -3.6 * u); c.quadraticCurveTo(4.2 * u, -3.8 * u, 3.6 * u, 0.4 * u); c.stroke();
+        c.fillStyle = "#2b2e31"; c.beginPath(); c.moveTo(3.0 * u, 0.2 * u); c.lineTo(4.2 * u, 0.2 * u); c.lineTo(3.9 * u, 1.9 * u); c.lineTo(3.3 * u, 1.9 * u); c.closePath(); c.fill();
+        rrect(c, -2.3 * u, -2.7 * u, 4.6 * u, 7.2 * u, 1.7 * u); c.fillStyle = "#d7372b"; c.fill(); c.strokeStyle = "#8f1f17"; c.lineWidth = 0.5 * u; c.stroke();
+        c.fillStyle = "#f5f3ec"; c.fillRect(-2.3 * u, 0.1 * u, 4.6 * u, 1.7 * u);
+        c.fillStyle = "#d7372b"; c.fillRect(-0.3 * u, 0.4 * u, 0.6 * u, 1.1 * u); c.fillRect(-0.55 * u, 0.65 * u, 1.1 * u, 0.6 * u);
+        c.fillStyle = "rgba(255,255,255,.35)"; rrect(c, -1.7 * u, -2.2 * u, 0.9 * u, 2 * u, 0.45 * u); c.fill();
         break;
       case "plate":
         dot(c, 0, 0, 4.8 * u, "#ffffff"); c.strokeStyle = "#cfc7b6"; c.lineWidth = 0.6 * u; c.stroke();
@@ -848,7 +860,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   const reachAmt = (i) => (anim[i].reach > 0 ? Math.sin((1 - anim[i].reach / REACH) * Math.PI) : 0);
 
   // 썰기 조각, 대시 먼지
-  const bits = [], dust = [];
+  const bits = [], dust = [], foam = []; // foam: 소화기 거품 (x, z 바닥 좌표, h 높이)
   const BIT_COLOR = { eomuk: "#dca65e", pa: "#3f9b4a", danmuji: "#f7d84a", ojingeo: "#f3d3c4" };
   function spawnDust(x, y, dx, dy) {
     const now = performance.now();
@@ -867,7 +879,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   function newWorld() {
     return {
       phase: "wait", stage: 1, rs: 0, left: 0, cd: 0, score: 0, combo: 1, served: 0, missed: 0,
-      slots: new Array(COLS * ROWS).fill(null), racks: {}, rets: {}, sinks: {}, returns: [], fly: [],
+      slots: new Array(COLS * ROWS).fill(null), racks: {}, rets: {}, sinks: {}, returns: [], fly: [], fire: {},
       orders: [], oid: 1, nextOrder: 0, players: [spawn(0), spawn(1)], prog: loadProg(), last: null
     };
   }
@@ -893,6 +905,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   const inMap = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS;
   function useful(i, h, v) {
     const t = tiles[i], s = v.slots[i];
+    if (v.fire && v.fire[i]) return !h && !!s && s.k === "ext";
     switch (t.type) {
       case "floor": return !!s;
       case "crate": return !h || (h.k === t.ing && !h.cut) || h.k === "plate" || isCont(h);
@@ -912,7 +925,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     const prim = inMap(tx, ty) ? idx(tx, ty) : -1;
     if (!v || !v.slots || (!p.fx && !p.fy)) return prim;
     const h = p.hold || null;
-    if (prim >= 0 && useful(prim, h, v)) return prim;
+    if (prim >= 0 && (useful(prim, h, v) || (v.fire && v.fire[prim]))) return prim; // 불난 칸을 보고 있으면 그 칸 그대로 (옆 칸으로 새지 않게)
     const cands = [];
     // 반 칸 더 앞 (바로 앞이 빈 바닥일 때)
     if (prim < 0 || tiles[prim].type === "floor") {
@@ -944,7 +957,8 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     const st = stageOf(W.stage);
     loadMap(st.id);
     W.slots = new Array(COLS * ROWS).fill(null);
-    W.racks = {}; W.rets = {}; W.sinks = {}; W.returns = []; W.fly = [];
+    W.racks = {}; W.rets = {}; W.sinks = {}; W.returns = []; W.fly = []; W.fire = {};
+    if (st.ext) W.slots[idx(st.ext[0], st.ext[1])] = { k: "ext" }; // 소화기
     let first = true;
     tiles.forEach((t) => {
       if (t.ch === "S") W.slots[t.i] = freshCont("pot");
@@ -1002,6 +1016,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       const i = targetIdx(p);
       if (i < 0) return;
       const t = tiles[i];
+      if (W.fire[i]) return;
       if (t.type === "board") {
         const it = W.slots[i];
         if (isIng(it) && ING[it.k].chop && !it.cut) { it.pr = (it.pr || 0) + dt / CHOP_TIME; if (it.pr >= 1) { it.cut = true; delete it.pr; } }
@@ -1015,19 +1030,20 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     tiles.forEach((t) => {
       if (t.type !== "stove" && t.type !== "fryer") return;
       const c = W.slots[t.i];
-      if (!isCont(c) || CONT[c.k].station !== t.type) return;
+      if (!isCont(c) || CONT[c.k].station !== t.type || W.fire[t.i]) return; // 불난 칸은 멈춰요
       if (c.st === "cook") {
         c.t += dt;
         if (c.t >= DISH[c.dish].cook) { c.st = "done"; c.t = 0; ev({ m: DISH[c.dish].name + " 완성! 접시에 담아요" }); }
       } else if (c.st === "done") {
         c.t += dt;
         if (c.t >= SAFE && c.t - dt < SAFE) ev({ m: iga(DISH[c.dish].name) + " 타기 시작해요! 얼른 담아요", bad: true });
-        if (c.t >= SAFE + WARN) { c.st = "burnt"; c.t = 0; ev({ m: "타버렸어요! 쓰레기통에 가져가서 비워요", bad: true }); }
+        if (c.t >= SAFE + WARN) { c.st = "burnt"; c.t = 0; ignite(t.i); ev({ m: "타서 불이 났어요! 소화기로 꺼요", bad: true, snd: "fire" }); }
       }
     });
 
     flyTick(dt);
     beltTick(dt);
+    fireTick(dt);
 
     // 접시 반납
     for (let j = 0; j < W.returns.length; j++) W.returns[j] -= dt;
@@ -1109,6 +1125,12 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     const t = tiles[i], h = p.hold;
     const say = (m) => { if (m && m !== true) ev({ m, to: pi }); };
     p.an = (p.an || 0) + 1;
+    if (W.fire[i]) { // 불난 칸은 못 써요. 소화기는 불 속에서도 집을 수 있어요
+      const s = W.slots[i];
+      if (!h && s && s.k === "ext") { p.hold = s; W.slots[i] = null; return; }
+      say(h && h.k === "ext" ? "작업 버튼을 꾹 눌러서 뿌려요" : "불부터 꺼요! 소화기를 들고 작업 버튼을 꾹");
+      return;
+    }
     switch (t.type) {
       case "floor": {
         const s = W.slots[i];
@@ -1196,6 +1218,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         if (isCont(h)) { if (h.items.length || h.st !== "idle") { Object.assign(h, freshCont(h.k)); say(CONT[h.k].name + "를 비웠어요"); } return; }
         if (h.k === "plate") { if (h.dish || h.items.length) { h.dish = null; h.items = []; say("접시를 비웠어요"); } else say("빈 접시는 버리지 않아요"); return; }
         if (h.k === "dirty") say("더러운 접시는 개수대에서 씻어요");
+        if (h.k === "ext") say("소화기는 버리면 안 돼요");
         return;
       }
     }
@@ -1256,6 +1279,54 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       }
     }
     W.fly = W.fly.filter((f) => !f.done);
+  }
+
+  // ===== 불과 소화기 =====
+  // 타면 그 칸에 불이 붙고, FIRE_SPREAD초마다 옆 조리대로 번져요. 소화기를 들고 작업 버튼을 꾹 누르면
+  // 바라보는 쪽 EXT_RANGE칸 안의 불이 줄어들어요. 뿌리다 말면 불이 다시 커져요.
+  const FLAMMABLE = { counter: 1, crate: 1, board: 1, stove: 1, fryer: 1, plates: 1 };
+  const flammable = (t) => !!t && !t.gate && !!FLAMMABLE[t.type];
+  function ignite(i) {
+    if (W.fire[i] || !flammable(tiles[i])) return;
+    W.fire[i] = { hp: 1, sp: FIRE_SPREAD * (0.8 + Math.random() * 0.4) };
+    const c = W.slots[i]; // 불이 옮겨붙은 화구 위 음식은 타요
+    if (isCont(c) && (c.st === "cook" || c.st === "done")) { c.st = "burnt"; c.t = 0; }
+  }
+  // 소화기가 닿는 칸들 (바라보는 쪽으로 부채꼴)
+  function sprayHits(p) {
+    const out = new Set(), lx = -p.fy, ly = p.fx;
+    for (let d = 0.45; d <= EXT_RANGE; d += 0.25) {
+      const w = Math.min(0.45, d * 0.3);
+      for (const o of [-w, 0, w]) {
+        const x = Math.floor(p.x + p.fx * d + lx * o), y = Math.floor(p.y + p.fy * d + ly * o);
+        if (inMap(x, y)) out.add(idx(x, y));
+      }
+    }
+    return out;
+  }
+  const spraying = (p) => !!(p && p.on !== false && p.chop && p.hold && p.hold.k === "ext");
+  function fireTick(dt) {
+    const had = Object.keys(W.fire).length;
+    if (!had) return;
+    const hit = new Set();
+    W.players.forEach((p) => { if (spraying(p)) sprayHits(p).forEach((i) => { if (W.fire[i]) hit.add(i); }); });
+    let spread = false;
+    for (const k of Object.keys(W.fire)) {
+      const f = W.fire[k];
+      if (hit.has(+k)) { f.hp -= dt / EXT_TIME; f.sp = Math.max(f.sp, 2); if (f.hp <= 0) { delete W.fire[k]; } continue; }
+      f.hp = Math.min(1, f.hp + dt * FIRE_REGROW);
+      f.sp -= dt;
+      if (f.sp > 0) continue;
+      f.sp = FIRE_SPREAD * (0.8 + Math.random() * 0.4);
+      const t = tiles[k];
+      const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => inMap(t.x + dx, t.y + dy)).map(([dx, dy]) => tiles[idx(t.x + dx, t.y + dy)]).filter((q) => flammable(q) && !W.fire[q.i]);
+      if (nb.length) { ignite(nb[Math.floor(Math.random() * nb.length)].i); spread = true; }
+    }
+    if (spread) { // 번질 때 알림은 4초에 한 번만
+      const since = W.fireMsgAt == null || W.fireMsgAt < W.left ? 99 : W.fireMsgAt - W.left;
+      if (since > 4) { W.fireMsgAt = W.left; ev({ m: "불이 번지고 있어요! 소화기로 꺼요", bad: true }); }
+    }
+    if (!Object.keys(W.fire).length) ev({ m: "불을 다 껐어요!", snd: "out" });
   }
 
   // ===== 컨베이어, 무빙워크 =====
@@ -1370,6 +1441,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     return {
       t: "s", ph: W.phase, st: W.stage, rs: W.rs, left: W.left, cd: W.cd, sc: W.score, cb: W.combo, sv: W.served, ms: W.missed,
       sl, racks: W.racks, rets: W.rets, sinks: W.sinks, od: W.orders, prog: W.prog, last: W.last, so: !!W.solo,
+      fi: Object.keys(W.fire).map((i) => [+i, Math.round(W.fire[i].hp * 100) / 100]),
       fly: W.fly.map((f) => ({ it: f.it, x: f.x, y: f.y, dx: f.dx, dy: f.dy, d: f.d })),
       pl: W.players.map((p) => ({ x: p.x, y: p.y, fx: p.fx, fy: p.fy, hold: p.hold, chop: p.chop, on: p.on, ch: p.ch, an: p.an, ds: p.ds })),
       sp: specs.size
@@ -1379,7 +1451,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     const slots = new Array(COLS * ROWS).fill(null);
     s.sl.forEach(([i, it]) => (slots[i] = it));
     specN = s.sp || 0;
-    return { phase: s.ph, stage: s.st, rs: s.rs, left: s.left, cd: s.cd, score: s.sc, combo: s.cb, served: s.sv, missed: s.ms, slots, racks: s.racks, rets: s.rets, sinks: s.sinks, orders: s.od, prog: s.prog, last: s.last, solo: !!s.so, fly: s.fly, players: s.pl, at: performance.now() };
+    return { phase: s.ph, stage: s.st, rs: s.rs, left: s.left, cd: s.cd, score: s.sc, combo: s.cb, served: s.sv, missed: s.ms, slots, racks: s.racks, rets: s.rets, sinks: s.sinks, orders: s.od, prog: s.prog, last: s.last, solo: !!s.so, fire: Object.fromEntries((s.fi || []).map(([i, hp]) => [i, { hp }])), fly: s.fly, players: s.pl, at: performance.now() };
   }
 
   // ===== 이동 =====
@@ -1679,6 +1751,47 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     }
   }
 
+  // 불 (2D). hp가 줄면 불길이 작아져요
+  function drawFire(c, cx, cy, s, now, hp, seed) {
+    const k = 0.5 + 0.5 * Math.max(0, hp);
+    const g = c.createRadialGradient(cx, cy - s * 0.1, s * 0.05, cx, cy - s * 0.1, s * 0.62);
+    g.addColorStop(0, "rgba(255,190,60," + 0.55 * k + ")"); g.addColorStop(1, "rgba(255,80,0,0)");
+    c.fillStyle = g; c.fillRect(cx - s * 0.62, cy - s * 0.72, s * 1.24, s * 1.24);
+    c.save(); c.translate(cx, cy + s * 0.32); c.scale(k, k);
+    for (const [ox, sc, col, ph] of [[-0.22, 0.72, "#ff4a12", 0], [0.21, 0.68, "#ff4a12", 1.7], [0, 1, "#ff7a14", 0.8], [-0.06, 0.66, "#ffb52e", 2.4], [0.07, 0.42, "#ffe27a", 3.1]]) {
+      const fl = 1 + Math.sin(now / 65 + ph + seed) * 0.13, hh = s * 0.7 * sc * fl, ww = s * 0.24 * sc, sway = Math.sin(now / 110 + ph * 2 + seed) * ww * 0.35;
+      c.beginPath(); c.moveTo(ox * s - ww, 0);
+      c.quadraticCurveTo(ox * s - ww * 1.1, -hh * 0.5, ox * s + sway, -hh);
+      c.quadraticCurveTo(ox * s + ww * 1.1, -hh * 0.5, ox * s + ww, 0);
+      c.closePath(); c.fillStyle = col; c.fill();
+    }
+    c.restore();
+    for (let j = 0; j < 2; j++) {
+      const ph = (now / 1500 + j * 0.5 + seed * 0.137) % 1;
+      c.globalAlpha = 0.4 * (1 - ph);
+      dot(c, cx + Math.sin(ph * 6 + seed) * s * 0.14, cy - s * 0.45 - ph * s * 0.9, s * (0.12 + ph * 0.2), "#4a4240");
+      c.globalAlpha = 1;
+    }
+  }
+  // 소화기 뿌리는 중이면 거품을 뿜어요 (모든 화면에서 각자 그려요)
+  let lastHiss = 0, lastCrackle = 0;
+  function sprayFx(now) {
+    if (!view || view.phase !== "play") return;
+    view.players.forEach((p, i) => {
+      if (!p.on) return;
+      const mine = i === myIdx;
+      const hold = mine ? myHold() : p.hold;
+      if (!(hold && hold.k === "ext" && (mine ? chopHeld() : p.chop))) return;
+      const pos = mine ? me : remotes[i], fx = mine ? me.fx : p.fx || 0, fy = mine ? me.fy : p.fy || 0;
+      for (let k = 0; k < 2; k++) {
+        const sp = 4 + Math.random() * 1.8, side = (Math.random() - 0.5) * 1.5;
+        foam.push({ x: pos.x + fx * 0.5, z: pos.y + fy * 0.5, h: 0.55, vx: fx * sp - fy * side, vz: fy * sp + fx * side, vh: (Math.random() - 0.35) * 0.9, t0: now, r: 0.05 + Math.random() * 0.06 });
+      }
+      if (mine && now - lastHiss > 150) { lastHiss = now; sfx.spray(); }
+    });
+    if (foam.length > 500) foam.splice(0, foam.length - 500);
+  }
+
   // 배달 오토바이 (2D). x, y는 가운데, s는 한 칸 크기
   function drawBike(c, x, y, dir, s, now) {
     c.save(); c.translate(x, y); c.scale(dir, 1);
@@ -1773,6 +1886,10 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       }
     }
 
+    // 불
+    const fires = view.fire || {};
+    for (const k in fires) { const t = tiles[+k]; drawFire(ctx, (t.x + 0.5) * TS, (t.y + 0.5) * TS, TS, now, fires[k].hp, +k); }
+
     // 오토바이와 경고
     const bk = bikeNow(view, now);
     bk.warn.forEach((b) => drawBikeWarn(ctx, b.dir, stageOf(view.stage).road.row, now, TS));
@@ -1823,6 +1940,15 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
       if (ag > 0.4) { dust.splice(j, 1); continue; }
       ctx.globalAlpha = 0.55 * (1 - ag / 0.4);
       dot(ctx, (d.x + d.vx * ag) * TS, (d.y + d.vy * ag) * TS, TS * (0.06 + ag * 0.2), "#ffffff");
+      ctx.globalAlpha = 1;
+    }
+    // 소화기 거품
+    for (let j = foam.length - 1; j >= 0; j--) {
+      const f = foam[j], ag = (now - f.t0) / 1000;
+      if (ag > 0.45) { foam.splice(j, 1); continue; }
+      const x = f.x + f.vx * ag, z = f.z + f.vz * ag, h = f.h + f.vh * ag;
+      ctx.globalAlpha = 0.85 * (1 - ag / 0.45);
+      dot(ctx, x * TS, (z - h * 0.5) * TS, TS * (f.r + ag * 0.22), "#ffffff");
       ctx.globalAlpha = 1;
     }
     // 매출 팝업
@@ -2279,13 +2405,29 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         return g;
       }
       if (it.k === "dirty") return dirtyModel(Math.min(3, it.n || 1));
+      if (it.k === "ext") return extModel();
       return ingModel(it.k, it.cut);
+    }
+    // 소화기: 빨간 통, 하얀 띠, 검은 손잡이·호스·노즐
+    function extModel() {
+      const g = new T.Group(), red = mat("#d7372b", "g"), blk = mat("#2b2e31"), stl = mat("#9aa3a8", "p");
+      part(g, cylG(0.068, 0.07, 0.22, 20), red, 0, 0.11, 0);
+      part(g, sphG(16, true), red, 0, 0.22, 0, 0, 0, 0, 0.068, 0.045, 0.068);
+      part(g, cylG(0.071, 0.071, 0.055, 20), mat("#f5f3ec"), 0, 0.1, 0);
+      part(g, boxG(0.03, 0.03, 0.004), red, 0, 0.1, 0.071);
+      part(g, cylG(0.022, 0.028, 0.05, 12), blk, 0, 0.285, 0);
+      part(g, rboxG(0.12, 0.016, 0.028, 0.006, 1), stl, 0.025, 0.318, 0, 0, 0, 0.22);
+      part(g, rboxG(0.1, 0.014, 0.026, 0.006, 1), stl, 0.02, 0.298, 0, 0, 0, -0.1);
+      part(g, torG(0.055, 0.011, Math.PI, 6, 18), blk, 0.075, 0.25, 0, 0, 0, -Math.PI / 2);
+      part(g, cylG(0.011, 0.011, 0.12, 8), blk, 0.13, 0.19, 0);
+      part(g, coneG(0.022, 0.06, 10), blk, 0.13, 0.12, 0, 0, 0, Math.PI);
+      return g;
     }
     const itemSig = (it) => it.k + "|" + (it.cut ? 1 : 0) + "|" + (it.items ? it.items.join(",") : "") + "|" + (it.dish || "") + "|" + (it.st || "") + "|" + Math.min(3, it.n || 0);
     // 같은 모양은 재질별로 한 덩어리로 합쳐 두고 돌려 써요 (그리는 횟수가 확 줄어요)
     const ITEM = new Map();
     const K_ING = 1.85, K_PLATE = 1.4; // 재료는 1.85배, 접시는 1.4배 (냄비·바구니는 처음부터 크게)
-    const itemK = (it) => (isCont(it) ? 1 : it.k === "plate" || it.k === "dirty" ? K_PLATE : K_ING);
+    const itemK = (it) => (isCont(it) ? 1 : it.k === "ext" ? 1.55 : it.k === "plate" || it.k === "dirty" ? K_PLATE : K_ING);
     function bakeItem(raw, k) {
       raw.scale.multiplyScalar(k || 1);
       raw.updateMatrixWorld(true);
@@ -2727,6 +2869,28 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     }
     // 칸막이 위 물건 높이 (칸막이가 오르내리는 대로 같이 움직여요)
     const gateTop = (t) => { const e = gateAt[t.i]; return e ? Math.max(0, CH + e.y) : surfY(t); };
+    // 불길: 빨강 → 주황 → 노랑 원뿔을 겹겹이 (밝은 주방에서도 색이 날아가지 않게 빛 더하기 대신 그냥 칠해요)
+    const FIREM = new T.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.94, depthWrite: false, toneMapped: false });
+    const FGLOW = new T.MeshBasicMaterial({ color: 0xff6a1a, transparent: true, opacity: 0.4, depthWrite: false, toneMapped: false });
+    const FSCORCH = new T.MeshBasicMaterial({ color: 0x2a1f1a, transparent: true, opacity: 0.45, depthWrite: false, toneMapped: false });
+    function fireModel() {
+      const geo = gc("fireGeo2", () => {
+        const fb = new Batch();
+        const L = [ // x, z, 반지름, 높이, 색 (바깥 빨강 → 안쪽 노랑, 안쪽이 살짝 앞에)
+          [0, 0, 0.26, 0.92, "#e8321a"], [0.22, 0.1, 0.19, 0.66, "#e8321a"], [-0.21, 0.07, 0.19, 0.7, "#e8321a"], [0.06, -0.2, 0.17, 0.6, "#e43a1a"], [-0.08, 0.2, 0.16, 0.56, "#ea4a1c"],
+          [0, 0.04, 0.2, 0.74, "#ff7a1a"], [0.15, 0.1, 0.13, 0.5, "#ff8c1e"], [-0.14, 0.08, 0.13, 0.52, "#ff8c1e"],
+          [0.02, 0.08, 0.13, 0.5, "#ffc23a"], [0.09, 0.12, 0.07, 0.3, "#ffe680"], [-0.07, 0.11, 0.07, 0.28, "#ffe680"]];
+        L.forEach(([x, z, r, h, col]) => fb.add(coneG(r, h, 12), mtx(x, h / 2, z), col));
+        return fb.geom();
+      });
+      const g = new T.Group();
+      const sc = new T.Mesh(gc("fscorchG", () => new T.CircleGeometry(0.46, 24)), FSCORCH);
+      sc.rotation.x = -Math.PI / 2; sc.position.y = 0.004; sc.renderOrder = 2; g.add(sc);
+      const glow = new T.Mesh(gc("fglowG", () => new T.CircleGeometry(0.56, 24)), FGLOW);
+      glow.rotation.x = -Math.PI / 2; glow.position.y = 0.008; glow.renderOrder = 2; g.add(glow);
+      const m = new T.Mesh(geo, FIREM); m.renderOrder = 3; g.add(m);
+      return g;
+    }
     function buildBike() {
       const g = new T.Group(), B = new Batch(), MB = new Batch();
       const P = (geo, x, y, z, col, rx, ry, rz, sx, sy, sz, metal) => (metal ? MB : B).add(geo, mtx(x, y, z, rx, ry, rz, sx, sy, sz), col);
@@ -3122,6 +3286,16 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         }
       });
       if (beltTex) beltTex.offset.x = -(((now / 1000) / BELT_STEP) % 1);
+      // 불
+      const fires = view.fire || {};
+      for (const k of [...extraO.keys()]) if (typeof k === "string" && k[0] === "f" && !fires[k.slice(1)]) sync(extraO, k, "", null);
+      for (const k in fires) {
+        const t = tiles[+k], hp = Math.max(0, fires[k].hp), sc = 0.45 + 0.55 * hp;
+        const o = sync(extraO, "f" + k, "fire", fireModel);
+        o.position.set(t.x + 0.5, (t.gate ? gateTop(t) : topY(t)) + 0.01, t.y + 0.5);
+        o.scale.set(sc, sc * (1 + Math.sin(now / 70 + +k) * 0.12), sc);
+        o.rotation.y = now / 380 + +k;
+      }
       // 맵 장치 움직임
       if (walkTex && walk3.length) walkTex.offset.x = -(((now / 1000) * WALK) % 1);
       portal3.forEach((p, j) => {
@@ -3230,6 +3404,28 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
         const [x, y] = S(d.x + d.vx * ag, 0.06 + ag * 0.5, d.y - 0.2 + d.vy * ag);
         c.globalAlpha = 0.6 * (1 - ag / 0.4);
         dot(c, x, y, unit(d.x, 0, d.y) * (0.05 + ag * 0.18), "#ffffff");
+      }
+      c.globalAlpha = 1;
+      // 불 연기
+      const fz = view.fire || {};
+      for (const k in fz) {
+        const t = tiles[+k], top = topY(t);
+        for (let j = 0; j < 2; j++) {
+          const ph = (now / 1500 + j * 0.5 + +k * 0.137) % 1;
+          const [x, y] = S(t.x + 0.5 + Math.sin(ph * 6 + +k) * 0.12, top + 0.7 + ph * 0.9, t.y + 0.5);
+          c.globalAlpha = 0.38 * (1 - ph);
+          dot(c, x, y, unit(t.x + 0.5, top + 1, t.y + 0.5) * (0.1 + ph * 0.2), "#4a4240");
+        }
+      }
+      c.globalAlpha = 1;
+      // 소화기 거품
+      for (let j = foam.length - 1; j >= 0; j--) {
+        const f = foam[j], ag = (now - f.t0) / 1000;
+        if (ag > 0.45) { foam.splice(j, 1); continue; }
+        const x = f.x + f.vx * ag, z = f.z + f.vz * ag, h = Math.max(0.02, f.h + f.vh * ag - 1.2 * ag * ag);
+        const [sx, sy] = S(x, h, z);
+        c.globalAlpha = 0.85 * (1 - ag / 0.45);
+        dot(c, sx, sy, unit(x, h, z) * (f.r + ag * 0.22), "#ffffff");
       }
       c.globalAlpha = 1;
       // 오토바이 온다: 들어오는 쪽에 빨간 화살표와 빵빵
@@ -3435,6 +3631,20 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     o.connect(g); g.connect(a.destination);
     o.start(t0); o.stop(t0 + dur + 0.03);
   }
+  // 쉬익·타닥 소리용 잡음
+  let noiseBuf = null;
+  function noise(dur, vol, delay, freq, q) {
+    const a = audio();
+    if (!a || a.state !== "running") return;
+    if (!noiseBuf) { noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    const t0 = a.currentTime + (delay || 0);
+    const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    src.buffer = noiseBuf; src.loop = true;
+    f.type = "bandpass"; f.frequency.value = freq || 1200; f.Q.value = q || 0.8;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.1, t0 + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(f); f.connect(g); g.connect(a.destination);
+    src.start(t0, Math.random() * 0.5); src.stop(t0 + dur + 0.05);
+  }
   const sfx = {
     done() { tone(988, 0.16, "sine", 0.16); tone(1319, 0.3, "sine", 0.15, 0.12); },
     warn() { tone(760, 0.09, "square", 0.045); },
@@ -3448,7 +3658,11 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
     honk() { tone(440, 0.12, "square", 0.05); tone(440, 0.16, "square", 0.05, 0.17); },
     bump() { tone(150, 0.18, "square", 0.07, 0, 70); },
     portal() { tone(520, 0.18, "sine", 0.09, 0, 1240); },
-    gate() { tone(300, 0.12, "triangle", 0.09); tone(225, 0.2, "triangle", 0.08, 0.13); }
+    gate() { tone(300, 0.12, "triangle", 0.09); tone(225, 0.2, "triangle", 0.08, 0.13); },
+    fire() { noise(0.7, 0.16, 0, 500, 0.5); tone(150, 0.5, "sawtooth", 0.05, 0, 70); },
+    crackle() { noise(0.05, 0.035 + Math.random() * 0.03, 0, 1400 + Math.random() * 1600, 1.2); },
+    spray() { noise(0.18, 0.06, 0, 3800, 0.6); },
+    out() { tone(660, 0.1, "sine", 0.1); tone(990, 0.2, "sine", 0.1, 0.09); }
   };
   ["pointerdown", "keydown"].forEach((t) => window.addEventListener(t, () => { if (sndOn) audio(); }, true));
   function setSound(on) {
@@ -3466,6 +3680,8 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
   let lastBeep = 0, lastChop = 0;
   function watch(now) {
     if (!view || view.phase !== "play") return;
+    const nf = view.fire ? Object.keys(view.fire).length : 0;
+    if (nf && now - lastCrackle > 230 - Math.min(140, nf * 25) + Math.random() * 120) { lastCrackle = now; sfx.crackle(); }
     let warnMax = -1;
     tiles.forEach((t) => {
       if (t.type !== "stove" && t.type !== "fryer") return;
@@ -4221,6 +4437,7 @@ canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(
           if (p.ds != null && p.ds !== anim[i].ds) { const first = anim[i].ds === 0 && p.ds > 1; anim[i].ds = p.ds; if (!first) { anim[i].dashT = DASH_TIME; spawnDust(pos.x, pos.y, p.fx || 0, p.fy || 0); } }
         }
       });
+      sprayFx(now);
       draw(now); hud(); phaseUI(); watch(now); checkSlow(raw);
       const ph = padHidden();
       if ($("pad").hidden !== ph) { $("pad").hidden = ph; if (ph) { touchIn.chop = false; endStick(); } else stickRest(); }
