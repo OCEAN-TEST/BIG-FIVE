@@ -117,7 +117,14 @@ kbd { font-family: var(--font-ui); background: #fff; border: 2px solid var(--pap
 #game { max-width: 1240px; margin: 0 auto; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); padding-block: max(10px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; height: 100vh; height: 100dvh; }
 body.ingame { overflow: hidden; overscroll-behavior: none; }
 body.ingame #game { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
-.hud { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: stretch; }
+.hud { display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px; align-items: stretch; }
+.hudset { position: relative; align-self: start; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,248,230,.14); color: #f3e6d2; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+.hudset:hover { background: rgba(255,248,230,.24); }
+.hudset:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+.hudset svg { width: 22px; height: 22px; }
+.mutebadge { display: none; position: absolute; right: -3px; bottom: -3px; width: 17px; height: 17px; border-radius: 50%; background: var(--chili); color: #fff; align-items: center; justify-content: center; }
+.mutebadge svg { width: 12px; height: 12px; }
+.hudset.muted .mutebadge { display: flex; }
 .meter { background: var(--sign); border-radius: 10px; padding: 4px 14px; display: flex; flex-direction: column; justify-content: center; min-width: 120px; }
 .meter span { font-size: 12px; font-weight: 700; color: var(--chili-dark); white-space: nowrap; }
 .meter b { font-family: var(--font-ui); font-weight: 400; font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
@@ -138,7 +145,6 @@ body.ingame #game { -webkit-user-select: none; user-select: none; -webkit-touch-
 canvas#kitchen { display: block; border-radius: 10px; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
 #k3 { display: block; }
 .view.three canvas#kitchen { position: absolute; left: 0; top: 0; border-radius: 0; box-shadow: none; pointer-events: none; }
-.opts { position: absolute; top: 34px; right: 10px; z-index: 6; display: flex; gap: 6px; }
 .sndbtn { font-family: var(--font-body); font-size: 12px; line-height: 1.6; color: #fff; background: rgba(36,26,20,.7); padding: 2px 10px; border-radius: 999px; border: 0; cursor: pointer; }
 .sndbtn[aria-pressed="false"] { color: #cdbca8; }
 .sndbtn svg { width: 13px; height: 13px; vertical-align: -2px; margin-right: 4px; }
@@ -177,7 +183,6 @@ body.modal { overflow: hidden; }
 .seg button { font-family: var(--font-ui); font-size: 17px; padding: 5px 16px; border: 0; background: #fff; color: var(--ink); cursor: pointer; }
 .seg button + button { border-left: 2px solid var(--paper-line); }
 .seg button[aria-pressed="true"] { background: var(--sign); }
-#game.touch.portrait .opts { top: auto; bottom: 200px; right: 16px; }
 .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .intro { background: var(--paper); border-radius: 14px; padding: 16px 26px; max-width: min(560px, 92%); display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
 .intro .lv { font-family: var(--font-ui); color: var(--soft); font-size: 16px; }
@@ -242,9 +247,24 @@ body.modal { overflow: hidden; }
 .pbtn.dash { width: 62px; height: 62px; background: var(--sky); color: #fff; font-size: 17px; box-shadow: 0 5px 0 #275ba3; }
 .pbtn.on { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
 #game.touch .foot { display: none; }
-#game.touch:not(.portrait) .peer, #game.touch:not(.portrait) .opts { right: auto; left: 10px; }
+#game.touch:not(.portrait) .peer { right: auto; left: 10px; font-size: 11px; padding: 1px 9px; }
+/* 가로 폰: 오른쪽 버튼은 세로 한 줄로 좁게 → 주방을 넓게 */
+#game:not(.portrait) .pbtns { grid-template-columns: auto; grid-template-areas: "dash" "work" "grab"; }
+#game:not(.portrait) .pbtn.work { margin-bottom: 0; }
+/* 가로 폰: 위 메뉴를 낮게 */
+#game.touch:not(.portrait) { gap: 6px; padding-top: max(6px, env(safe-area-inset-top, 0px)); padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)); }
+#game.touch:not(.portrait) .meter { min-width: 64px; padding: 2px 9px; border-radius: 7px; }
+#game.touch:not(.portrait) .meter span { font-size: 9.5px; line-height: 1.25; }
+#game.touch:not(.portrait) .meter b { font-size: 16px; }
+#game.touch:not(.portrait) .ticket { flex-basis: 108px; min-width: 76px; padding: 3px 6px 8px; gap: 5px; border-radius: 7px; }
+#game.touch:not(.portrait) .ticket img { width: 20px; height: 20px; }
+#game.touch:not(.portrait) .ticket b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#game.touch:not(.portrait) .ticket i { bottom: 3px; height: 3px; left: 6px; right: 6px; }
+#game.touch:not(.portrait) .ticket > div { min-width: 0; }
+#game.touch .hudset { width: 32px; height: 32px; }
+#game.touch .hudset svg { width: 19px; height: 19px; }
 @media (max-height: 360px) {
-  .pbtns { gap: 8px 10px; bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
+  .pbtns { gap: 7px 10px; bottom: max(8px, env(safe-area-inset-bottom, 0px)); }
   .pbtn.grab { width: 76px; height: 76px; font-size: 21px; }
   .pbtn.work { width: 64px; height: 64px; font-size: 17px; margin-bottom: 6px; }
   .pbtn.work small { font-size: 9.5px; }
@@ -259,14 +279,14 @@ body.modal { overflow: hidden; }
 #game.touch .ticket b { font-size: 15px; }
 #game.touch .ticket small { display: none; }
 #game.touch .toast { font-size: 16px; bottom: 8px; }
-#game.touch.portrait .hud { grid-template-columns: 1fr 1fr; }
+#game.touch.portrait .hud { grid-template-columns: 1fr 1fr auto; }
+#game.touch.portrait .hudset { grid-column: 3; grid-row: 1; align-self: center; }
 #game.touch.portrait .hud > .meter:first-child { grid-column: 1; grid-row: 1; }
 #game.touch.portrait #timeBox { grid-column: 2; grid-row: 1; }
 #game.touch.portrait .orders { grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; }
 #game.touch.portrait .ticket { flex: 1 1 40%; }
 #game.touch.portrait .stage { align-items: flex-start; }
 #game.touch.portrait .peer { top: auto; right: auto; left: 16px; transform: none; bottom: 204px; }
-#game.touch.portrait.spec .opts { bottom: 14px; }
 #game.touch.portrait.spec .peer { bottom: 18px; }
 @media (prefers-reduced-motion: reduce) { .ticket { animation: none; } }
 </style>
@@ -344,11 +364,11 @@ body.modal { overflow: hidden; }
     <div class="meter"><span id="scoreLabel">오늘 매출</span><b id="score">0원</b></div>
     <div class="orders" id="orders"></div>
     <div class="meter time" id="timeBox"><span id="timeLabel">남은 시간</span><b id="time">3:00</b></div>
+    <button class="hudset setopen" id="setBtnGame" type="button" aria-label="설정" title="설정" aria-haspopup="dialog" aria-controls="setPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg><span class="mutebadge" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 9v6h4l5 4V5L7 9zm13.6 3 2.7-2.7-1.4-1.4-2.7 2.7-2.7-2.7-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4z"/></svg></span></button>
   </div>
   <div class="stage" id="stage">
     <div class="view" id="viewBox"><canvas id="kitchen" aria-label="주방"></canvas></div>
     <span class="peer" id="peerTag"></span>
-    <div class="opts"><button class="sndbtn setopen" id="setBtnGame" type="button" aria-haspopup="dialog" aria-controls="setPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg><span class="setlabel">설정</span></button></div>
     <div class="toast hide" id="toast"></div>
     <div class="overlay" id="overlay" hidden></div>
     <span class="rotate-tip" id="rotateTip" hidden>폰을 가로로 돌리면 더 크게 보여요</span>
@@ -1791,7 +1811,7 @@ body.modal { overflow: hidden; }
     let w = stage.clientWidth, h = stage.clientHeight;
     if (touchMode && me) { // 관전은 조작 버튼이 없어서 화면을 다 써요
       if (window.innerHeight > window.innerWidth) h = h - 240;
-      else w -= 2 * Math.min(190, Math.max(130, w * 0.18));
+      else w -= 2 * Math.min(150, Math.max(96, w * 0.13)); // 조이스틱·버튼 한 줄 폭만큼만 비워요
     }
     TS = Math.max(16, Math.floor(Math.min(w / COLS, h / ROWS)));
     const dpr = window.devicePixelRatio || 1;
@@ -3988,6 +4008,7 @@ body.modal { overflow: hidden; }
     if (!on && actx && actx.state === "running") { try { actx.suspend(); } catch (e) {} } // 나던 소리도 바로 멈춰요
     $("sndSwitch").setAttribute("aria-checked", String(on));
     document.querySelectorAll(".setlabel").forEach((el) => (el.textContent = on ? "설정" : "설정 · 음소거"));
+    $("setBtnGame").classList.toggle("muted", !on); $("setBtnGame").setAttribute("aria-label", on ? "설정" : "설정 (음소거 중)");
   }
   $("sndSwitch").addEventListener("click", () => { setSound(!sndOn); if (sndOn) sfx.order(); });
   setSound(sndOn);
