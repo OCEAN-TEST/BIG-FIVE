@@ -276,6 +276,7 @@ body.modal { overflow: hidden; }
     <h2 id="roomTitle">방 코드</h2>
     <div class="code" id="roomCode">----</div>
     <p id="roomStatus" aria-live="polite"></p>
+    <p class="specnote" id="testNote" hidden>테스트 모드 · 모든 단계가 열려 있어요</p>
     <p class="specnote" id="specNote" hidden></p>
     <div class="pick">
       <h3 id="pickTitle">내 캐릭터 고르기</h3>
@@ -377,6 +378,7 @@ body.modal { overflow: hidden; }
   const VERSION = 8;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
+  const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
   const CHOP_TIME = 1.2, WASH_TIME = 2, SPEED = 4.3, R = 0.3;
   const SAFE = 2, WARN = 4; // 다 익은 뒤 SAFE초는 안전, 그다음 WARN초 동안 타기 시작해서 다 타요 (모두 6초)
   const DASH_TIME = 0.16, DASH_CD = 0.6, DASH_MUL = 3.1;
@@ -384,7 +386,7 @@ body.modal { overflow: hidden; }
   const WALK = 2.4, WALK_STEP = 1 / WALK;       // 무빙워크가 미는 빠르기 (칸/초)
   const ICE_GRIP = 2.2, ICE_GLIDE = 0.55;      // 얼음: 누를 때 붙는 정도, 뗐을 때 멈추는 정도 (작을수록 미끄러워요)
   const BIKE_STUN = 3;                         // 오토바이에 치이면 3초 기절 (들고 있던 음식은 뺏겨요)
-  const FIRE_SPREAD = 6, EXT_TIME = 0.8, FIRE_REGROW = 0.25, EXT_RANGE = 2.4; // 불: 몇 초마다 옆 칸으로 번지는지, 한 칸 끄는 데 뿌리는 시간, 멈추면 다시 커지는 빠르기, 소화기 닿는 거리
+  const FIRE_SPREAD = 4, EXT_TIME = 0.8, FIRE_REGROW = 0.25, EXT_RANGE = 2.4; // 불: 몇 초마다 옆 칸으로 번지는지, 한 칸 끄는 데 뿌리는 시간, 멈추면 다시 커지는 빠르기, 소화기 닿는 거리
   const MISS = 1000, TIP = 1000, MAX_ORDERS = 4;
   const COLS = 15, ROWS = 9;
   const FONT_UI = '"Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
@@ -512,7 +514,7 @@ body.modal { overflow: hidden; }
 
   function loadProg() { try { return JSON.parse(localStorage.getItem(PROG_KEY)) || {}; } catch (e) { return {}; } }
   function saveProg(p) { try { localStorage.setItem(PROG_KEY, JSON.stringify(p)); } catch (e) {} }
-  const unlocked = (id, prog) => id === 1 || (prog[id - 1] || 0) >= 1;
+  const unlocked = (id, prog) => TEST_OPEN || id === 1 || (prog[id - 1] || 0) >= 1;
 
   // ===== 그림 =====
   function rrect(c, x, y, w, h, r) {
@@ -3813,6 +3815,7 @@ body.modal { overflow: hidden; }
 
   const VIEW_KEY = "bunsik.view";
   const FORCE2D = /[?&]2d(&|$)/.test(location.search);
+  $("testNote").hidden = !TEST_OPEN;
   let want3D = (() => { try { return localStorage.getItem(VIEW_KEY) !== "2d"; } catch (e) { return true; } })();
   let R3 = null;
   if (!FORCE2D) { try { R3 = make3D(); } catch (e) { console.error(e); R3 = null; } }
@@ -4236,7 +4239,7 @@ body.modal { overflow: hidden; }
     if (role !== "host" || !W) return;
     const s = stageOf(W.stage), b = $("startBtn");
     b.hidden = false;
-    if (s.duo && !guestOn) { b.disabled = true; b.textContent = "친구가 들어와야 해요"; }
+    if (s.duo && !guestOn && !TEST_OPEN) { b.disabled = true; b.textContent = "친구가 들어와야 해요"; }
     else { b.disabled = false; b.textContent = guestOn ? "영업 시작" : "혼자 시작"; }
   }
   function toRoom() {
@@ -4670,7 +4673,7 @@ body.modal { overflow: hidden; }
   $("startBtn").addEventListener("click", () => {
     if (role !== "host" || !W) return;
     const s = stageOf(W.stage);
-    if (s.duo && !guestOn) return;
+    if (s.duo && !guestOn && !TEST_OPEN) return;
     startRound(); showScreen("game");
   });
   $("leaveBtn").addEventListener("click", leave);
