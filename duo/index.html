@@ -378,7 +378,7 @@ body.modal { overflow: hidden; }
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const CHOP_TIME = 1.2, WASH_TIME = 2, SPEED = 4.3, R = 0.3;
-  const SAFE = 3, WARN = 5; // 다 익은 뒤 SAFE초는 안전, 그다음 WARN초 동안 타기 시작해서 다 타요 (모두 8초)
+  const SAFE = 2, WARN = 4; // 다 익은 뒤 SAFE초는 안전, 그다음 WARN초 동안 타기 시작해서 다 타요 (모두 6초)
   const DASH_TIME = 0.16, DASH_CD = 0.6, DASH_MUL = 3.1;
   const FLY_SPEED = 11, FLY_MAX = 5.5, BELT_STEP = 0.65, RETURN_DELAY = 7;
   const WALK = 2.4, WALK_STEP = 1 / WALK;       // 무빙워크가 미는 빠르기 (칸/초)
