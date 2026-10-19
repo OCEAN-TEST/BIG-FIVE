@@ -474,14 +474,14 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 11;
+  const VERSION = 12;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
   const CHOP_TIME = 1.2, WASH_TIME = 2, SPEED = 4.3, R = 0.3;
   const SAFE = 2, WARN = 4; // 다 익은 뒤 SAFE초는 안전, 그다음 WARN초 동안 타기 시작해서 다 타요 (모두 6초)
   const DASH_TIME = 0.16, DASH_CD = 0.6, DASH_MUL = 3.1;
-  const FLY_SPEED = 11, FLY_MAX = 5.5, BELT_STEP = 0.65, RETURN_DELAY = 7;
+  const FLY_SPEED = 11, FLY_MAX = 3.7, BELT_STEP = 0.65, RETURN_DELAY = 7;
   const WALK = 2.4, WALK_STEP = 1 / WALK;       // 무빙워크가 미는 빠르기 (칸/초)
   const ICE_GRIP = 2.2, ICE_GLIDE = 0.55;      // 얼음: 누를 때 붙는 정도, 뗐을 때 멈추는 정도 (작을수록 미끄러워요)
   const BIKE_STUN = 3;                         // 오토바이에 치이면 3초 기절 (들고 있던 음식은 뺏겨요)
@@ -1404,17 +1404,38 @@ body.modal { overflow: hidden; }
     if (!isIng(h)) return;
     const l = Math.hypot(ax, ay) || 1;
     p.hold = null; p.an = (p.an || 0) + 1;
-    W.fly.push({ it: h, x: p.x + (ax / l) * 0.3, y: p.y + (ay / l) * 0.3, dx: ax / l, dy: ay / l, d: 0, by: pi });
+    W.fly.push({ it: h, x: p.x + (ax / l) * 0.3, y: p.y + (ay / l) * 0.3, dx: ax / l, dy: ay / l, d: 0, by: pi, lt: idx(Math.floor(p.x), Math.floor(p.y)) });
+  }
+  function tryDrop(it, tx, ty) {
+    if (solid(tx, ty)) return false;
+    const i = idx(tx, ty);
+    if (W.slots[i] || !canDrop(tiles[i])) return false;
+    W.slots[i] = it; if (tiles[i].push) ride(it);
+    return true;
   }
   function dropFloor(it, x, y) {
-    const tryAt = (tx, ty) => { if (solid(tx, ty)) return false; const i = idx(tx, ty); if (W.slots[i] || !canDrop(tiles[i])) return false; W.slots[i] = it; if (tiles[i].push) ride(it); return true; };
+    const tryAt = (tx, ty) => tryDrop(it, tx, ty);
     if (tryAt(x, y)) return;
     for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) if (tryAt(x + dx, y + dy)) return;
     for (const [dx, dy] of [[0, 2], [2, 0], [-2, 0], [0, -2], [1, 2], [-1, 2], [2, 1], [-2, 1], [1, -2], [-1, -2], [2, -1], [-2, -1]]) if (tryAt(x + dx, y + dy)) return;
   }
+  // 던진 재료가 막혔을 때: 그 자리 → 던진 쪽으로 한 칸 → 옆 칸 순서로 내려놔요 (막힌 것 너머로는 안 가요)
+  function dropBack(f, x, y) {
+    const hx = Math.abs(f.dx) >= Math.abs(f.dy), bx = hx ? -Math.sign(f.dx) : 0, by = hx ? 0 : -Math.sign(f.dy), sx = hx ? 0 : 1, sy = hx ? 1 : 0;
+    for (const [ox, oy] of [[0, 0], [bx, by], [sx, sy], [-sx, -sy], [bx + sx, by + sy], [bx - sx, by - sy], [2 * bx, 2 * by], [2 * bx + sx, 2 * by + sy], [2 * bx - sx, 2 * by - sy]])
+      if (tryDrop(f.it, x + ox, y + oy)) return;
+    dropFloor(f.it, x, y);
+  }
+  // 바닥에 놓인 물건에 부딪혔어요: 접시·냄비에 들어갈 재료면 넣고, 아니면 그 앞에 떨어져요
+  function hitFloor(f, i) {
+    const s = W.slots[i], it = f.it;
+    if (s && s.k === "plate" && plateCheck(s, it) === true) { plateAdd(s, it.k); return; }
+    if (isCont(s) && contAdd(s, it) === true) return;
+    dropBack(f, Math.floor(f.x), Math.floor(f.y));
+  }
   function landOn(f, i) {
     const t = tiles[i], it = f.it, s = W.slots[i];
-    const back = () => dropFloor(it, Math.floor(f.x), Math.floor(f.y));
+    const back = () => dropBack(f, Math.floor(f.x), Math.floor(f.y));
     if (t.type === "trash") return;
     if (t.type === "counter" || t.type === "board" || t.type === "belt") {
       if (!s) { W.slots[i] = it; if (t.type === "belt") ride(it); return; }
@@ -1436,19 +1457,25 @@ body.modal { overflow: hidden; }
         for (let j = 0; j < 2 && !f.done; j++) {
           if (j === f.by) continue;
           const q = W.players[j];
-          if (!q.on || q.hold || q.dd || q.dead > 0) continue;
-          if (Math.hypot(q.x - nx, q.y - ny) < 0.5) { q.hold = f.it; f.done = true; ev({ m: "받았어요!", to: j, snd: "catch" }); }
+          if (!q.on || q.dd || q.dead > 0) continue;
+          if (Math.hypot(q.x - nx, q.y - ny) < 0.5) {
+            f.done = true;
+            if (!q.hold) { q.hold = f.it; ev({ m: "받았어요!", to: j, snd: "catch" }); }
+            else dropBack(f, Math.floor(nx - f.dx * 0.5), Math.floor(ny - f.dy * 0.5)); // 손이 차 있으면 몸에 맞고 앞에 떨어져요
+          }
         }
         if (f.done) break;
         const tx = Math.floor(nx), ty = Math.floor(ny);
         if (solid(tx, ty)) { landOn(f, idx(tx, ty)); f.done = true; break; }
-        const pt = tiles[idx(tx, ty)];
+        const ni = idx(tx, ty), pt = tiles[ni];
+        if (ni !== f.lt && W.slots[ni]) { hitFloor(f, ni); f.done = true; break; } // 바닥에 물건이 있으면 넘어가지 않고 그 앞에서 멈춰요
+        f.lt = ni;
         if (pt.portal != null && pt.link != null && f.pl !== pt.i) { // 순간이동문으로 들어간 재료는 짝 문에서 같은 방향으로 나와요
-          const d = tiles[pt.link]; f.x = d.x + 0.5; f.y = d.y + 0.5; f.pl = d.i;
+          const d = tiles[pt.link]; f.x = d.x + 0.5; f.y = d.y + 0.5; f.pl = d.i; f.lt = d.i;
           continue;
         }
         f.x = nx; f.y = ny;
-        if (f.d >= FLY_MAX) { dropFloor(f.it, Math.floor(f.x), Math.floor(f.y)); f.done = true; }
+        if (f.d >= FLY_MAX) { dropBack(f, Math.floor(f.x), Math.floor(f.y)); f.done = true; }
       }
     }
     W.fly = W.fly.filter((f) => !f.done);
