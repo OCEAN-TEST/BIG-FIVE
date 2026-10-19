@@ -117,8 +117,16 @@ kbd { font-family: var(--font-ui); background: #fff; border: 2px solid var(--pap
 #game { max-width: 1240px; margin: 0 auto; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); padding-block: max(10px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; height: 100vh; height: 100dvh; }
 body.ingame { overflow: hidden; overscroll-behavior: none; }
 body.ingame #game { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
-.hud { display: grid; grid-template-columns: 1fr auto auto auto; grid-template-areas: "orders score time gear"; gap: 8px; align-items: start; }
-.hud .orders { grid-area: orders; } .hud .money { grid-area: score; } .hud .time { grid-area: time; } .hud .hudset { grid-area: gear; }
+.hud { display: grid; grid-template-columns: 1fr auto auto auto auto; grid-template-areas: "orders score time chat gear"; gap: 8px; align-items: start; }
+#game.spec .hudchat { display: none; }
+.chatbar { position: absolute; z-index: 8; left: 50%; top: max(70px, calc(env(safe-area-inset-top, 0px) + 64px)); transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; background: rgba(36,26,20,.88); border-radius: 12px; box-shadow: 0 4px 0 rgba(0,0,0,.3); }
+.chatbar[hidden] { display: none; }
+.chatbar input { width: 6.5em; font-family: var(--font-ui); font-size: 20px; padding: 6px 10px; border-radius: 8px; border: 0; background: #fff; color: var(--ink); text-align: center; }
+.chatbar .btn { font-size: 17px; padding: 6px 12px; }
+.view.shake { animation: vshake .28s linear; }
+@keyframes vshake { 0% { transform: translate(0, 0); } 20% { transform: translate(-6px, 3px); } 40% { transform: translate(5px, -3px); } 60% { transform: translate(-3px, 2px); } 80% { transform: translate(2px, -1px); } 100% { transform: translate(0, 0); } }
+@media (prefers-reduced-motion: reduce) { .view.shake { animation: none; } }
+.hud .orders { grid-area: orders; } .hud .money { grid-area: score; } .hud .time { grid-area: time; } .hud .hudset { grid-area: gear; } .hud .hudchat { grid-area: chat; }
 .hudset { position: relative; align-self: start; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,248,230,.14); color: #f3e6d2; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
 .hudset:hover { background: rgba(255,248,230,.24); }
 .hudset:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
@@ -291,7 +299,7 @@ body.modal { overflow: hidden; }
 }
 #game.touch .hud { gap: 8px; }
 #game.touch .toast { font-size: 16px; bottom: 8px; }
-#game.touch.portrait .hud { grid-template-columns: auto auto 1fr auto; grid-template-areas: "score time . gear" "orders orders orders orders"; }
+#game.touch.portrait .hud { grid-template-columns: auto auto 1fr auto auto; grid-template-areas: "score time . chat gear" "orders orders orders orders orders"; }
 #game.touch.portrait .hudset { align-self: center; }
 #game.touch.portrait .hud { --t: .74; }
 #game.touch.portrait .stage { align-items: flex-start; }
@@ -372,8 +380,13 @@ body.modal { overflow: hidden; }
     <div class="orders" id="orders"></div>
     <div class="meter money" id="scoreBox" aria-label="매출"><i class="coin" aria-hidden="true"></i><b id="score">0</b><em id="combo" hidden></em></div>
     <div class="meter time" id="timeBox" aria-label="남은 시간"><i class="clock" aria-hidden="true"></i><b id="time">3:00</b></div>
+    <button class="hudset hudchat" id="chatBtn" type="button" aria-label="채팅 (3글자까지)" title="채팅 (Enter)"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 6.5a1.3 1.3 0 1 0 0 .01zm5 0a1.3 1.3 0 1 0 0 .01zm5 0a1.3 1.3 0 1 0 0 .01z"/></svg></button>
     <button class="hudset setopen" id="setBtnGame" type="button" aria-label="설정" title="설정" aria-haspopup="dialog" aria-controls="setPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg><span class="mutebadge" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 9v6h4l5 4V5L7 9zm13.6 3 2.7-2.7-1.4-1.4-2.7 2.7-2.7-2.7-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4z"/></svg></span></button>
   </div>
+  <form class="chatbar" id="chatBar" hidden autocomplete="off">
+    <input id="chatIn" maxlength="3" placeholder="3글자" enterkeyhint="send" autocomplete="off" aria-label="채팅 (3글자까지)">
+    <button class="btn" type="submit">보내기</button>
+  </form>
   <div class="stage" id="stage">
     <div class="view" id="viewBox"><canvas id="kitchen" aria-label="주방"></canvas></div>
     <span class="peer" id="peerTag"></span>
@@ -398,7 +411,7 @@ body.modal { overflow: hidden; }
     </div>
   </div>
   <div class="foot">
-    <span id="keysHint"><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동 · <kbd>스페이스</kbd> 집기·놓기 · <kbd>E</kbd> 썰기·설거지·불끄기(꾹)·던지기 · <kbd>시프트</kbd> 대시</span>
+    <span id="keysHint"><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동 · <kbd>스페이스</kbd> 집기·놓기 · <kbd>E</kbd> 썰기·설거지·불끄기(꾹)·던지기 · <kbd>시프트</kbd> 대시 · <kbd>Enter</kbd> 채팅</span>
     <span id="whoami"></span>
   </div>
 </div>
@@ -425,6 +438,8 @@ body.modal { overflow: hidden; }
       <dt><kbd>스페이스</kbd></dt><dd>집기 · 놓기 · 넣기 · 담기 · 내기 (바라보는 칸에. 바닥에도 놓을 수 있어요)</dd>
       <dt><kbd>E</kbd></dt><dd>작업. 빈손으로 꾹 누르면 썰기·설거지, 재료를 들고 누르면 던지기, 소화기를 들고 꾹 누르면 불 끄기</dd>
       <dt><kbd>시프트</kbd> 또는 <kbd>Q</kbd></dt><dd>대시 (짧게 휙 미끄러지기)</dd>
+      <dt>빈손으로 친구 앞에서 <kbd>E</kbd></dt><dd>밀치기 "비켜!" (친구가 들고 있던 걸 뺏어와요)</dd>
+      <dt><kbd>Enter</kbd> (폰은 위쪽 말풍선 버튼)</dt><dd>채팅. 3글자까지 머리 위에 떠요</dd>
       <dt>폰</dt><dd>왼쪽 화면을 누른 채 끌어서 이동, 오른쪽 <b>집기</b>·<b>작업</b>·<b>대시</b> 버튼</dd>
     </dl>
     <p class="note">폰이랑 컴퓨터끼리도 같이 할 수 있어요. 폰은 가로로 돌리면 더 크게 보여요. 아이폰은 사파리 <b>공유</b> 버튼 → <b>홈 화면에 추가</b>로 깔고 그 아이콘으로 들어오면 주소창 없이 꽉 찬 화면으로 해요. 한/영 상태와 상관없이 움직여요. 첫 화면·대기실·게임 화면의 <b>설정</b>에서 게임 소리를 끄거나(음소거), 버벅이면 2D 화면으로 바꿀 수 있어요.</p>
@@ -459,7 +474,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 9;
+  const VERSION = 10;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -470,6 +485,9 @@ body.modal { overflow: hidden; }
   const WALK = 2.4, WALK_STEP = 1 / WALK;       // 무빙워크가 미는 빠르기 (칸/초)
   const ICE_GRIP = 2.2, ICE_GLIDE = 0.55;      // 얼음: 누를 때 붙는 정도, 뗐을 때 멈추는 정도 (작을수록 미끄러워요)
   const BIKE_STUN = 3;                         // 오토바이에 치이면 3초 기절 (들고 있던 음식은 뺏겨요)
+  const SHOVE_R = 1.0, SHOVE_CD = 600;         // 빈손으로 친구를 향해 작업: 이 거리 안이면 밀쳐요 (0.6초에 한 번)
+  const KB_V = 5.2, KB_TIME = 0.3;              // 밀리는 속도·시간 (그동안 조작이 안 돼요)
+  const CHAT_MAX = 3;                          // 채팅은 3글자까지
   const FIRE_SPREAD = 4, EXT_TIME = 0.8, FIRE_REGROW = 0.25, EXT_RANGE = 2.4; // 불: 몇 초마다 옆 칸으로 번지는지, 한 칸 끄는 데 뿌리는 시간, 멈추면 다시 커지는 빠르기, 소화기 닿는 거리
   const MISS = 1000, TIP = 1000, MAX_ORDERS = 4;
   const COLS = 15, ROWS = 9;
@@ -988,7 +1006,8 @@ body.modal { overflow: hidden; }
   }
 
   // 움직임 상태 (두 화면 각자 계산)
-  const anim = [0, 1].map(() => ({ lx: null, ly: null, phase: 0, moving: false, reach: 0, an: 0, ds: 0, dashT: 0, ddx: 0, ddy: 0, lastBit: 0 }));
+  const anim = [0, 1].map(() => ({ lx: null, ly: null, phase: 0, moving: false, reach: 0, an: 0, ds: 0, dashT: 0, ddx: 0, ddy: 0, lastBit: 0, hitT: -1e9, fallT: -1e9, wasDizzy: false }));
+  const bubbles = [], hits = []; // 머리 위 말풍선(비켜!·채팅), 밀친 자리 번쩍
   const REACH = 0.22;
   function stepAnim(i, x, y, dt) {
     const a = anim[i];
@@ -1477,6 +1496,22 @@ body.modal { overflow: hidden; }
   }
 
   // ===== 오토바이에 치였을 때: 들고 있던 음식은 뺏겨요 (냄비·바구니·소화기는 그 자리에 떨어뜨려요) =====
+  // 밀치기: 빈손인 사람이 친구를 밀어요. 친구가 뭘 들고 있으면 뺏어와요
+  function shoveHost(i) {
+    const p = W.players[i], j = 1 - i, q = W.players[j], now = performance.now();
+    if (W.phase !== "play" || !p || !q || !q.on || p.hold || (p.stun || 0) > 0 || p.sn) return false;
+    if (now - (p.shAt || 0) < SHOVE_CD) return false;
+    const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy);
+    if (d > SHOVE_R + 0.45) return false; // 화면마다 위치가 조금 달라서 넉넉히
+    p.shAt = now;
+    const ux = d > 0.02 ? dx / d : p.fx || 0, uy = d > 0.02 ? dy / d : p.fy || 1;
+    const took = !!q.hold;
+    if (took) { p.hold = q.hold; q.hold = null; }
+    if (j === 0) knockMe(ux, uy);
+    else if (guestId) net.send(guestId, { t: "kb", x: ux, y: uy, rs: W.rs });
+    ev({ fx: "shove", i, j, x: ux, y: uy, took, snd: "whack" });
+    return true;
+  }
   function bikeHitHost(pi) {
     if (!W || W.phase !== "play") return;
     const p = W.players[pi], h = p.hold;
@@ -1749,12 +1784,24 @@ body.modal { overflow: hidden; }
     if (best) { b.x = best[0]; b.y = best[1]; }
     return !!best;
   }
+  function knockMe(ux, uy) {
+    if (!me) return;
+    me.kbx = ux * KB_V; me.kby = uy * KB_V; me.kbT = KB_TIME; me.dashT = 0; me.vx = 0; me.vy = 0;
+    const v = $("viewBox"); v.classList.remove("shake"); void v.offsetWidth; v.classList.add("shake"); // 화면이 쿵
+    if (navigator.vibrate) { try { navigator.vibrate(45); } catch (e) {} }
+  }
   function moveMe(dt) {
     if (!me || !view || view.phase !== "play") return;
     const now = performance.now();
     if (me.dashCD > 0) me.dashCD = Math.max(0, me.dashCD - dt);
     let v = inputVec();
     if (me.stun > 0) { me.stun = Math.max(0, me.stun - dt); v = { x: 0, y: 0 }; }
+    if (me.kbT > 0) { // 밀쳐짐: 잠깐 조작이 안 되고 뒤로 쭉 밀려요 (점점 느려지게)
+      const st = Math.min(dt, me.kbT), f = 0.35 + me.kbT / KB_TIME;
+      me.kbT -= dt;
+      moveBy(me, me.kbx * st * f, me.kby * st * f);
+      v = { x: 0, y: 0 }; me.vx = 0; me.vy = 0; me.dashT = 0;
+    }
     if (v.x || v.y) { const l = Math.hypot(v.x, v.y); me.ax = v.x / l; me.ay = v.y / l; }
     const under = tileUnder(me), onIce = !!(under && under.ice);
     // 빙판: 누르는 쪽으로 천천히 붙고, 떼면 쭉 미끄러져요. 빙판 밖에서는 바로 서요
@@ -2204,6 +2251,7 @@ body.modal { overflow: hidden; }
       const a = anim[i];
       drawChar(ctx, TS * 1.15, q.x * TS, q.y * TS, { ch: q.ch, slot: i, fx: q.fx, fy: q.fy, hold: q.hold, chop: !!w, wash: !!(w && w.wash), moving: a.moving, phase: a.phase, reach: reachAmt(i), dash: a.dashT > 0 ? a.dashT / DASH_TIME : 0, ddx: a.ddx, ddy: a.ddy, now, isMe: mine || myIdx < 0 });
     });
+    drawTalk(ctx, now, (i) => { const e = list.find((o) => o.i === i); return e ? [e.q.x * TS, e.q.y * TS - TS * 0.35, e.q.y * TS - TS * 1.05, TS] : null; });
 
     // 진행 막대·완성·탐 표시
     const ob = lateUI; lateUI = null;
@@ -2488,6 +2536,7 @@ body.modal { overflow: hidden; }
 
     // ---- 재료: 글씨 없이도 모양·색으로 바로 알아보게, 통통하고 큼직하게 ----
     const capG = (r, l) => gc("cap" + r + "," + l, () => new T.CapsuleGeometry(r, l, 10, 24));
+    const grainG = () => gc("grain", () => new T.SphereGeometry(1, 6, 4));
     // 떡 토막: 원기둥 양 끝을 같은 방향으로 비스듬히 자른 모양
     const tteokG = () => gc("tteok", () => {
       const L = 0.34, r = 0.062, geo = new T.CylinderGeometry(r, r, L, 22, 1);
@@ -2506,7 +2555,7 @@ body.modal { overflow: hidden; }
       const w = mat("#ffffff"), w2 = mat("#f6f2e8");
       for (let j = 0; j < n; j++) {
         const f = (j + 0.5) / n, rr = Math.sqrt(f) * R * 0.97, a = j * 2.39996, h = Math.sqrt(Math.max(0, 1 - (rr / R) ** 2));
-        part(g, sphG(8), j % 3 ? w : w2, x0 + Math.cos(a) * rr, y0 + h * H + 0.004, z0 + Math.sin(a) * rr, (j % 7) * 0.4, a * 1.7, (j % 5) * 0.5, 0.024, 0.011, 0.012);
+        part(g, grainG(), j % 3 ? w : w2, x0 + Math.cos(a) * rr, y0 + h * H + 0.004, z0 + Math.sin(a) * rr, (j % 7) * 0.4, a * 1.7, (j % 5) * 0.5, 0.024, 0.011, 0.012);
       }
     }
     // 밥솥: 뚜껑이 뒤로 열려서 하얀 밥이 보이는 전기밥솥
@@ -3849,7 +3898,24 @@ body.modal { overflow: hidden; }
         }
         if (c.held) c.held.scale.setScalar((ING[q.hold.k] ? 1.12 : 0.85) * popAt(c.heldBorn, now));
         if (c.held && c.held.userData.tick) c.held.userData.tick(now, q.hold, false);
-        c.root.rotation.z = dizzyOf(i) ? Math.sin(now / 110) * 0.16 : 0; // 기절하면 비틀비틀
+        // 오토바이에 치이면: 뒤로 벌러덩 → 잠깐 누워 있다가 → 일어나서 비틀비틀
+        const dz = dizzyOf(i);
+        if (dz && !a.wasDizzy) a.fallT = now;
+        a.wasDizzy = dz;
+        const fa = (now - a.fallT) / 1000;
+        let lie = 0;
+        if (dz && fa < 1.6) lie = fa < 0.22 ? fa / 0.22 : fa < 1.15 ? 1 : 1 - (fa - 1.15) / 0.45;
+        lie = Math.max(0, Math.min(1, lie));
+        const ease = lie * lie * (3 - 2 * lie);
+        c.root.rotation.order = "YXZ";
+        c.root.rotation.x = -1.3 * ease; c.root.position.y = 0.12 * ease;
+        c.root.rotation.z = dz && lie <= 0 ? Math.sin(now / 110) * 0.16 : 0; // 일어난 뒤 비틀비틀
+        // 밀쳐지면: 몸이 뒤로 휘청하고 납작해졌다 돌아와요
+        const ha = (now - a.hitT) / 1000;
+        if (ha < 0.35) {
+          const k = Math.sin(Math.min(1, ha / 0.35) * Math.PI);
+          c.bodyG.rotation.x -= 0.55 * k; c.bodyG.scale.set(1 + 0.12 * k, 1 - 0.14 * k, 1 + 0.12 * k);
+        }
         if (w && now - a.lastBit > (w.wash ? 90 : 55)) {
           a.lastBit = now;
           const tt = tiles[w.i];
@@ -4024,11 +4090,18 @@ body.modal { overflow: hidden; }
           drawStar(c, x, y, Math.max(5, unit(wx, 1.7, wz) * 0.09), "#ffd23f");
         }
       });
-      // 이름표, 들고 있는 접시 수
+      // 들고 있는 접시 수
       list.forEach(({ q, i, mine }) => {
         const ch = chars[i];
         if (!ch) return;
         if (q.hold && q.hold.k === "dirty" && q.hold.n > 1) { ch.hold.getWorldPosition(_w); const [x, y] = S(_w.x, _w.y + 0.28, _w.z); badge(c, x, y, String(q.hold.n), "#7a5a3a", unit(_w.x, _w.y, _w.z) * 0.22); }
+      });
+      // 말풍선 (비켜!·채팅), 밀친 자리 번쩍
+      drawTalk(c, now, (i) => {
+        const e = list.find((o) => o.i === i);
+        if (!e) return null;
+        const q = e.q, [x, y] = S(q.x, 0.75, q.y), top = S(q.x, q.ch === "rabbit" ? 2.0 : 1.7, q.y);
+        return [x, y, top[1], unit(q.x, 1, q.y)];
       });
       // 매출 팝업
       for (let j = pops.length - 1; j >= 0; j--) {
@@ -4081,7 +4154,7 @@ body.modal { overflow: hidden; }
       ]).then(() => { dirty = true; }, () => {});
     }
 
-    const info = () => ({ made: slotMade, calls: gl.info.render.calls, tris: gl.info.render.triangles, geos: gl.info.memory.geometries, tex: gl.info.memory.textures, progs: gl.info.programs ? gl.info.programs.length : 0, snapMs: Math.round(snapMs), snapN, snapQ: snapQ.length });
+    const info = () => ({ made: slotMade, calls: gl.info.render.calls, tris: gl.info.render.triangles, geos: gl.info.memory.geometries, tex: gl.info.memory.textures, progs: gl.info.programs ? gl.info.programs.length : 0, snapMs: Math.round(snapMs), snapN, snapQ: snapQ.length, rootX: chars[0] ? +chars[0].root.rotation.x.toFixed(2) : null, headY: chars[0] ? +chars[0].headG.getWorldPosition(new T.Vector3()).y.toFixed(2) : null });
     return { el, render: render3, resize, portrait, info, snapURLAsync };
   }
 
@@ -4188,6 +4261,7 @@ body.modal { overflow: hidden; }
     chop() { tone(1500 + Math.random() * 300, 0.03, "square", 0.022); },
     honk() { tone(440, 0.12, "square", 0.05); tone(440, 0.16, "square", 0.05, 0.17); },
     bump() { tone(150, 0.18, "square", 0.07, 0, 70); },
+    whack() { noise(0.12, 0.14, 0, 900, 0.9); tone(180, 0.14, "square", 0.08, 0, 60); },
     portal() { tone(520, 0.18, "sine", 0.09, 0, 1240); },
     gate() { tone(300, 0.12, "triangle", 0.09); tone(225, 0.2, "triangle", 0.08, 0.13); },
     fire() { noise(0.7, 0.16, 0, 500, 0.5); tone(150, 0.5, "sawtooth", 0.05, 0, 70); },
@@ -4371,6 +4445,58 @@ body.modal { overflow: hidden; }
   function showEvent(e) {
     if (e.pop) { pops.push({ i: e.pop.i, text: e.pop.text, t0: performance.now() }); sfx.serve(); }
     if (e.snd && sfx[e.snd]) sfx[e.snd]();
+    const now = performance.now();
+    if (e.fx === "shove") {
+      say(e.i, "비켜!", true);
+      anim[e.i].reach = REACH;
+      anim[e.j].hitT = now; anim[e.j].hdx = e.x || 0; anim[e.j].hdy = e.y || 0;
+      hits.push({ j: e.j, t0: now });
+    } else if (e.fx === "chat") say(e.i, e.s, false);
+  }
+  // 머리 위 말풍선 (사람마다 하나씩, 새로 오면 바꿔요)
+  function say(i, text, loud) {
+    for (let k = bubbles.length - 1; k >= 0; k--) if (bubbles[k].i === i) bubbles.splice(k, 1);
+    bubbles.push({ i, text, loud, t0: performance.now(), dur: loud ? 1300 : 3000 });
+  }
+  const chatClean = (t) => Array.from(String(t || "").replace(/[\u0000-\u001f]/g, "").trim()).slice(0, CHAT_MAX).join("");
+  // 말풍선: (x, y) = 꼬리 끝 (머리 위)
+  function drawBubble(c, x, y, text, fs, alpha, loud) {
+    c.save(); c.globalAlpha = alpha;
+    c.font = Math.round(fs) + "px " + FONT_UI;
+    const w = Math.max(fs * 1.6, c.measureText(text).width + fs * 0.9), h = fs * 1.45, x0 = x - w / 2, y0 = y - h - fs * 0.38;
+    rrect(c, x0, y0, w, h, h * 0.42); c.fillStyle = loud ? "#fff3c4" : "#fff"; c.fill();
+    c.beginPath(); c.moveTo(x - fs * 0.28, y0 + h - 1); c.lineTo(x, y); c.lineTo(x + fs * 0.28, y0 + h - 1); c.closePath(); c.fill();
+    c.lineWidth = Math.max(1.5, fs * 0.1); c.strokeStyle = "#2a1d14";
+    rrect(c, x0, y0, w, h, h * 0.42); c.stroke();
+    c.beginPath(); c.moveTo(x - fs * 0.28, y0 + h); c.lineTo(x, y); c.lineTo(x + fs * 0.28, y0 + h); c.stroke();
+    c.fillStyle = loud ? "#d7372b" : "#2a1d14"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(text, x, y0 + h / 2 + 1);
+    c.restore();
+  }
+  // 밀친 자리 번쩍 (노란 별 모양 터짐)
+  function drawBurst(c, x, y, s, ag) {
+    const k = Math.min(1, ag / 0.08), fade = 1 - Math.max(0, (ag - 0.12) / 0.2);
+    if (fade <= 0) return;
+    c.save(); c.globalAlpha = fade; c.translate(x, y);
+    const r1 = s * (0.35 + 0.45 * k), r0 = r1 * 0.45;
+    c.beginPath();
+    for (let n = 0; n < 16; n++) { const a = (n / 16) * Math.PI * 2 + 0.2, r = n % 2 ? r0 : r1; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    c.closePath(); c.fillStyle = "#ffe066"; c.fill(); c.lineWidth = Math.max(2, s * 0.06); c.strokeStyle = "#fff"; c.stroke();
+    c.restore();
+  }
+  // 말풍선·번쩍 (2D/3D 공통). pos(i) → [x, y, 머리 위 y, 크기]
+  function drawTalk(c, now, pos) {
+    for (let k = hits.length - 1; k >= 0; k--) {
+      const h = hits[k], ag = (now - h.t0) / 1000;
+      if (ag > 0.35) { hits.splice(k, 1); continue; }
+      const p = pos(h.j); if (p) drawBurst(c, p[0], p[1], p[3] * 0.9, ag);
+    }
+    for (let k = bubbles.length - 1; k >= 0; k--) {
+      const b = bubbles[k], ag = now - b.t0;
+      if (ag > b.dur) { bubbles.splice(k, 1); continue; }
+      const p = pos(b.i); if (!p) continue;
+      const pop = ag < 120 ? 0.6 + (ag / 120) * 0.4 : 1, a = ag > b.dur - 250 ? (b.dur - ag) / 250 : 1;
+      drawBubble(c, p[0], p[2], b.text, Math.max(13, p[3] * 0.3) * pop, a, b.loud);
+    }
   }
 
   // 단계 화면 (시작 안내, 영업 끝)
@@ -4431,6 +4557,7 @@ body.modal { overflow: hidden; }
     $("game").hidden = name !== "game";
     document.body.classList.toggle("ingame", name === "game");
     roundRow();
+    if (name !== "game") { $("chatBar").hidden = true; bubbles.length = 0; hits.length = 0; }
     if (name !== "game") { touchIn.chop = false; endStick(); $("pad").hidden = true; }
     if (name === "game") { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); requestAnimationFrame(layout); }
   }
@@ -4741,6 +4868,12 @@ body.modal { overflow: hidden; }
         } else if (d.t === "hit") { // 친구가 오토바이에 치였어요
           if (d.rs != null && d.rs !== W.rs) return;
           bikeHitHost(1);
+        } else if (d.t === "sh") { // 친구가 밀쳤어요
+          if (d.rs != null && d.rs !== W.rs) return;
+          const p = W.players[1]; p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; shoveHost(1);
+        } else if (d.t === "chat") { // 친구 채팅 (3글자까지)
+          const txt = chatClean(d.s);
+          if (txt && W.phase !== "wait") ev({ fx: "chat", i: 1, s: txt });
         } else if (d.t === "menu") { // 친구가 설정에서 다시 하기 · 맵 고르기
           if (W.phase === "wait") return;
           if (d.a === "again") { if (modalEl === $("setPanel")) closeModal(); startRound(); }
@@ -4825,6 +4958,7 @@ body.modal { overflow: hidden; }
           if (!view || view.phase === "wait") { showScreen("room"); if (view) { renderPicker(); renderStages(); } }
           return;
         }
+        if (d.t === "kb") { if (me && d.rs === guestRs) knockMe(d.x, d.y); return; } // 방장이 밀쳤어요
         if (d.t === "s") {
           if (!welcomed) return;
           if (d.st !== curStage) loadMap(d.st);
@@ -4868,15 +5002,35 @@ body.modal { overflow: hidden; }
     return role === "host" ? W.players[0].hold : view.players[1] && view.players[1].hold;
   }
   function doAct(buzz) {
-    if (!view || view.phase !== "play" || !me || me.stun > 0) return;
+    if (!view || view.phase !== "play" || !me || me.stun > 0 || me.kbT > 0) return;
     anim[myIdx].reach = REACH;
     if (role === "host") act(0);
     else if (net) net.send({ t: "a", rs: guestRs, x: me.x, y: me.y, fx: me.fx, fy: me.fy });
     if (buzz && navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
   }
+  // 바로 앞(정면 45° 안, 1칸 안)에 친구가 있으면 밀칠 수 있어요
+  function shoveTarget() {
+    if (myIdx < 0 || !view) return false;
+    const o = 1 - myIdx, q = view.players[o];
+    if (!q || !q.on) return false;
+    const ox = role === "host" ? q.x : remotes[o].x, oy = role === "host" ? q.y : remotes[o].y;
+    const dx = ox - me.x, dy = oy - me.y, d = Math.hypot(dx, dy);
+    if (d > SHOVE_R) return false;
+    if (d < 0.05) return true;
+    const fl = Math.hypot(me.fx || 0, me.fy || 0) || 1;
+    return (dx * (me.fx || 0) + dy * (me.fy || 0)) / (d * fl) > 0.7;
+  }
   function workPress(buzz) {
-    if (!view || view.phase !== "play" || !me || me.stun > 0) return;
-    if (!isIng(myHold())) return; // 재료를 들고 있을 때만 던지기, 빈손이면 꾹 눌러서 작업
+    if (!view || view.phase !== "play" || !me || me.stun > 0 || me.kbT > 0) return;
+    if (!myHold()) { // 빈손: 친구가 바로 앞이면 밀치기, 아니면 꾹 눌러서 썰기·설거지
+      if (!shoveTarget()) return;
+      anim[myIdx].reach = REACH;
+      if (role === "host") shoveHost(0);
+      else if (net) net.send({ t: "sh", rs: guestRs, x: me.x, y: me.y, fx: me.fx, fy: me.fy });
+      if (buzz && navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
+      return;
+    }
+    if (!isIng(myHold())) return; // 재료를 들고 있을 때만 던지기
     anim[myIdx].reach = REACH;
     if (role === "host") throwItem(0, me.ax, me.ay);
     else if (net) net.send({ t: "th", rs: guestRs, x: me.x, y: me.y, fx: me.fx, fy: me.fy, ax: me.ax, ay: me.ay });
@@ -4895,6 +5049,30 @@ body.modal { overflow: hidden; }
     if (buzz && navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
   }
 
+  // 채팅: 컴퓨터는 Enter, 폰은 위쪽 말풍선 버튼. 3글자까지, 머리 위에 3초
+  let chatAt = 0;
+  function openChat() {
+    if ($("game").hidden || role === "spec" || myIdx < 0 || !view || setOpen()) return;
+    keys.clear(); touchIn.chop = false; syncChop();
+    $("chatBar").hidden = false; $("chatIn").value = ""; $("chatIn").focus();
+  }
+  function closeChat() { $("chatBar").hidden = true; if (document.activeElement === $("chatIn")) $("chatIn").blur(); }
+  $("chatBar").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const t = chatClean($("chatIn").value);
+    closeChat();
+    const now = performance.now();
+    if (!t || now - chatAt < 700) return;
+    chatAt = now;
+    if (role === "host") { if (W && W.phase !== "wait") ev({ fx: "chat", i: 0, s: t }); }
+    else if (net) net.send({ t: "chat", s: t });
+  });
+  $("chatIn").addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); closeChat(); } e.stopPropagation(); });
+  $("chatIn").addEventListener("keyup", (e) => e.stopPropagation());
+  $("chatBtn").addEventListener("click", () => { if ($("chatBar").hidden) openChat(); else closeChat(); });
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.isComposing && !$("game").hidden && $("chatBar").hidden && !setOpen() && document.activeElement !== $("chatIn")) { e.preventDefault(); openChat(); }
+  });
   const GAME_KEYS = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space", "ShiftLeft", "ShiftRight", "KeyE", "KeyQ"]);
   window.addEventListener("keydown", (e) => {
     if ($("game").hidden || !GAME_KEYS.has(e.code) || setOpen()) return;
@@ -5116,7 +5294,7 @@ body.modal { overflow: hidden; }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  if (IS_LOCAL) window.__bunsik = { get W() { return W; }, get me() { return me; }, get view() { return view; }, get tiles() { return tiles; }, get mode() { return use3D() ? "3d" : "2d"; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, setView: (on) => setView(on, false), info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom() };
+  if (IS_LOCAL) window.__bunsik = { get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get mode() { return use3D() ? "3d" : "2d"; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, setView: (on) => setView(on, false), info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom() };
   if (document.fonts && document.fonts.load) document.fonts.load('20px "Jua"', "가나다 내는 곳 버리기 방장 친구 반납 개수대");
 })();
 </script>
