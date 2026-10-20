@@ -408,7 +408,7 @@ body.modal { overflow: hidden; }
     </div>
   </div>
   <div class="foot">
-    <span id="keysHint"><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동 · <kbd>스페이스</kbd> 집기·놓기 · <kbd>E</kbd> 썰기·설거지·불끄기(꾹)·던지기 · <kbd>시프트</kbd> 대시 · <kbd>Enter</kbd> 채팅</span>
+    <span id="keysHint"><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동 · <kbd>스페이스</kbd> 집기·놓기 · <kbd>E</kbd> 썰기·설거지·불끄기(꾹)·던지기·때리기 · <kbd>시프트</kbd> 대시 · <kbd>Enter</kbd> 채팅</span>
     <span id="whoami"></span>
   </div>
 </div>
@@ -471,7 +471,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 24;
+  const VERSION = 25;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -555,7 +555,7 @@ body.modal { overflow: hidden; }
       map: ["CCbCgCdCCrCpCCC", "C}}}}}}}}}}}}}C", "C.CCCCCCCCCCC.C", "K.............C", "K.............W", "C....CCCCC....W", "P.............T", "C.............C", "CCCCCSSSCCCCCCC"] },
     { id: 7, name: "꽁꽁 야시장", time: 180, menu: ["tteokbokki", "twigim"], stars: [15000, 34000, 62000], plates: 0, gap: [8, 11], extra: 15, duo: false,
       ext: [12, 0], floor: ["#5d6672", "#555e69"], spawn: [[1.5, 4.5], [13.5, 4.5]],
-      tip: "가운데가 꽁꽁 언 빙판이라 한번 미끄러지면 잘 안 멈춰요. 쥐구멍에서 쥐가 나와 조리대 위 음식을 물고 달아나요. 물기 전에 음식을 집으면 그냥 돌아가고, 물고 가는 쥐 앞에서 집기를 누르면 뺏어 와요.",
+      tip: "가운데가 꽁꽁 언 빙판이라 한번 미끄러지면 잘 안 멈춰요. 가운데 조리대의 몽둥이를 들고 E로 쥐를 때려잡을 수 있어요. 쥐구멍에서 쥐가 나와 조리대 위 음식을 물고 달아나요. 물기 전에 음식을 집으면 그냥 돌아가고, 물고 가는 쥐 앞에서 집기를 누르면 뺏어 와요.",
       rats: { first: 10, gap: [8, 13] },
       map: ["CtmCCSSCFFCCCCC", "C...~..~..~...C", "K..~~~~~~~~~..W", "K..~~~~~~~~~..W", "o..~~~CCC~~~..C", "C..~~~CCC~~~..T", "P..~~~~~~~~~..C", "Z...~~~~~~~...C", "CCCCZCCCCCZCCCC"] },
     { id: 8, name: "배달 골목", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [15000, 34000, 62000], plates: 0, gap: [8, 11], extra: 15, duo: false,
@@ -605,6 +605,7 @@ body.modal { overflow: hidden; }
   const platesOf = (st, np) => (np >= 3 ? (st.plates ? st.plates + 2 : np + 1) : st.plates);
   // 쥐: 쥐구멍 맵(7단계)은 원래대로, 3명부터는 모든 맵에 나와요
   const PARTY_RATS = { first: 15, gap: [10, 16] };
+  const CLUB_R = 1.25, CLUB_CD = 450; // 몽둥이: 앞으로 이만큼 닿아요, 0.45초에 한 번
   const ratsOf = (st, np) => st.rats || (np >= 3 && !st.noRats ? PARTY_RATS : null);
   // 3명부터 개수대·반납구가 없는 맵엔 내는 곳 가까운 조리대를 반납구로, 접시 가까운 조리대를 개수대로 바꿔요.
   // 쥐구멍이 없으면 왼쪽 아래·오른쪽 아래 가장자리 조리대에 하나씩 뚫어요
@@ -803,6 +804,15 @@ body.modal { overflow: hidden; }
         c.fillStyle = "rgba(255,255,255,.35)"; rrect(c, -2 * u, -2 * u, 0.9 * u, 1.6 * u, 0.4 * u); c.fill();
         break;
       }
+      case "club": // 나무 몽둥이: 손잡이 테이프 + 굵은 머리
+        c.save(); c.rotate(-Math.PI / 4);
+        rrect(c, -0.7 * u, -1 * u, 1.4 * u, 5.4 * u, 0.6 * u); c.fillStyle = "#3a2a1c"; c.fill();
+        c.beginPath(); c.moveTo(-0.75 * u, -0.6 * u); c.lineTo(-1.6 * u, -5.2 * u); c.quadraticCurveTo(0, -6.4 * u, 1.6 * u, -5.2 * u); c.lineTo(0.75 * u, -0.6 * u); c.closePath();
+        c.fillStyle = "#c8955a"; c.fill(); c.strokeStyle = "#7a5230"; c.lineWidth = 0.5 * u; c.stroke();
+        c.strokeStyle = "rgba(122,82,48,.45)"; c.lineWidth = 0.3 * u; c.beginPath(); c.moveTo(-0.4 * u, -1.5 * u); c.lineTo(-0.7 * u, -4.6 * u); c.moveTo(0.5 * u, -2 * u); c.lineTo(0.7 * u, -5 * u); c.stroke();
+        c.fillStyle = "#d9d0c4"; c.fillRect(-0.75 * u, 3.4 * u, 1.5 * u, 0.5 * u); c.fillRect(-0.75 * u, 2.4 * u, 1.5 * u, 0.4 * u);
+        c.restore();
+        break;
       case "ext": // 소화기
         c.fillStyle = "#3d4246"; c.fillRect(-2.6 * u, -4.7 * u, 3.4 * u, 0.7 * u);
         rrect(c, -1.1 * u, -4.2 * u, 2.2 * u, 1.8 * u, 0.4 * u); c.fillStyle = "#2b2e31"; c.fill();
@@ -1088,7 +1098,9 @@ body.modal { overflow: hidden; }
       hands = [[X - 0.25 * S + fx * r, by + 0.13 * S + sw + fy * r], [X + 0.25 * S + fx * r, by + 0.13 * S - sw + fy * r]];
     }
     const front = () => {
-      if (hold) drawItem(c, o.hold, hold.x, hold.y, S * 0.48, o.now);
+      if (hold && o.hold.k === "club") { // 몽둥이: 휘두르는 각도대로 돌려서
+        c.save(); c.translate(hold.x, hold.y); c.rotate(((o.swing == null ? -0.9 : o.swing) + 0.9) * (fx < 0 ? -1 : 1) * 1.1); drawItem(c, o.hold, 0, -S * 0.12, S * 0.62, o.now); c.restore();
+      } else if (hold) drawItem(c, o.hold, hold.x, hold.y, S * 0.48, o.now);
       if (knife) {
         c.save(); c.translate(knife.x, knife.y); c.rotate(fx ? fx * 0.9 : 0);
         rrect(c, -0.025 * S, -0.2 * S, 0.06 * S, 0.15 * S, 0.02 * S); c.fillStyle = "#e3e8eb"; c.fill(); c.strokeStyle = "#8e979c"; c.lineWidth = 1; c.stroke();
@@ -1136,6 +1148,14 @@ body.modal { overflow: hidden; }
   // 움직임 상태 (두 화면 각자 계산)
   const anim = [0, 1, 2, 3].map(() => ({ lx: null, ly: null, phase: 0, moving: false, reach: 0, an: 0, ds: 0, dashT: 0, ddx: 0, ddy: 0, lastBit: 0, hitT: -1e9, fallT: -1e9, wasDizzy: false, deadAt: 0, fallAt: 0, fallWhy: "fall" }));
   const bubbles = [], hits = []; // 머리 위 말풍선(비켜!·채팅), 밀친 자리 번쩍
+  const floaters = [], squashes = []; // 자리에 뜨는 말풍선(쥐 찍!), 납작해진 쥐
+  const SWING_MS = 320;
+  // 몽둥이 휘두르는 각도: 살짝 뒤로 젖혔다가 앞으로 쾅, 다시 올려요 (들고만 있으면 비스듬히 세워요)
+  function swingAng(i, now) {
+    const u = (now - (anim[i].swingAt || -1e9)) / SWING_MS;
+    if (u < 0 || u >= 1) return -0.9;
+    return u < 0.3 ? -0.9 - 0.7 * (u / 0.3) : u < 0.55 ? -1.6 + 2.2 * ((u - 0.3) / 0.25) : 0.6 - 1.5 * ((u - 0.55) / 0.45);
+  }
   const REACH = 0.22;
   function stepAnim(i, x, y, dt) {
     const a = anim[i];
@@ -1256,6 +1276,7 @@ body.modal { overflow: hidden; }
     W.slots = new Array(COLS * ROWS).fill(null);
     W.racks = {}; W.rets = {}; W.sinks = {}; W.returns = []; W.fly = []; W.fire = {}; W.rats = []; W.ratNext = 0;
     if (st.ext) W.slots[idx(st.ext[0], st.ext[1])] = { k: "ext" }; // 소화기
+    if (ratsOf(st, W.np)) { const ci = clubSpot(st); if (ci >= 0) W.slots[ci] = { k: "club" }; } // 쥐 나오는 판: 몽둥이
     let first = true;
     tiles.forEach((t) => {
       if (t.ch === "S") W.slots[t.i] = freshCont("pot");
@@ -1284,6 +1305,46 @@ body.modal { overflow: hidden; }
     W.last = { stars, newBest: stars > before, opened: before === 0 && stars >= 1 && !!STAGES.find((x) => x.id === st.id + 1) };
   }
 
+  // 몽둥이 자리: 단계에 적혀 있으면 거기, 아니면 주방 한가운데에 가장 가까운 빈 조리대
+  function clubSpot(st) {
+    if (st.club) return idx(st.club[0], st.club[1]);
+    let best = -1, bd = 1e9;
+    tiles.forEach((t) => {
+      if (t.type !== "counter" || t.div || t.gate || W.slots[t.i]) return;
+      if (![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const q = inMap(t.x + dx, t.y + dy) && tiles[idx(t.x + dx, t.y + dy)]; return q && canDrop(q); })) return;
+      const d = Math.hypot(t.x + 0.5 - COLS / 2, t.y + 0.5 - ROWS / 2);
+      if (d < bd - 1e-6) { bd = d; best = t.i; }
+    });
+    return best;
+  }
+  // 몽둥이 휘두르기 (방장): 앞에 쥐가 있으면 찍! 사람이면 아야! 하고 밀려나요
+  function clubHost(i) {
+    const p = W.players[i], now = performance.now();
+    if (W.phase !== "play" || !p || !p.hold || p.hold.k !== "club" || p.dd || p.dead > 0 || (p.stun || 0) > 0 || p.sn) return;
+    if (now - (p.swAt || 0) < CLUB_CD) return;
+    p.swAt = now;
+    const fl = Math.hypot(p.fx || 0, p.fy || 0) || 1, fx = (p.fx || 0) / fl, fy = (p.fy || 0) / fl;
+    const inFront = (x, y, r) => { const dx = x - p.x, dy = y - p.y, d = Math.hypot(dx, dy); return d < 0.45 || (d < r && (dx * fx + dy * fy) / d > 0.45); };
+    let rat = null, rd = 99;
+    (W.rats || []).forEach((r) => { const d = Math.hypot(r.x - p.x, r.y - p.y); if (d < rd && inFront(r.x, r.y, CLUB_R)) { rat = r; rd = d; } });
+    if (rat) {
+      W.rats = W.rats.filter((r) => r !== rat);
+      if (rat.it) dropFloor(rat.it, Math.floor(rat.x), Math.floor(rat.y)); // 물고 가던 음식은 그 자리에
+      const st = stageOf(W.stage), rc = ratsOf(st, W.np);
+      if (rc) W.ratNext = st.time - W.left + rc.gap[0] + Math.random() * (rc.gap[1] - rc.gap[0]);
+      ev({ fx: "squish", i, x: rat.x, y: rat.y, rfx: rat.fx || 1, rfy: rat.fy || 0, snd: "squish" });
+      return;
+    }
+    let j = -1, jd = 99;
+    W.players.forEach((q, k) => { if (k === i || !q.on || q.dd || q.dead > 0) return; const d = Math.hypot(q.x - p.x, q.y - p.y); if (d < jd && inFront(q.x, q.y, CLUB_R + 0.3)) { j = k; jd = d; } });
+    if (j >= 0) {
+      const q = W.players[j], d = Math.max(0.02, jd), ux = jd > 0.02 ? (q.x - p.x) / d : fx, uy = jd > 0.02 ? (q.y - p.y) / d : fy;
+      if (j === 0) knockMe(ux, uy); else if (seats[j]) net.send(seats[j], { t: "kb", x: ux, y: uy, rs: W.rs });
+      ev({ fx: "bonk", i, j, x: ux, y: uy, snd: "whack" });
+      return;
+    }
+    ev({ fx: "swing", i, snd: "swish" });
+  }
   function addCleanPlate() {
     const k = Object.keys(W.racks)[0];
     if (k != null && W.racks[k] >= 0) W.racks[k]++;
@@ -1527,6 +1588,7 @@ body.modal { overflow: hidden; }
         if (h.k === "plate") { if (h.dish || h.items.length) { h.dish = null; h.items = []; say("접시를 비웠어요"); } else say("빈 접시는 버리지 않아요"); return; }
         if (h.k === "dirty") say("더러운 접시는 개수대에서 씻어요");
         if (h.k === "ext") say("소화기는 버리면 안 돼요");
+        if (h.k === "club") say("몽둥이는 버리면 안 돼요");
         return;
       }
     }
@@ -2661,9 +2723,16 @@ body.modal { overflow: hidden; }
         ctx.restore();
         return;
       }
-      drawChar(ctx, TS * 1.15, q.x * TS, q.y * TS, { ch: q.ch, slot: i, fx: q.fx, fy: q.fy, hold: q.hold, chop: !!w, wash: !!(w && w.wash), moving: a.moving, phase: a.phase, reach: reachAmt(i), dash: a.dashT > 0 ? a.dashT / DASH_TIME : 0, ddx: a.ddx, ddy: a.ddy, now, isMe: mine || myIdx < 0 });
+      drawChar(ctx, TS * 1.15, q.x * TS, q.y * TS, { swing: swingAng(i, now), ch: q.ch, slot: i, fx: q.fx, fy: q.fy, hold: q.hold, chop: !!w, wash: !!(w && w.wash), moving: a.moving, phase: a.phase, reach: reachAmt(i), dash: a.dashT > 0 ? a.dashT / DASH_TIME : 0, ddx: a.ddx, ddy: a.ddy, now, isMe: mine || myIdx < 0 });
     });
-    drawTalk(ctx, now, (i) => { const e = list.find((o) => o.i === i); return e ? [e.q.x * TS, e.q.y * TS - TS * 0.35, e.q.y * TS - TS * 1.05, TS] : null; });
+    // 납작해진 쥐 (잠깐 남았다가 사라져요)
+    for (let k = squashes.length - 1; k >= 0; k--) {
+      const q = squashes[k], ag = (now - q.t0) / 1000;
+      if (ag > 0.9) { squashes.splice(k, 1); continue; }
+      ctx.save(); ctx.globalAlpha = ag > 0.6 ? (0.9 - ag) / 0.3 : 1; ctx.translate(q.x * TS, q.y * TS); ctx.scale(1.25, 0.45); ctx.translate(-q.x * TS, -q.y * TS);
+      drawRat(ctx, q.x * TS, q.y * TS, TS, q.fx, q.fy, 0, null, "bite"); ctx.restore();
+    }
+    drawTalk(ctx, now, (i) => { const e = list.find((o) => o.i === i); return e ? [e.q.x * TS, e.q.y * TS - TS * 0.35, e.q.y * TS - TS * 1.05, TS] : null; }, (x, y) => [x * TS, y * TS - TS * 0.1, y * TS - TS * 0.45, TS]);
     list.forEach(({ i }) => { const left = deadLeft(i, now); if (left) { const sp = spawnPos(st, i); drawRespawn(ctx, sp[0] * TS, sp[1] * TS, TS * 0.42, left, APRON[i]); } });
 
     // 진행 막대·완성·탐 표시
@@ -3275,7 +3344,19 @@ body.modal { overflow: hidden; }
       }
       if (it.k === "dirty") return dirtyModel(Math.min(3, it.n || 1));
       if (it.k === "ext") return extModel();
+      if (it.k === "club") return clubModel();
       return ingModel(it.k, it.cut);
+    }
+    // 나무 몽둥이: 앞(+z)으로 갈수록 굵어지는 머리, 검은 테이프 손잡이. 손잡이 끝이 0 (손에 쥐는 곳)
+    function clubModel() {
+      const g = new T.Group(), wood = mat("#c8955a", "g"), dark = mat("#3a2a1c"), tape = mat("#d9d0c4");
+      part(g, cylG(0.026, 0.03, 0.2, 12), dark, 0, 0.035, 0.1, Math.PI / 2, 0, 0);
+      for (const z of [0.03, 0.17]) part(g, cylG(0.033, 0.033, 0.025, 12), tape, 0, 0.035, z, Math.PI / 2, 0, 0);
+      part(g, cylG(0.07, 0.034, 0.36, 18), wood, 0, 0.035, 0.37, Math.PI / 2, 0, 0);
+      part(g, sphG(16), wood, 0, 0.035, 0.55, 0, 0, 0, 0.07);
+      for (const [a, z] of [[0.5, 0.42], [2.4, 0.5], [4.2, 0.35]]) part(g, boxG(0.012, 0.012, 0.05), mat("#9aa3a8", "p"), Math.cos(a) * 0.06, 0.035 + Math.sin(a) * 0.06, z, 0, 0, a);
+      g.position.z = -0.28; // 놓을 땐 가운데가 칸 가운데
+      const w = new T.Group(); w.add(g); return w;
     }
     // 소화기: 빨간 통, 하얀 띠, 검은 손잡이·호스·노즐
     function extModel() {
@@ -3296,7 +3377,7 @@ body.modal { overflow: hidden; }
     // 같은 모양은 재질별로 한 덩어리로 합쳐 두고 돌려 써요 (그리는 횟수가 확 줄어요)
     const ITEM = new Map();
     const K_ING = 1.85, K_PLATE = 1.4; // 재료는 1.85배, 접시는 1.4배 (냄비·바구니는 처음부터 크게)
-    const itemK = (it) => (isCont(it) ? 1 : it.k === "ext" ? 1.55 : it.k === "plate" || it.k === "dirty" ? K_PLATE : K_ING);
+    const itemK = (it) => (isCont(it) ? 1 : it.k === "ext" ? 1.55 : it.k === "club" ? 1.6 : it.k === "plate" || it.k === "dirty" ? K_PLATE : K_ING);
     function bakeItem(raw, k) {
       raw.scale.multiplyScalar(k || 1);
       raw.updateMatrixWorld(true);
@@ -4644,8 +4725,10 @@ body.modal { overflow: hidden; }
           if (c.held) c.hold.remove(c.held);
           c.held = q.hold ? itemModel(q.hold) : null; c.heldSig = hs; c.heldBorn = now;
           if (c.held) { if (isCont(q.hold)) c.held.rotation.y = -Math.PI / 2; c.hold.add(c.held); }
+          if (c.held && q.hold.k === "club") { const pv = new T.Group(); c.hold.remove(c.held); pv.add(c.held); c.hold.add(pv); c.held = pv; }
         }
         if (c.held) c.held.scale.setScalar((ING[q.hold.k] ? 1.12 : 0.85) * popAt(c.heldBorn, now));
+        if (c.held && q.hold && q.hold.k === "club") { c.held.position.set(0, 0.05, -0.15); c.held.rotation.set(swingAng(i, now), 0, 0); c.held.children.forEach((m) => (m.position.z = 0.28 * 1.6)); }
         if (c.held && c.held.userData.tick) c.held.userData.tick(now, q.hold, false);
         // 오토바이에 치이면: 뒤로 벌러덩 → 잠깐 누워 있다가 → 일어나서 비틀비틀
         const dz = dizzyOf(i);
@@ -4720,6 +4803,13 @@ body.modal { overflow: hidden; }
         blobAt(r.x, 0, r.y, 0.55);
       });
       for (const [id, e] of [...ratO]) if (!seenR.has(id)) { dynRoot.remove(e.g); ratO.delete(id); }
+      for (let k = squashes.length - 1; k >= 0; k--) { // 찍! 납작해진 쥐가 잠깐 남았다가 사라져요
+        const q = squashes[k], ag = (now - q.t0) / 1000;
+        if (ag > 0.9) { if (q.g) dynRoot.remove(q.g); squashes.splice(k, 1); continue; }
+        if (!q.g) { q.g = ratModel(); dynRoot.add(q.g); }
+        setAt(q.g, q.x, 0.01, q.y); q.g.rotation.y = Math.atan2(q.fx || 0, q.fy || 1);
+        q.g.scale.set(2.4, 2.4 * Math.max(0.12, 0.22 - ag * 0.1), 2.4);
+      }
 
       // 날아가는 재료
       const fl = view.fly || [];
@@ -4873,7 +4963,7 @@ body.modal { overflow: hidden; }
         if (!e) return null;
         const q = e.q, [x, y] = S(q.x, 0.75, q.y), top = S(q.x, q.ch === "rabbit" ? 2.0 : 1.7, q.y);
         return [x, y, top[1], unit(q.x, 1, q.y)];
-      });
+      }, (x, y) => { const [sx, sy] = S(x, 0.2, y), top = S(x, 0.75, y); return [sx, sy, top[1], unit(x, 0.5, y)]; });
       // 매출 팝업
       for (let j = pops.length - 1; j >= 0; j--) {
         const p = pops[j], ag = (now - p.t0) / 1300;
@@ -5046,7 +5136,9 @@ body.modal { overflow: hidden; }
     fall() { tone(880, 0.75, "sine", 0.08, 0, 160); tone(660, 0.7, "triangle", 0.04, 0.05, 120); },
     fling() { noise(0.7, 0.14, 0, 900, 0.6); tone(700, 0.6, "sine", 0.07, 0, 200); },
     rumble() { noise(1.4, 0.035, 0, 85, 0.5); },
-    clunk() { tone(160, 0.12, "square", 0.08, 0, 90); noise(0.1, 0.1, 0, 700, 1.2); }
+    clunk() { tone(160, 0.12, "square", 0.08, 0, 90); noise(0.1, 0.1, 0, 700, 1.2); },
+    swish() { noise(0.14, 0.07, 0, 2600, 0.7); },
+    squish() { noise(0.08, 0.12, 0, 900, 1.2); tone(2600, 0.07, "square", 0.05, 0.02, 3600); tone(3000, 0.09, "square", 0.04, 0.1, 2200); }
   };
   ["pointerdown", "keydown"].forEach((t) => window.addEventListener(t, () => { if (sndOn) audio(); }, true));
   // 음소거: 이 기기에서만, 다음에 와도 기억해요
@@ -5248,6 +5340,11 @@ body.modal { overflow: hidden; }
       anim[e.j].hitT = now; anim[e.j].hdx = e.x || 0; anim[e.j].hdy = e.y || 0;
       hits.push({ j: e.j, t0: now });
     } else if (e.fx === "chat") say(e.i, e.s, false);
+    else if (e.fx === "swing" || e.fx === "squish" || e.fx === "bonk") {
+      if (e.i !== myIdx) anim[e.i].swingAt = now; // 내 휘두르기는 누를 때 이미 시작했어요
+      if (e.fx === "squish") { floaters.push({ x: e.x, y: e.y, text: "찍!", t0: now, dur: 1200 }); squashes.push({ x: e.x, y: e.y, fx: e.rfx, fy: e.rfy, t0: now }); hits.push({ x: e.x, y: e.y, t0: now }); }
+      if (e.fx === "bonk") { say(e.j, "아야!", true); anim[e.j].hitT = now; anim[e.j].hdx = e.x || 0; anim[e.j].hdy = e.y || 0; hits.push({ j: e.j, t0: now }); }
+    }
     else if (e.fx === "dead") {
       say(e.i, e.why === "fall" || e.why === "fling" ? "으아아" : "으악!", true); bubbles[bubbles.length - 1].dur = 2200;
       if ((e.why === "fall" || e.why === "fling") && e.i !== myIdx) { anim[e.i].fallAt = now; anim[e.i].fallWhy = e.why; if (e.why === "fling") sfx.fling(); }
@@ -5312,11 +5409,18 @@ body.modal { overflow: hidden; }
     c.restore();
   }
   // 말풍선·번쩍 (2D/3D 공통). pos(i) → [x, y, 머리 위 y, 크기]
-  function drawTalk(c, now, pos) {
+  function drawTalk(c, now, pos, posXY) {
     for (let k = hits.length - 1; k >= 0; k--) {
       const h = hits[k], ag = (now - h.t0) / 1000;
       if (ag > 0.35) { hits.splice(k, 1); continue; }
-      const p = pos(h.j); if (p) drawBurst(c, p[0], p[1], p[3] * 0.9, ag);
+      const p = h.j != null ? pos(h.j) : posXY ? posXY(h.x, h.y) : null; if (p) drawBurst(c, p[0], p[1], p[3] * 0.9, ag);
+    }
+    for (let k = floaters.length - 1; k >= 0; k--) {
+      const b = floaters[k], ag = now - b.t0;
+      if (ag > b.dur) { floaters.splice(k, 1); continue; }
+      const p = posXY && posXY(b.x, b.y); if (!p) continue;
+      const pop = ag < 120 ? 0.6 + (ag / 120) * 0.4 : 1, a = ag > b.dur - 250 ? (b.dur - ag) / 250 : 1;
+      drawBubble(c, p[0], p[2] - (ag / b.dur) * p[3] * 0.3, b.text, Math.max(13, p[3] * 0.3) * pop, a, true);
     }
     for (let k = bubbles.length - 1; k >= 0; k--) {
       const b = bubbles[k], ag = now - b.t0;
@@ -5510,7 +5614,7 @@ body.modal { overflow: hidden; }
     }
     const cur = stageOf(st.stage);
     $("stageTip").textContent = cur.id + "단계: " + cur.tip + " 메뉴는 " + cur.menu.map((d) => DISH[d].name).join(", ") + "." +
-      (npNow >= 3 ? " " + npNow + "명이라 접시가 " + platesOf(cur, npNow) + "개뿐이에요. 반납구로 돌아온 접시는 개수대에서 씻어요. 쥐구멍에서 쥐가 나와 조리대 위 음식을 물어 가고, 주문도 더 빨리 와요." : "");
+      (npNow >= 3 ? " " + npNow + "명이라 접시가 " + platesOf(cur, npNow) + "개뿐이에요. 반납구로 돌아온 접시는 개수대에서 씻어요. 쥐구멍에서 쥐가 나와 조리대 위 음식을 물어 가니 몽둥이로 잡아요. 주문도 더 빨리 와요." : "");
     updateStart();
   }
   function updateStart() {
@@ -5729,6 +5833,9 @@ body.modal { overflow: hidden; }
         } else if (d.t === "sh") { // 친구가 밀쳤어요
           if (d.rs != null && d.rs !== W.rs) return;
           p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; shoveHost(k, d.j);
+        } else if (d.t === "sw") { // 친구가 몽둥이를 휘둘렀어요
+          if (d.rs != null && d.rs !== W.rs) return;
+          p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; clubHost(k);
         } else if (d.t === "chat") { // 친구 채팅 (3글자까지)
           const txt = chatClean(d.s);
           if (txt && W.phase !== "wait") ev({ fx: "chat", i: k, s: txt });
@@ -5894,6 +6001,15 @@ body.modal { overflow: hidden; }
       anim[myIdx].reach = REACH;
       if (role === "host") shoveHost(0, tj);
       else if (net) net.send({ t: "sh", rs: guestRs, x: me.x, y: me.y, fx: me.fx, fy: me.fy, j: tj });
+      if (buzz && navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
+      return;
+    }
+    if (myHold().k === "club") { // 몽둥이: 휘두르기 (내 화면에선 바로 휘둘러요)
+      const t = performance.now();
+      if (t - (anim[myIdx].swingAt || 0) < CLUB_CD) return;
+      anim[myIdx].swingAt = t; anim[myIdx].reach = REACH;
+      if (role === "host") clubHost(0);
+      else if (net) net.send({ t: "sw", rs: guestRs, x: me.x, y: me.y, fx: me.fx, fy: me.fy });
       if (buzz && navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
       return;
     }
