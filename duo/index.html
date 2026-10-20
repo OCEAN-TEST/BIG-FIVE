@@ -408,7 +408,7 @@ body.modal { overflow: hidden; }
     </div>
   </div>
   <div class="foot">
-    <span id="keysHint"><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동 · <kbd>스페이스</kbd> 집기·놓기 · <kbd>E</kbd> 썰기·설거지·불끄기(꾹)·던지기·때리기 · <kbd id="dashKeyHint">Q</kbd> 대시 · <kbd>Enter</kbd> 채팅</span>
+    <span id="keysHint"><span id="moveKeyHint"><kbd>방향키</kbd></span> 이동 · <kbd>스페이스</kbd> 집기·놓기 · <kbd>E</kbd> 썰기·설거지·불끄기(꾹)·던지기·때리기 · <kbd id="dashKeyHint">W</kbd> 대시 · <kbd>Enter</kbd> 채팅</span>
     <span id="whoami"></span>
   </div>
 </div>
@@ -431,10 +431,10 @@ body.modal { overflow: hidden; }
 
       <h3>조작법</h3>
     <dl class="keys">
-      <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 또는 <kbd>방향키</kbd></dt><dd>이동</dd>
+      <dt id="moveKeyHow"><kbd>방향키</kbd></dt><dd>이동</dd>
       <dt><kbd>스페이스</kbd></dt><dd>집기 · 놓기 · 넣기 · 담기 · 내기 (바라보는 칸에. 바닥에도 놓을 수 있어요)</dd>
       <dt><kbd>E</kbd></dt><dd>작업. 빈손으로 꾹 누르면 썰기·설거지, 재료를 들고 누르면 던지기, 소화기를 들고 꾹 누르면 불 끄기</dd>
-      <dt><kbd>Q</kbd></dt><dd>대시 (짧게 휙 미끄러지기). 설정에서 시프트로 바꿀 수 있어요</dd>
+      <dt><kbd id="dashKeyHow">W</kbd></dt><dd>대시 (짧게 휙 미끄러지기). 설정에서 W·Q·시프트 중에 골라요</dd>
       <dt>빈손으로 친구 앞에서 <kbd>E</kbd></dt><dd>밀치기 "비켜!" (친구가 들고 있던 걸 뺏어와요)</dd>
       <dt><kbd>Enter</kbd> (폰은 위쪽 말풍선 버튼)</dt><dd>채팅. 3글자까지 머리 위에 떠요</dd>
       <dt>폰</dt><dd>왼쪽 화면을 누른 채 끌어서 이동, 오른쪽 <b>집기</b>·<b>작업</b>·<b>대시</b> 버튼</dd>
@@ -462,8 +462,8 @@ body.modal { overflow: hidden; }
       <div class="seg" role="group" aria-label="화면 방식"><button type="button" id="view3d" aria-pressed="true">3D</button><button type="button" id="view2d" aria-pressed="false">2D</button></div>
     </div>
     <div class="setrow" id="dashRow">
-      <span><b>대시 키</b><small>시프트를 여러 번 누르면 윈도우 '고정 키' 창이 떠요. Q로 두면 안 떠요.</small></span>
-      <div class="seg" role="group" aria-label="대시 키"><button type="button" id="dashQ" aria-pressed="true">Q</button><button type="button" id="dashShift" aria-pressed="false">시프트</button></div>
+      <span><b>대시 키</b><small>W로 하면 위로는 방향키로 가요. 시프트는 여러 번 누르면 윈도우 '고정 키' 창이 떠요.</small></span>
+      <div class="seg" role="group" aria-label="대시 키"><button type="button" id="dashW" aria-pressed="true">W</button><button type="button" id="dashQ" aria-pressed="false">Q</button><button type="button" id="dashShift" aria-pressed="false">시프트</button></div>
     </div>
   </div>
 </div>
@@ -475,7 +475,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 27;
+  const VERSION = 28;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -5066,21 +5066,26 @@ body.modal { overflow: hidden; }
   $("view3d").addEventListener("click", () => setView(true, true));
   $("view2d").addEventListener("click", () => setView(false, true));
   applyView();
-  // 대시 키: 기본은 Q (시프트 연타하면 윈도우 고정 키 창이 떠서). 원하면 시프트로
+  // 대시 키: 기본은 W (위로는 방향키). Q·시프트도 고를 수 있어요. 시프트 연타는 윈도우 고정 키 창이 떠요
   const DASH_KEY = "bunsik.dash";
-  let dashShift = (() => { try { return localStorage.getItem(DASH_KEY) === "shift"; } catch (e) { return false; } })();
+  const DASH_LABEL = { w: "W", q: "Q", shift: "시프트" };
+  let dashMode = (() => { try { const v = localStorage.getItem(DASH_KEY); return DASH_LABEL[v] ? v : "w"; } catch (e) { return "w"; } })();
   function applyDash() {
-    $("dashQ").setAttribute("aria-pressed", String(!dashShift));
-    $("dashShift").setAttribute("aria-pressed", String(dashShift));
-    $("dashKeyHint").textContent = dashShift ? "시프트" : "Q";
+    $("dashW").setAttribute("aria-pressed", String(dashMode === "w"));
+    $("dashQ").setAttribute("aria-pressed", String(dashMode === "q"));
+    $("dashShift").setAttribute("aria-pressed", String(dashMode === "shift"));
+    $("dashKeyHint").textContent = $("dashKeyHow").textContent = DASH_LABEL[dashMode];
+    $("moveKeyHint").innerHTML = dashMode === "w" ? "<kbd>방향키</kbd>" : "<kbd>WASD</kbd>/<kbd>방향키</kbd>";
+    $("moveKeyHow").innerHTML = dashMode === "w" ? "<kbd>방향키</kbd>" : "<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 또는 <kbd>방향키</kbd>";
   }
-  function setDash(sh) {
-    dashShift = sh;
-    try { localStorage.setItem(DASH_KEY, sh ? "shift" : "q"); } catch (e) {}
+  function setDash(m) {
+    dashMode = m; keys.delete("KeyW");
+    try { localStorage.setItem(DASH_KEY, m); } catch (e) {}
     applyDash();
   }
-  $("dashQ").addEventListener("click", () => setDash(false));
-  $("dashShift").addEventListener("click", () => setDash(true));
+  $("dashW").addEventListener("click", () => setDash("w"));
+  $("dashQ").addEventListener("click", () => setDash("q"));
+  $("dashShift").addEventListener("click", () => setDash("shift"));
   try { $("dashRow").hidden = !matchMedia("(any-pointer: fine)").matches; } catch (e) {} // 폰엔 키보드가 없으니 숨겨요
   applyDash();
   function drop3D(err) { // 3D에서 오류가 나면 2D로 바꿔요
@@ -6111,15 +6116,15 @@ body.modal { overflow: hidden; }
     if (e.key === "Enter" && !e.isComposing && !$("game").hidden && $("chatBar").hidden && !setOpen() && document.activeElement !== $("chatIn")) { e.preventDefault(); openChat(); }
   });
   const GAME_KEYS = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space", "KeyE", "KeyQ"]);
-  const shiftDash = (c) => dashShift && (c === "ShiftLeft" || c === "ShiftRight");
+  const isDashKey = (c) => c === "KeyQ" || (dashMode === "w" && c === "KeyW") || (dashMode === "shift" && (c === "ShiftLeft" || c === "ShiftRight"));
   window.addEventListener("keydown", (e) => {
-    if ($("game").hidden || !(GAME_KEYS.has(e.code) || shiftDash(e.code)) || setOpen()) return;
+    if ($("game").hidden || !(GAME_KEYS.has(e.code) || isDashKey(e.code)) || setOpen()) return;
     e.preventDefault();
+    if (isDashKey(e.code)) { if (!e.repeat) doDash(false); return; } // W 대시일 땐 W로 안 움직여요
     keys.add(e.code);
     if (!e.repeat) {
       if (e.code === "Space") doAct(false);
       else if (e.code === "KeyE") workPress(false);
-      else if (e.code === "KeyQ" || shiftDash(e.code)) doDash(false);
     }
     syncChop();
   });
