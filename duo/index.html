@@ -471,7 +471,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 22;
+  const VERSION = 23;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -3573,8 +3573,9 @@ body.modal { overflow: hidden; }
       return tex;
     }
     try { envTex = envFor(gl); scene.environment = envTex; } catch (e) { hemi.intensity = 0.8; }
-    const stageRoot = new T.Group(), dynRoot = new T.Group();
-    scene.add(stageRoot, dynRoot);
+    const STAGE = new T.Group(), dynRoot = new T.Group();
+    let stageRoot = STAGE; // 트럭 맵: 트럭마다 묶음(그룹)에 그려서 통째로 움직여요. 그리는 동안만 잠깐 바꿔 끼워요
+    scene.add(STAGE, dynRoot);
 
     // 칸 도우미
     const at = (x, y) => (x < 0 || y < 0 || x >= COLS || y >= ROWS ? null : tiles[idx(x, y)]);
@@ -3901,10 +3902,11 @@ body.modal { overflow: hidden; }
       }
       road3 = { roadTex, grassTex, scen, streaks, speed: tk.speed };
     }
-    function buildTruck(tk) {
-      const col = tk.col, B = new Batch(), MB = new Batch();
+    function buildTruck(tk, groups) {
+      const col = tk.col;
       const sideL = [-0.3, col], sideR = [col + 1, COLS + 0.3];
       [sideL, sideR].forEach(([x0, x1], n) => {
+        const B = new Batch(), MB = new Batch(), grp = groups[n];
         const w = x1 - x0, cx = (x0 + x1) / 2, colr = TRUCK_COL[n];
         B.add(rboxG(w, 0.6, ROWS + 0.6, 0.06, 2), mtx(cx, -0.335, ROWS / 2), colr); // 몸통 (윗면이 바닥보다 살짝 아래: 겹쳐 깜빡이지 않게)
         B.add(boxG(w + 0.01, 0.1, ROWS + 0.61), mtx(cx, -0.36, ROWS / 2), "#f5f3ec"); // 흰 띠
@@ -3917,9 +3919,9 @@ body.modal { overflow: hidden; }
         for (const lx of [-0.3, 0.3]) MB.add(sphG(10), mtx(cx + lx, 0.84, -1.3, 0, 0, 0, 0.07), lx < 0 ? "#ff5a4a" : "#4a8cff");
         // 간판
         const sign = new T.Mesh(own(new T.PlaneGeometry(2.6, 0.62)), own(new T.MeshBasicMaterial({ map: own(canvasTex(textCanvas(n ? "감자튀김·소스" : "핫도그", 64, colr, "#ffffff"))), toneMapped: false })));
-        sign.rotation.x = -0.55; sign.position.set(cx, 0.95, -0.55); stageRoot.add(sign);
+        sign.rotation.x = -0.55; sign.position.set(cx, 0.95, -0.55); grp.add(sign);
+        const a = B.mesh(VSKIN), m = MB.mesh(CLS_MAT.p || VMET); own(a.geometry); own(m.geometry); grp.add(a, m);
       });
-      const a = B.mesh(VSKIN), m = MB.mesh(CLS_MAT.p || VMET); own(a.geometry); own(m.geometry); stageRoot.add(a, m);
       // 바퀴: 빙글빙글
       const wheels = [], tire = mat("#1f2224"), hub = mat("#c3ccd1", "p");
       for (const x of [-0.32, col + 0.02, col + 0.98, COLS + 0.32]) for (const z of [1.2, ROWS - 1.2]) {
@@ -3928,7 +3930,7 @@ body.modal { overflow: hidden; }
         part(sp, cylG(0.32, 0.32, 0.24, 24), tire, 0, 0, 0, 0, 0, Math.PI / 2);
         part(sp, cylG(0.17, 0.17, 0.25, 12), hub, 0, 0, 0, 0, 0, Math.PI / 2);
         for (let k = 0; k < 4; k++) part(sp, boxG(0.26, 0.05, 0.05), mat("#7d868c", "p"), 0, 0, 0, (k * Math.PI) / 4, 0, 0, 1, 1, 1);
-        stageRoot.add(wg); wheels.push(sp);
+        groups[x < col + 0.5 ? 0 : 1].add(wg); wheels.push(sp);
       }
       // 가운데 발판: 양쪽 트럭에서 반씩 나와서 붙어요
       const plates = [col, col + 1].map((x, n) => {
@@ -3937,9 +3939,9 @@ body.modal { overflow: hidden; }
         part(pm, boxG(0.5, 0.05, ROWS), mat("#aab3b8", "p"), 0, -0.02, 0);
         part(pm, boxG(0.08, 0.052, ROWS), mat("#f2b31b"), n ? -0.21 : 0.21, -0.018, 0);
         for (let z = -ROWS / 2 + 0.25; z < ROWS / 2; z += 0.5) part(pm, boxG(0.3, 0.053, 0.05), mat("#8d969c", "p"), 0, -0.018, z, 0, 0.6, 0);
-        stageRoot.add(g); return g;
+        groups[n].add(g); return g;
       });
-      truck3 = { wheels, plates, speed: tk.speed };
+      truck3 = { wheels, plates, groups, col, speed: tk.speed };
     }
     // 움직이는 순간이동문: 쌍마다 문 두 개 + 곧 옮겨 갈 자리 점선 고리 두 개
     let warp3 = null;
@@ -4090,7 +4092,18 @@ body.modal { overflow: hidden; }
     scene.add(iblob);
     const _bq = new T.Quaternion().setFromEuler(new T.Euler(-Math.PI / 2, 0, 0)), _bm = new T.Matrix4(), _bp = new T.Vector3(), _bs = new T.Vector3();
     let nblob = 0;
-    function blobAt(x, y, z, s) { if (nblob >= 220) return; _bm.compose(_bp.set(x, y + 0.004, z), _bq, _bs.set(s, s, 1)); iblob.setMatrixAt(nblob++, _bm); }
+    // 트럭 맵: 트럭마다 옆으로 벌어지고 앞뒤로 살짝 움직여요. 칸 좌표(x)로 어느 트럭 위인지 보고 그만큼 옮겨 그려요 (틈 위는 둘 사이)
+    let TOFF = null, TCOL = 7;
+    const NOOFF = { dx: 0, dz: 0 };
+    function offOf(x) {
+      if (!TOFF) return NOOFF;
+      if (x <= TCOL) return TOFF[0];
+      if (x >= TCOL + 1) return TOFF[1];
+      const k = x - TCOL;
+      return { dx: TOFF[0].dx + (TOFF[1].dx - TOFF[0].dx) * k, dz: TOFF[0].dz + (TOFF[1].dz - TOFF[0].dz) * k };
+    }
+    const setAt = (o, x, y, z) => { const q = offOf(x); o.position.set(x + q.dx, y, z + q.dz); };
+    function blobAt(x, y, z, s) { if (nblob >= 220) return; const q = offOf(x); _bm.compose(_bp.set(x + q.dx, y + 0.004, z + q.dz), _bq, _bs.set(s, s, 1)); iblob.setMatrixAt(nblob++, _bm); }
     function clearDyn() { [slotO, extraO, flyO].forEach((mp) => { mp.forEach((e) => dynRoot.remove(e.obj)); mp.clear(); }); ratO.forEach((r) => dynRoot.remove(r.g)); ratO.clear(); }
     // 쥐: 회색 몸, 분홍 코·꼬리. 머리가 +z 쪽
     function ratModel() {
@@ -4114,7 +4127,8 @@ body.modal { overflow: hidden; }
     }
 
     function buildStage() {
-      while (stageRoot.children.length) stageRoot.remove(stageRoot.children[0]);
+      stageRoot = STAGE;
+      while (STAGE.children.length) STAGE.remove(STAGE.children[0]);
       junk.forEach((d) => d.dispose()); junk = [];
       [flames, knives, oils].forEach((o) => { for (const k in o) delete o[k]; });
       walk3 = []; portal3 = []; gate3 = []; gateAt = {}; bike3 = null; rail3 = null; warp3 = null; truck3 = null; road3 = null;
@@ -4130,7 +4144,8 @@ body.modal { overflow: hidden; }
       sun.intensity = nightTime ? 1.0 : 1.2; sun.color.set(nightTime ? 0xffd2a0 : 0xfff0dc);
       lamp.intensity = nightTime ? 1.1 : 0;
       Object.values(MC).concat(Object.values(CLS_MAT), [VMAT, VMET, VSKIN]).forEach((m) => { if (m.isMeshStandardMaterial) m.envMapIntensity = nightTime ? 0.6 : ENVI; });
-      const A = new Batch(true), M = new Batch(true), F = [];
+      let A = new Batch(true), M = new Batch(true);
+      const F = [], tGroups = st.truck ? [new T.Group(), new T.Group()] : null;
 
       // 주방 둘레 바닥: 화면 가장자리까지 깔아서 빈 공간이 안 보이게
       if (st.truck) buildRoad(st.truck);
@@ -4142,8 +4157,19 @@ body.modal { overflow: hidden; }
         A.add(boxG(COLS + 0.6, 0.5, ROWS + 0.6), mtx(COLS / 2, -0.26, ROWS / 2), "#5a3d2a");
       }
       // 바닥, 뒷벽 (트럭 맵은 가운데 틈을 뚫어요)
-      const floor = new T.Mesh(own(new T.PlaneGeometry(COLS, ROWS)), own(std({ map: own(canvasTex(floorCanvas(st))), roughness: 0.5, alphaTest: st.truck ? 0.5 : 0 })));
+      const floorCv = floorCanvas(st);
+      const floor = new T.Mesh(own(new T.PlaneGeometry(COLS, ROWS)), own(std({ map: own(canvasTex(floorCv)), roughness: 0.5 })));
       floor.rotation.x = -Math.PI / 2; floor.position.set(COLS / 2, 0, ROWS / 2); floor.receiveShadow = true;
+      if (tGroups) { // 트럭 바닥: 같은 그림을 반씩 잘라서 트럭마다 한 장
+        const col = st.truck.col;
+        [[0, col], [col + 1, COLS]].forEach(([x0, x1], n) => {
+          const tx = own(canvasTex(floorCv)); tx.repeat.set((x1 - x0) / COLS, 1); tx.offset.set(x0 / COLS, 0);
+          const f = new T.Mesh(own(new T.PlaneGeometry(x1 - x0, ROWS)), own(std({ map: tx, roughness: 0.5 })));
+          f.rotation.x = -Math.PI / 2; f.position.set((x0 + x1) / 2, 0, ROWS / 2); f.receiveShadow = true;
+          tGroups[n].add(f); STAGE.add(tGroups[n]);
+        });
+        floor.visible = false;
+      }
       const wallCv = wallCanvas(sid);
       const wall = new T.Mesh(own(new T.PlaneGeometry(COLS + 0.6, 3.2)), own(std({ map: own(canvasTex(wallCv)), roughness: 0.62 })));
       (wallCv.boards || []).forEach((bd) => snapLater({ k: "plate", items: [], dish: bd.d }, false, (ph) => { if (!ph || !wall.parent) return; bd.board(ph); wall.material.map.needsUpdate = true; }));
@@ -4193,7 +4219,7 @@ body.modal { overflow: hidden; }
         if (floorAt(t.x + d[0], t.y + d[1])) for (const lx of [-0.24, 0.24]) M.add(cylG(0.055, 0.055, 0.045, 16), L(t, lx, CH - 0.2, 0.5, Math.PI / 2, 0, 0), "#d7372b");
       };
 
-      tiles.forEach((t) => {
+      const buildTile = (t) => {
         const cx = t.x + 0.5, cz = t.y + 0.5;
         if (t.gate) { buildGate(t); return; }
         if (t.bar || t.rail || t.type === "railend" || t.pit || t.gap) return;
@@ -4341,11 +4367,20 @@ body.modal { overflow: hidden; }
             return;
           }
         }
-      });
+      };
+      if (tGroups) {
+        const col = st.truck.col, A0 = A, M0 = M;
+        tGroups.forEach((grp, side) => {
+          stageRoot = grp; A = new Batch(true); M = new Batch(true);
+          tiles.filter((t) => (side ? t.x > col : t.x < col)).forEach(buildTile);
+          const a = A.mesh(VMAT), m = M.mesh(VMET); own(a.geometry); own(m.geometry); grp.add(a, m);
+        });
+        stageRoot = STAGE; A = A0; M = M0;
+      } else tiles.forEach(buildTile);
       if (st.road) buildBike();
       if (st.rail) buildRail(st.rail);
       if (st.warp) buildWarp();
-      if (st.truck) buildTruck(st.truck);
+      if (st.truck) buildTruck(st.truck, tGroups);
       const a = A.mesh(VMAT), m = M.mesh(VMET);
       own(a.geometry); own(m.geometry);
       stageRoot.add(a, m);
@@ -4413,7 +4448,8 @@ body.modal { overflow: hidden; }
       el.style.width = vw + "px"; el.style.height = vh + "px";
       return { w: vw, h: vh };
     }
-    const S = (x, y, z) => { _v.set(x, y, z).project(cam); return [(_v.x + 1) * 0.5 * vw, (1 - _v.y) * 0.5 * vh]; };
+    const S0 = (x, y, z) => { _v.set(x, y, z).project(cam); return [(_v.x + 1) * 0.5 * vw, (1 - _v.y) * 0.5 * vh]; }; // 진짜 3D 좌표
+    const S = (x, y, z) => { if (TOFF) { const q = offOf(x); x += q.dx; z += q.dz; } return S0(x, y, z); }; // 칸 좌표
     const unit = (x, y, z) => { const r = VRIGHT(), a = S(x - r[0] / 2, y, z - r[1] / 2), b = S(x + r[0] / 2, y, z + r[1] / 2); return Math.hypot(b[0] - a[0], b[1] - a[1]); };
 
     // ---- 매 화면 ----
@@ -4447,6 +4483,13 @@ body.modal { overflow: hidden; }
       });
       const busy = new Set(list.filter((o) => o.w && !o.w.wash).map((o) => o.w.i));
       for (const k in knives) knives[k].visible = !busy.has(+k);
+      // 트럭 움직임: 붙어 있을 땐 나란히, 벌어지면 옆으로 멀어지고 앞뒤로 조금씩 엇갈려요
+      if (truck3) {
+        const tn = truckNow(view, now), op = tn ? tn.open : 0, ts = now / 1000, sway = Math.sin(ts * 0.9) * 0.035;
+        TCOL = truck3.col;
+        TOFF = [{ dx: -0.5 * op + sway, dz: op * 0.38 * Math.sin(ts * 0.55) }, { dx: 0.5 * op + sway, dz: op * 0.38 * Math.sin(ts * 0.43 + 2.1) }];
+        truck3.groups.forEach((g, n) => g.position.set(TOFF[n].dx, Math.sin(ts * 11 + n * 1.7) * 0.006, TOFF[n].dz));
+      } else TOFF = null;
 
       // 벨트·무빙워크로 칸을 옮긴 물건은 모델을 그대로 넘겨요 (칸마다 다시 '톡' 커지지 않게)
       const hand = [];
@@ -4469,7 +4512,7 @@ body.modal { overflow: hidden; }
         if (f) { const d = t.push || t.dir; x += d[0] * f; z += d[1] * f; }
         if (busy.has(i)) x += Math.sin(now / 25) * 0.02;
         const y = t.gate ? gateTop(t) : surfY(t);
-        o.position.set(x, y, z);
+        setAt(o, x, y, z);
         o.scale.setScalar(popOf(slotO, i, now) * (ING[it.k] ? BIG_ING : 1));
         // 그릇 손잡이는 요리사 쪽 대각선으로 (옆 칸·요리사와 안 부딪히게)
         o.rotation.y = isCont(it) ? (t.type === "floor" ? Math.PI / 4 : yawOf(t) + Math.PI / 4) : ((i * 0.37) % 0.5) - 0.25;
@@ -4482,16 +4525,16 @@ body.modal { overflow: hidden; }
           const n = view.racks ? view.racks[t.i] : -1;
           const cnt = n === -1 ? 4 : Math.min(5, n || 0);
           const o = sync(extraO, "p" + t.i, "p" + n, () => cachedModel("stack" + cnt, () => plateStack(cnt), K_PLATE));
-          o.position.set(t.x + 0.5, CH, t.y + 0.5);
+          setAt(o, t.x + 0.5, CH, t.y + 0.5);
           if (cnt) blobAt(t.x + 0.5, CH, t.y + 0.5, 0.98);
         } else if (t.type === "return") {
           const n = view.rets ? view.rets[t.i] || 0 : 0;
           const o = sync(extraO, "r" + t.i, n > 0 ? "r" + Math.min(3, n) : "", () => cachedModel("dirty" + Math.min(3, n), () => dirtyModel(Math.min(3, n)), K_PLATE));
-          if (o) { o.position.set(t.x + 0.5, CH, t.y + 0.5); o.scale.setScalar(popOf(extraO, "r" + t.i, now)); blobAt(t.x + 0.5, CH, t.y + 0.5, 0.98); }
+          if (o) { setAt(o, t.x + 0.5, CH, t.y + 0.5); o.scale.setScalar(popOf(extraO, "r" + t.i, now)); blobAt(t.x + 0.5, CH, t.y + 0.5, 0.98); }
         } else if (t.type === "sink") {
           const s = view.sinks ? view.sinks[t.i] : null, n = s ? s.n : 0;
           const o = sync(extraO, "h" + t.i, n > 0 ? "h" + Math.min(3, n) : "", () => cachedModel("dirty" + Math.min(3, n), () => dirtyModel(Math.min(3, n)), K_PLATE * 0.85));
-          if (o) { o.position.set(t.x + 0.5, CH + 0.03, t.y + 0.5); o.rotation.z = 0.08; }
+          if (o) { setAt(o, t.x + 0.5, CH + 0.03, t.y + 0.5); o.rotation.z = 0.08; }
         } else if (t.type === "stove") {
           const it = view.slots[t.i], fl = flames[t.i];
           if (fl) {
@@ -4519,7 +4562,7 @@ body.modal { overflow: hidden; }
       for (const k in fires) {
         const t = tiles[+k], hp = Math.max(0, fires[k].hp), sc = 0.45 + 0.55 * hp;
         const o = sync(extraO, "f" + k, "fire", fireModel);
-        o.position.set(t.x + 0.5, (t.gate ? gateTop(t) : topY(t)) + 0.01, t.y + 0.5);
+        setAt(o, t.x + 0.5, (t.gate ? gateTop(t) : topY(t)) + 0.01, t.y + 0.5);
         o.scale.set(sc, sc * (1 + Math.sin(now / 70 + +k) * 0.12), sc);
         o.rotation.y = now / 380 + +k;
       }
@@ -4627,6 +4670,7 @@ body.modal { overflow: hidden; }
           c.root.rotation.x = 0.5 * fk; c.root.rotation.z = Math.sin(now / 60) * 0.35 * (1 - fk);
           c.root.position.y = -0.02 * fk;
         } else if (c.root.scale.x !== 1.3) c.root.scale.setScalar(1.3);
+        if (TOFF) { const qo = offOf(q.x); c.root.position.x += qo.dx; c.root.position.z += qo.dz; } // 트럭 위에서 트럭이랑 같이 움직여요
         // 밀쳐지면: 몸이 뒤로 휘청하고 납작해졌다 돌아와요
         const ha = (now - a.hitT) / 1000;
         if (ha < 0.35) {
@@ -4651,7 +4695,7 @@ body.modal { overflow: hidden; }
           const show = t.type !== "floor" ? !NO_HL[t.type] : !t.pit && !t.gap && !!(view.slots[ti] || mineHold);
           if (show) {
             hl.visible = true; hl.material = t.type === "floor" ? hlLo : hlHi;
-            hl.position.set(t.x + 0.5, topY(t) + 0.004, t.y + 0.5);
+            setAt(hl, t.x + 0.5, topY(t) + 0.004, t.y + 0.5);
             hlHi.opacity = 0.75 + Math.sin(now / 160) * 0.2;
           }
         }
@@ -4664,7 +4708,7 @@ body.modal { overflow: hidden; }
         if (!e) { e = { g: ratModel() }; ratO.set(r.id, e); dynRoot.add(e.g); }
         seenR.add(r.id);
         const ud = e.g.userData, moving = r.st !== "bite";
-        e.g.position.set(r.x, moving ? Math.abs(Math.sin(now / 45)) * 0.025 : 0, r.y);
+        setAt(e.g, r.x, moving ? Math.abs(Math.sin(now / 45)) * 0.025 : 0, r.y);
         e.g.rotation.y = Math.atan2(r.fx || 0, r.fy || 1);
         ud.tail.rotation.y = Math.sin(now / (moving ? 90 : 220)) * 0.5;
         const sig = r.it ? itemSig(r.it) : "";
@@ -4684,7 +4728,7 @@ body.modal { overflow: hidden; }
         const o = sync(flyO, j, itemSig(f.it), () => itemModel(f.it));
         const x = f.x + f.dx * FLY_SPEED * age, y = f.y + f.dy * FLY_SPEED * age;
         const p = Math.min(1, (f.d + FLY_SPEED * age) / FLY_MAX);
-        o.position.set(x, 0.62 + Math.sin(p * Math.PI) * 0.5, y);
+        setAt(o, x, 0.62 + Math.sin(p * Math.PI) * 0.5, y);
         o.rotation.set(now / 160, now / 90, 0);
         o.scale.setScalar(ING[f.it.k] ? BIG_ING : 1);
         blobAt(x, 0, y, 0.6);
@@ -4821,7 +4865,7 @@ body.modal { overflow: hidden; }
       list.forEach(({ q, i, mine }) => {
         const ch = chars[i];
         if (!ch) return;
-        if (q.hold && q.hold.k === "dirty" && q.hold.n > 1) { ch.hold.getWorldPosition(_w); const [x, y] = S(_w.x, _w.y + 0.28, _w.z); badge(c, x, y, String(q.hold.n), "#7a5a3a", unit(_w.x, _w.y, _w.z) * 0.22); }
+        if (q.hold && q.hold.k === "dirty" && q.hold.n > 1) { ch.hold.getWorldPosition(_w); const [x, y] = S0(_w.x, _w.y + 0.28, _w.z); badge(c, x, y, String(q.hold.n), "#7a5a3a", unit(_w.x, _w.y, _w.z) * 0.22); }
       });
       // 말풍선 (비켜!·채팅), 밀친 자리 번쩍
       drawTalk(c, now, (i) => {
