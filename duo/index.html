@@ -96,7 +96,7 @@ kbd { font-family: var(--font-ui); background: #fff; border: 2px solid var(--pap
 .pick h3 { margin: 0; font-family: var(--font-ui); font-weight: 400; font-size: 20px; color: var(--chili); }
 .chars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 560px; }
 .charbtn { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 6px 4px 8px; background: #fff; border: 3px solid var(--paper-line); border-radius: 12px; cursor: pointer; font-family: var(--font-ui); font-size: 18px; color: var(--ink); }
-.charbtn canvas { width: 88px; height: 88px; max-width: 100%; }
+.charbtn canvas { width: 88px; max-width: 100%; height: auto; aspect-ratio: 1 / 1; }
 .charbtn[aria-pressed="true"] { border-color: var(--chili); background: #fff1cc; }
 .charbtn:disabled { opacity: .45; cursor: default; }
 .charbtn.ro:disabled[aria-pressed="true"] { opacity: 1; }
@@ -575,7 +575,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 30;
+  const VERSION = 31;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
