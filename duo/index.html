@@ -471,7 +471,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 23;
+  const VERSION = 24;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -559,7 +559,7 @@ body.modal { overflow: hidden; }
       rats: { first: 10, gap: [8, 13] },
       map: ["CtmCCSSCFFCCCCC", "C...~..~..~...C", "K..~~~~~~~~~..W", "K..~~~~~~~~~..W", "o..~~~CCC~~~..C", "C..~~~CCC~~~..T", "P..~~~~~~~~~..C", "Z...~~~~~~~...C", "CCCCZCCCCCZCCCC"] },
     { id: 8, name: "배달 골목", time: 180, menu: ["gimbap", "tteokbokki", "ramen"], stars: [15000, 34000, 62000], plates: 0, gap: [8, 11], extra: 15, duo: false,
-      road: { row: 4, first: 7, warn: 1.6, speed: 12, gap: [5, 9] },
+      road: { row: 4, first: 7, warn: 0.7, speed: 12, gap: [5, 9] },
       ext: [8, 8], floor: ["#c9c2b6", "#bfb8ab"], spawn: [[3.5, 2.5], [10.5, 6.5]],
       tip: "주방 한가운데로 배달 오토바이가 지나가요. 빵빵 소리와 빨간 화살표가 뜨면 길에서 비켜요. 치이면 3초 동안 기절하고 들고 있던 음식을 뺏겨요. 길 건너로 던지거나 길가 조리대에 올려서 넘겨요.",
       map: ["CtmprbgdCKKCCCC", "C.............C", "C.............T", "C...CC...CC...C", "===============", "C...CC...CC...C", "S.............W", "S.............W", "CCPCCSSCCCCCTCC"] },
@@ -567,22 +567,22 @@ body.modal { overflow: hidden; }
       ext: [8, 0], floor: ["#d3c7e4", "#c8bbdc"], spawn: [[2.5, 4.5], [11.5, 4.5]],
       // 순간이동문 두 쌍: 쌍마다 왼쪽·오른쪽 자리 후보 중에서 every초마다 옮겨요 (화구·도마·상자·내는 곳 바로 앞은 후보에서 뺐어요)
       // 청록 문은 가끔 한쪽 끝이 가운데 낭떠러지(pit) 위로 이어져요: 들어가면 떨어져서 쓰러지고 5초 뒤 다시 나와요
-      warp: { warn: 3, pit: [7, 4], pairs: [{ every: 20, L: [[5, 1], [3, 4]], R: [[9, 7], [11, 4]] }, { every: 27, L: [[5, 7], [2, 7]], R: [[9, 1], [12, 7]], trap: 0.35 }] },
-      tip: "가운데는 낭떠러지예요. 발을 헛디디거나 밀려나면 떨어지고, 건너편으로 던진 재료도 떨어져요. 순간이동문을 밟으면 같은 색 문으로 넘어가고, 문 쪽으로 던진 재료도 넘어가요. 보라 문은 20초, 청록 문은 27초마다 자리를 옮기고, 옮기기 3초 전에 새 자리가 반짝여요. 청록 문이 낭떠러지 위로 이어질 때도 있어요. 떨어지면 5초 뒤에 처음 자리에서 다시 나와요. 접시가 3개뿐이라 오른쪽 반납구로 돌아온 접시를 왼쪽 개수대에서 씻어야 해요.",
+      warp: { warn: 0.7, pit: [7, 4], pairs: [{ every: 20, L: [[5, 1], [3, 4]], R: [[9, 7], [11, 4]] }, { every: 27, L: [[5, 7], [2, 7]], R: [[9, 1], [12, 7]], trap: 0.35 }] },
+      tip: "가운데는 낭떠러지예요. 발을 헛디디거나 밀려나면 떨어지고, 건너편으로 던진 재료도 떨어져요. 순간이동문을 밟으면 같은 색 문으로 넘어가고, 문 쪽으로 던진 재료도 넘어가요. 보라 문은 20초, 청록 문은 27초마다 자리를 옮기고, 옮기기 직전에 새 자리가 잠깐 반짝여요. 청록 문이 낭떠러지 위로 이어질 때도 있어요. 떨어지면 5초 뒤에 처음 자리에서 다시 나와요. 접시가 3개뿐이라 오른쪽 반납구로 돌아온 접시를 왼쪽 개수대에서 씻어야 해요.",
       map: ["CrpoCCC#CCSSFFC", "C.....___.....C", "K.....___.....W", "K.....___.....W", "C.....___.....R", "P.....___.....T", "H.....___.....C", "C.....___.....C", "CCCCCCC#CCCCCCC"] },
     { id: 10, name: "변신 주방", time: 200, menu: ["gimbap", "tteokbokki", "twigim"], stars: [16000, 37000, 68000], plates: 0, gap: [8, 11], extra: 15, duo: false,
-      gate: { period: 20, warn: 3 },
+      gate: { period: 20, warn: 0.7 },
       ext: [6, 0], floor: ["#d3d6d8", "#c8cccf"], spawn: [[3.5, 2.5], [10.5, 6.5]],
       tip: "20초마다 주방이 바뀌어요. 처음엔 가로 칸막이가 위아래를, 다음엔 세로 칸막이가 좌우를 나눠요. 노랑·검정 줄이 깜빡이면 곧 바뀌니 비켜요. 칸막이 위로 넘겨줘요.",
       map: ["CtmoCCCCCSSCCCC", "K......X......W", "C......X......W", "C......X......C", "CYYYYYYCYYYYYYC", "C......X......T", "F......X......K", "F......X......C", "CPPCCCCCCbgdCCC"] },
     { id: 11, name: "기차 건널목", time: 200, menu: ["gimbap", "tteokbokki", "ramen", "twigim"], stars: [16000, 37000, 68000], plates: 0, gap: [8, 11], extra: 15, duo: false,
-      rail: { col: 7, first: 9, gap: [12, 17], bell: 1.4, lower: 0.6, wait: 1.1, speed: 13, hold: 0.5, raise: 0.6 },
+      rail: { col: 7, first: 9, gap: [12, 17], bell: 0.7, lower: 0.4, wait: 0.6, speed: 13, hold: 0.5, raise: 0.6 },
       ext: [12, 0], floor: ["#cfcbc4", "#c4c0b8"], spawn: [[2.5, 5.5], [11.5, 5.5]],
       tip: "가운데로 기차가 지나가요. 땡땡 소리와 함께 차단봉이 내려오면 철길에서 나와요. 차단봉 안쪽 철길에 갇힌 채 기차가 오면 치여서 쓰러지고, 5초 뒤 처음 자리에서 다시 나와요. 들고 있던 음식은 사라져요.",
       map: ["CtmprCC%CCSSCCC", "b.....:!:.....W", "g.....:!:.....W", "d..CC.:!:.CC..C", "o..CC.:!:.CC..F", "K.....:!:.....F", "K.....:!:.....T", "T.....:!:.....C", "CCCCCCC%CCCSCPC"] },
     { id: 12, name: "달리는 푸드트럭", time: 200, menu: ["corndog_k", "corndog_m", "fries"], stars: [16000, 37000, 68000], plates: 0, gap: [8, 11], extra: 12, duo: false,
       // 트럭 두 대가 나란히 달려요. 가운데 틈(col)은 붙어 있을 땐 발판으로 건너고, 벌어지면 떨어져요 (진행 방향 반대로 날아가요)
-      truck: { col: 7, first: 14, join: [12, 18], apart: [9, 13], warn: 2.5, speed: 10 },
+      truck: { col: 7, first: 14, join: [12, 18], apart: [9, 13], warn: 0.7, speed: 10 },
       ext: [12, 0], floor: ["#c9ced3", "#bfc5cb"], spawn: [[3.5, 6.5], [11.5, 6.5]],
       tip: "트럭 두 대가 나란히 달려요. 왼쪽 트럭엔 핫도그·감자·도마, 오른쪽 트럭엔 튀김기·소스·접시·내는 곳이 있어요. 트럭이 붙어 있을 땐 가운데 발판으로 건너고, 빵빵 소리가 나면 곧 벌어지니 발판에서 내려와요. 벌어진 틈으로 떨어지면 뒤로 날아가서 5초 뒤에 돌아와요. 벌어져 있을 땐 재료를 던져서 넘겨요. 핫도그는 튀긴 다음 접시에 담고 케첩이나 머스타드를 뿌려요.",
       map: ["ChaCCCC/CFFFCCC", "C....../......C", "K....../......W", "K....../......W", "C..CC../..CC..C", "C....../......P", "T....../......C", "C....../......T", "CCCCCCC/CCCkyCC"] }
