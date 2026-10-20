@@ -575,7 +575,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 31;
+  const VERSION = 32;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -686,7 +686,7 @@ body.modal { overflow: hidden; }
       map: ["CtmprCC%CCSSCCC", "b.....:!:.....W", "g.....:!:.....W", "d..CC.:!:.CC..C", "o..CC.:!:.CC..F", "K.....:!:.....F", "K.....:!:.....T", "T.....:!:.....C", "CCCCCCC%CCCSCPC"] },
     { id: 12, name: "달리는 푸드트럭", time: 200, menu: ["corndog_k", "corndog_m", "fries"], stars: [16000, 37000, 68000], plates: 0, gap: [8, 11], extra: 12, duo: false,
       // 트럭 두 대가 나란히 달려요. 가운데 틈(col)은 붙어 있을 땐 발판으로 건너고, 벌어지면 떨어져요 (진행 방향 반대로 날아가요)
-      truck: { col: 7, first: 14, join: [12, 18], apart: [9, 13], warn: 0.7, speed: 10 },
+      truck: { col: 7, first: [8, 16], join: [5, 19], apart: [4, 11], quick: [2.5, 4], quickP: 0.3, warn: 0.7, speed: 10 },
       ext: [12, 0], floor: ["#c9ced3", "#bfc5cb"], spawn: [[3.5, 6.5], [11.5, 6.5]],
       tip: "트럭 두 대가 나란히 달려요. 왼쪽 트럭엔 핫도그·감자·도마, 오른쪽 트럭엔 튀김기·소스·접시·내는 곳이 있어요. 트럭이 붙어 있을 땐 가운데 발판으로 건너고, 빵빵 소리가 나면 곧 벌어지니 발판에서 내려와요. 벌어진 틈으로 떨어지면 뒤로 날아가서 5초 뒤에 돌아와요. 벌어져 있을 땐 재료를 던져서 넘겨요. 핫도그는 튀긴 다음 접시에 담고 케첩이나 머스타드를 뿌려요.",
       map: ["ChaCCCC/CFFFCCC", "C....../......C", "K....../......W", "K....../......W", "C..CC../..CC..C", "C....../......P", "T....../......C", "C....../......T", "CCCCCCC/CCCkyCC"] }
@@ -2112,20 +2112,24 @@ body.modal { overflow: hidden; }
     if (key === truckKey) return truckSeg;
     truckKey = key; truckSeg = [];
     const r = rng(v.rs * 3571 + v.stage * 49157);
-    let t = 0, joined = true, len = tk.first;
-    while (t < st.time + 30) { truckSeg.push({ t0: t, t1: t + len, joined }); t += len; joined = !joined; const rg = joined ? tk.join : tk.apart; len = rg[0] + r() * (rg[1] - rg[0]); }
+    const pick = (rg) => rg[0] + r() * (rg[1] - rg[0]);
+    let t = 0, joined = true, len = pick(tk.first); // 언제 벌어질지 판마다·매번 달라요. 가끔은 잠깐만 벌어졌다 붙어요
+    while (t < st.time + 30) { truckSeg.push({ t0: t, t1: t + len, joined }); t += len; joined = !joined; len = pick(joined ? tk.join : r() < tk.quickP ? tk.quick : tk.apart); }
     return truckSeg;
   }
-  const TRUCK_MOVE = 0.7; // 발판이 나오고 들어가는 시간
-  // joined: 지금 건널 수 있나, open: 발판 그림 (0 붙음 ~ 1 벌어짐), warn: 곧 벌어져요
+  const TRUCK_MOVE = 0.7; // 트럭이 벌어지고 붙는 시간. 쇠 발판은 없고, 트럭이 벌어지기 시작하는 순간 가운데에 있으면 바로 떨어져요
+  // joined: 지금 건널 수 있나, open: 트럭 벌어진 정도 (0 붙음 ~ 1 벌어짐), warn: 곧 벌어져요
   function truckNow(v, now) {
     const tk = v && stageOf(v.stage).truck;
     if (!tk) return null;
     if (v.phase !== "play") return { joined: true, open: 0, warn: false };
     const e = clockOf(v, now), seg = truckSegs(v).find((q) => e < q.t1) || truckSegs(v)[0];
-    if (seg.joined) { const left = seg.t1 - e; return { joined: true, open: left < TRUCK_MOVE ? 1 - left / TRUCK_MOVE : 0, warn: left < tk.warn, left }; }
-    const left = seg.t1 - e; // 벌어져 있다가 다시 붙기 직전엔 발판이 미리 나와요 (아직 못 건너요)
-    return { joined: false, open: left < TRUCK_MOVE ? left / TRUCK_MOVE : 1, warn: false, left };
+    const left = seg.t1 - e;
+    if (seg.joined) {
+      if (left < TRUCK_MOVE) return { joined: false, open: 1 - left / TRUCK_MOVE, warn: false, left }; // 벌어지기 시작: 이미 못 건너요
+      return { joined: true, open: 0, warn: left < TRUCK_MOVE + tk.warn, left };
+    }
+    return { joined: false, open: left < TRUCK_MOVE ? left / TRUCK_MOVE : 1, warn: false, left }; // 다 붙어야 건너요
   }
   // 움직이는 순간이동문: 판 번호로 정한 순서라 모든 화면이 같은 때 같은 자리로 옮겨요
   let warpKey = "", warpChain = null;
@@ -2503,11 +2507,7 @@ body.modal { overflow: hidden; }
     const per = s * 2, off = ((now / 1000) * sp * s) % per;
     ctx.fillStyle = "#f4f4f0";
     for (let y = -per + off - ((t.y * s) % per); y < s; y += per) ctx.fillRect(px + s * 0.44, py + y, s * 0.12, s * 0.9);
-    const w = (s / 2) * (1 - tn.open);
-    if (w > 0.5) {
-      ctx.fillStyle = "#aab3b8"; ctx.fillRect(px, py, w, s); ctx.fillRect(px + s - w, py, w, s);
-      ctx.fillStyle = "#f2b31b"; ctx.fillRect(px + w - s * 0.06, py, s * 0.06, s); ctx.fillRect(px + s - w, py, s * 0.06, s);
-    }
+    if (tn.open === 0) { ctx.fillStyle = st.floor[(t.x + t.y) % 2]; ctx.fillRect(px, py, s, s); } // 붙어 있으면 트럭 바닥끼리 맞닿아요
     if (tn.warn && Math.floor(now / 200) % 2 === 0) hazard(ctx, px, py, s, s, 0.6);
     ctx.restore();
   }
@@ -4136,13 +4136,11 @@ body.modal { overflow: hidden; }
         for (let k = 0; k < 4; k++) part(sp, boxG(0.26, 0.05, 0.05), mat("#7d868c", "p"), 0, 0, 0, (k * Math.PI) / 4, 0, 0, 1, 1, 1);
         groups[x < col + 0.5 ? 0 : 1].add(wg); wheels.push(sp);
       }
-      // 가운데 발판: 양쪽 트럭에서 반씩 나와서 붙어요
+      // 가운데: 양쪽 트럭 바닥이 반 칸씩 더 있어서 붙으면 맞닿아요 (쇠 발판 없음). 트럭이 벌어지면 같이 벌어져요
+      const fl = stageOf(curStage).floor;
       const plates = [col, col + 1].map((x, n) => {
-        const g = new T.Group(); g.position.set(x, -0.005, ROWS / 2);
-        const pm = new T.Group(); pm.position.x = n ? -0.25 : 0.25; g.add(pm);
-        part(pm, boxG(0.5, 0.05, ROWS), mat("#aab3b8", "p"), 0, -0.02, 0);
-        part(pm, boxG(0.08, 0.052, ROWS), mat("#f2b31b"), n ? -0.21 : 0.21, -0.018, 0);
-        for (let z = -ROWS / 2 + 0.25; z < ROWS / 2; z += 0.5) part(pm, boxG(0.3, 0.053, 0.05), mat("#8d969c", "p"), 0, -0.018, z, 0, 0.6, 0);
+        const g = new T.Group(); g.position.set(x, 0, ROWS / 2);
+        for (let y = 0; y < ROWS; y++) part(g, boxG(0.5, 0.1, 1), mat(fl[(col + y + n) % 2]), n ? -0.25 : 0.25, -0.05, y + 0.5 - ROWS / 2);
         groups[n].add(g); return g;
       });
       truck3 = { wheels, plates, groups, col, speed: tk.speed };
@@ -4782,8 +4780,7 @@ body.modal { overflow: hidden; }
       if (truck3) {
         const v = truck3.speed * (view.phase === "play" || view.phase === "count" ? 1 : 0.3);
         truck3.wheels.forEach((w) => (w.rotation.x -= (dt * v) / 0.32));
-        const tn = truckNow(view, now) || { open: 0 };
-        truck3.plates.forEach((g) => { g.scale.x = Math.max(0.001, 1 - tn.open); g.visible = tn.open < 0.999; });
+
         // 덜컹덜컹: 카메라가 아주 살짝 흔들려요
         cam.position.copy(camBase); cam.position.y += Math.sin(now / 47) * 0.012 + Math.sin(now / 131) * 0.01; cam.position.x += Math.sin(now / 89) * 0.008;
         cam.updateMatrixWorld(true);
@@ -6640,7 +6637,7 @@ body.modal { overflow: hidden; }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  if (IS_LOCAL) window.__bunsik = { get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get mode() { return use3D() ? "3d" : "2d"; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, setView: (on) => setView(on, false), info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom() };
+  if (IS_LOCAL) window.__bunsik = { get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get mode() { return use3D() ? "3d" : "2d"; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, setView: (on) => setView(on, false), info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom(), truckSegs: () => truckSegs(view), truckNow: () => truckNow(view) };
   if (document.fonts && document.fonts.load) document.fonts.load('20px "Jua"', "가나다 내는 곳 버리기 방장 친구 반납 개수대");
 })();
 </script>
