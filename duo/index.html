@@ -658,7 +658,7 @@ body.modal { overflow: hidden; }
     tteokbokki: { name: "떡볶이", where: "pot", need: ["tteok", "eomuk"], cook: 7, pts: 4000, limit: 60, how: "떡 + 썬 어묵 → 냄비" },
     ramen:      { name: "라면", where: "pot", need: ["ramyeon", "pa"], cook: 6, pts: 3500, limit: 55, how: "라면 사리 + 썬 파 → 냄비" },
     twigim:     { name: "오징어튀김", where: "basket", need: ["ojingeo"], cook: 5, pts: 3000, limit: 50, how: "썬 오징어 → 튀김 바구니" },
-    // 핫도그: 튀김 바구니에 튀겨서 접시에 담고(corndog), 케첩이나 머스타드를 뿌리면 완성. 소스 안 뿌린 핫도그는 주문에 없어요
+    // 핫도그: 튀김 바구니에 튀겨서 접시에 담고(corndog), 그 접시를 케첩·머스타드 통으로 들고 가서 뿌리면 완성 (소스는 못 들어요). 소스 안 뿌린 핫도그는 주문에 없어요
     corndog:    { name: "튀긴 핫도그", where: "basket", need: ["hotdog"], cook: 5, pts: 0, limit: 0, how: "핫도그 → 튀김 바구니", mid: true },
     corndog_k:  { name: "케첩 핫도그", where: "basket", need: ["hotdog"], top: "ketchup", base: "corndog", pts: 3500, limit: 55, how: "핫도그 → 튀김 바구니 → 접시 → 케첩" },
     corndog_m:  { name: "머스타드 핫도그", where: "basket", need: ["hotdog"], top: "mustard", base: "corndog", pts: 3500, limit: 55, how: "핫도그 → 튀김 바구니 → 접시 → 머스타드" },
@@ -733,7 +733,7 @@ body.modal { overflow: hidden; }
       // 트럭은 12칸 (오른쪽 세 칸 " "은 트럭 밖 빈 도로예요)
       truck: { row: 4, first: [8, 16], join: [5, 19], apart: [6, 13], warn: 1.0, speed: 10 },
       ext: [4, 0], floor: ["#c48e5a", "#b98450"], spawn: [[3.5, 6.5], [8.5, 2.5]],
-      tip: "트럭 두 대가 위아래 차선에서 나란히 달려요. 아래 트럭엔 핫도그·감자·도마, 위 트럭엔 튀김기·소스·접시·내는 곳이 있어요. 트럭이 붙어 있을 땐 가운데 틈을 걸어서 건너고, 빵빵 소리가 나고 깜빡이가 켜지면 곧 벌어지니 틈에서 나와요. 벌어진 틈으로 떨어지면 뒤로 날아가서 5초 뒤에 돌아와요. 벌어져 있을 땐 재료를 던져서 넘겨요. 핫도그는 튀긴 다음 접시에 담고 케첩이나 머스타드를 뿌려요.",
+      tip: "트럭 두 대가 위아래 차선에서 나란히 달려요. 아래 트럭엔 핫도그·감자·도마, 위 트럭엔 튀김기·소스·접시·내는 곳이 있어요. 트럭이 붙어 있을 땐 가운데 틈을 걸어서 건너고, 빵빵 소리가 나고 깜빡이가 켜지면 곧 벌어지니 틈에서 나와요. 벌어진 틈으로 떨어지면 뒤로 날아가서 5초 뒤에 돌아와요. 벌어져 있을 땐 재료를 던져서 넘겨요. 핫도그는 튀긴 다음 접시에 담고, 그 접시를 케첩이나 머스타드 통으로 들고 가서 뿌려요 (소스는 못 들어요).",
       map: ["CFFFCWWCPkyC   ", "C..........C   ", "T..........C   ", "C..........C   ", "////////////   ", "C..........C   ", "C..........C   ", "C..........T   ", "ChaCCCCCKKCC   "] }
   ];
   // 맵 에디터(editor.html)의 "게임에서 시험하기": ?test 화면에서만 그 단계를 이 기기에 저장된 맵으로 바꿔 끼워요
@@ -1524,7 +1524,7 @@ body.modal { overflow: hidden; }
     if (v.fire && v.fire[i]) return !h && !!s && s.k === "ext";
     switch (t.type) {
       case "floor": return !!s;
-      case "crate": return !h || (h.k === t.ing && !h.cut) || h.k === "plate" || isCont(h);
+      case "crate": return ING[t.ing] && ING[t.ing].sauce ? !!h && (h.k === "plate" || isCont(h)) : !h || (h.k === t.ing && !h.cut) || h.k === "plate" || isCont(h); // 케첩·머스타드 통은 접시를 들고 와야 써요
       case "counter": case "board": case "belt": case "stove": case "fryer": return h ? true : !!s;
       case "plates": { const n = v.racks ? v.racks[t.i] : -1; return h ? plateEmpty(h) : n === -1 || n > 0; }
       case "return": return h ? h.k === "dirty" : (v.rets ? v.rets[t.i] || 0 : 0) > 0;
@@ -1819,7 +1819,11 @@ body.modal { overflow: hidden; }
       }
       case "crate": {
         const k = t.ing;
-        if (!h) { p.hold = { k }; return; }
+        if (!h) { // 케첩·머스타드는 들고 다닐 수 없어요: 그 자리에서 접시에 뿌려요
+          if (ING[k] && ING[k].sauce) say(eunneun(ING[k].name) + " 못 들어요. 핫도그 접시를 들고 와서 뿌려요");
+          else p.hold = { k };
+          return;
+        }
         if (h.k === k && !h.cut) { p.hold = null; return; }
         if (h.k === "plate") { const r = plateCheck(h, { k }); if (r === true) plateAdd(h, k); else say(r); return; }
         if (isCont(h)) { say(contAdd(h, { k })); return; }
