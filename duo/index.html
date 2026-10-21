@@ -575,7 +575,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 32;
+  const VERSION = 33;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -686,7 +686,7 @@ body.modal { overflow: hidden; }
       map: ["CtmprCC%CCSSCCC", "b.....:!:.....W", "g.....:!:.....W", "d..CC.:!:.CC..C", "o..CC.:!:.CC..F", "K.....:!:.....F", "K.....:!:.....T", "T.....:!:.....C", "CCCCCCC%CCCSCPC"] },
     { id: 12, name: "달리는 푸드트럭", time: 200, menu: ["corndog_k", "corndog_m", "fries"], stars: [16000, 37000, 68000], plates: 0, gap: [8, 11], extra: 12, duo: false,
       // 트럭 두 대가 나란히 달려요. 가운데 틈(col)은 붙어 있을 땐 발판으로 건너고, 벌어지면 떨어져요 (진행 방향 반대로 날아가요)
-      truck: { col: 7, first: [8, 16], join: [5, 19], apart: [4, 11], quick: [2.5, 4], quickP: 0.3, warn: 0.7, speed: 10 },
+      truck: { col: 7, first: [8, 16], join: [5, 19], apart: [6, 13], quick: [2.5, 4], quickP: 0.15, warn: 0.7, speed: 10 },
       ext: [12, 0], floor: ["#c9ced3", "#bfc5cb"], spawn: [[3.5, 6.5], [11.5, 6.5]],
       tip: "트럭 두 대가 나란히 달려요. 왼쪽 트럭엔 핫도그·감자·도마, 오른쪽 트럭엔 튀김기·소스·접시·내는 곳이 있어요. 트럭이 붙어 있을 땐 가운데 발판으로 건너고, 빵빵 소리가 나면 곧 벌어지니 발판에서 내려와요. 벌어진 틈으로 떨어지면 뒤로 날아가서 5초 뒤에 돌아와요. 벌어져 있을 땐 재료를 던져서 넘겨요. 핫도그는 튀긴 다음 접시에 담고 케첩이나 머스타드를 뿌려요.",
       map: ["ChaCCCC/CFFFCCC", "C....../......C", "K....../......W", "K....../......W", "C..CC../..CC..C", "C....../......P", "T....../......C", "C....../......T", "CCCCCCC/CCCkyCC"] }
