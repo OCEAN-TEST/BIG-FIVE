@@ -619,7 +619,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 43;
+  const VERSION = 44;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -3863,7 +3863,7 @@ body.modal { overflow: hidden; }
           return [W / 2 + Math.atan2(ux, z2) * k, H / 2 - Math.asin(cl(y2)) * ky];
         } : (x, y) => { const la = Math.asin(cl((y * a) / b)); return [W / 2 + Math.asin(cl(x / Math.max(0.05, Math.cos(la)))) * k, H / 2 + la * ky]; };
         draw(cv.getContext("2d"), P, k);
-        return std({ map: canvasTex(cv), transparent: true, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+        return std({ map: canvasTex(cv), transparent: true, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: -4 }); // 머리보다 1.004배 밖이라 깊이 차이는 이걸로 충분해요. 비스듬한 면에서 크게 당겨 오는 Factor를 쓰면 앞에 든 물건을 뚫고 보여요
       });
       const mesh = new T.Mesh(g, m);
       mesh.scale.set(a * 1.004, b * 1.004, cz * 1.004);
@@ -3962,7 +3962,9 @@ body.modal { overflow: hidden; }
       const footR = part(root, sphG(12), mat(C.dark), -0.11, 0.045, 0.03, 0, 0, 0, 0.075, 0.05, 0.1);
       const hold = sub(bodyG, 0, 0.6, 0.5);
       root.scale.setScalar(1.3);
-      return { k, slot, root, bodyG, headG, handL, handR, footL, footR, tail, ears, knife, hold, ring, held: null, heldSig: "", disp: [torso.geometry, head.geometry] };
+      // 머리 큰 캐릭터(치이카와·토끼·해달)는 든 물건을 얼굴 앞으로 더 내밀어요. 다른 캐릭터 자리면 냄비 뒤쪽이 머리 안에 들어가서 냄비 속에 얼굴이 보여요
+      const holdZ = big ? 0.17 : 0;
+      return { k, slot, root, bodyG, headG, handL, handR, footL, footR, tail, ears, knife, hold, holdZ, ring, held: null, heldSig: "", disp: [torso.geometry, head.geometry] };
     }
     function poseChar(c, o, now) {
       const tt = now / 1000;
@@ -3985,7 +3987,7 @@ body.modal { overflow: hidden; }
         c.handR.position.set(-0.27, 0.57 - 0.14 * Math.sin(a), 0.2 + 0.17 * Math.cos(a));
         c.handL.position.set(0.26, 0.33, -sw * 0.08);
       } else if (o.hold) {
-        const r = o.reach * 0.08;
+        const r = o.reach * 0.08 + (c.holdZ || 0);
         c.handL.position.set(0.24, 0.52, 0.36 + r); c.handR.position.set(-0.24, 0.52, 0.36 + r);
         c.hold.position.set(0, 0.47, 0.5 + r);
       } else if (o.wash) {
