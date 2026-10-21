@@ -575,7 +575,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 38;
+  const VERSION = 39;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -1144,7 +1144,7 @@ body.modal { overflow: hidden; }
   const APRON = ["#d7372b", "#2f8f5b", "#2f6fd1", "#8e4fc9"];
   const APRON_NAME = ["빨간 앞치마", "초록 앞치마", "파란 앞치마", "보라 앞치마"];
 
-  function drawEars(c, ch, S, back) {
+  function drawEars(c, ch, S, back, sw) { // sw: 걸을 때 귀가 앞(+1)·뒤(-1)로 흔들리는 정도 (토끼만 써요)
     const C = CHARS[ch];
     if (ch === "cat") {
       [-1, 1].forEach((sd) => {
@@ -1154,12 +1154,13 @@ body.modal { overflow: hidden; }
       });
     } else if (ch === "mochi") { // 머리 위 양쪽 어깨에 동그란 귀 (머리 뒤에 그려서 위쪽만 보여요)
       [-1, 1].forEach((sd) => { dot(c, sd * 0.18 * S, -0.3 * S, 0.05 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); });
-    } else if (ch === "rabbit") { // 머리 위 가운데 가까이 길쭉한 귀 둘, 바깥쪽 절반이 분홍 (머리 뒤에 그려서 밑동은 가려져요)
+    } else if (ch === "rabbit") { // 머리 위 가운데 가까이 길쭉한 귀 둘. 사진처럼 가운데가 바깥으로 불룩한 ( ) 모양, 바깥쪽이 분홍 (머리 뒤에 그려서 밑동은 가려져요)
+      const bend = (pts, w, col) => { c.beginPath(); c.moveTo(pts[0][0] * S, pts[0][1] * S); c.quadraticCurveTo(pts[1][0] * S, pts[1][1] * S, pts[2][0] * S, pts[2][1] * S); c.lineWidth = w; c.strokeStyle = col; c.lineCap = "round"; c.stroke(); };
       [-1, 1].forEach((sd) => {
-        c.save(); c.translate(sd * 0.062 * S, -0.31 * S); c.rotate(sd * 0.07);
-        c.beginPath(); c.ellipse(0, -0.155 * S, 0.042 * S, 0.165 * S, 0, 0, Math.PI * 2); c.fillStyle = C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
-        if (!back) { c.beginPath(); c.ellipse(sd * 0.016 * S, -0.165 * S, 0.02 * S, 0.135 * S, 0, 0, Math.PI * 2); c.fillStyle = C.ear; c.fill(); }
-        c.restore();
+        const k = (sw || 0) * (sd > 0 ? 1 : 0.8), dy = 0.1 * k; // 앞으로 오면 귀 끝이 내려오고(짧아 보여요), 뒤로 가면 올라가요
+        const ear = [[sd * 0.058, -0.29], [sd * 0.125, -0.47 + dy * 0.5], [sd * 0.08, -0.61 + dy]];
+        bend(ear, 0.084 * S + 2, C.dark); bend(ear, 0.084 * S, C.fur);
+        if (!back) bend([[sd * 0.072, -0.34], [sd * 0.14, -0.47 + dy * 0.5], [sd * 0.095, -0.575 + dy * 0.9]], 0.036 * S, C.ear);
       });
     } else if (ch === "bear") {
       [-1, 1].forEach((sd) => { dot(c, sd * 0.16 * S, -0.35 * S, 0.08 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); if (!back) dot(c, sd * 0.16 * S, -0.35 * S, 0.042 * S, C.ear); });
@@ -1341,7 +1342,7 @@ body.modal { overflow: hidden; }
       dot(c, -0.045 * S, 0.17 * S, 0.04 * S, APRON[o.slot]); dot(c, 0.045 * S, 0.17 * S, 0.04 * S, APRON[o.slot]);
       drawTail(c, o.ch, S, t, o.moving);
     }
-    drawEars(c, o.ch, S, back);
+    drawEars(c, o.ch, S, back, dash ? -1 : o.moving ? Math.sin(o.phase * Math.PI) : Math.sin(t * 2.2) * 0.15);
     if (big) { if (o.ch === "rabbit") bunPath(c, big[0] * S, big[1] * S, big[2] * S); else { c.beginPath(); c.ellipse(0, big[2] * S, big[0] * S, big[1] * S, 0, 0, Math.PI * 2); } c.fillStyle = C.fur; c.fill(); } // 옆으로 넓적한 큰 머리가 몸 위를 덮어요
     else dot(c, 0, -0.17 * S, 0.21 * S, C.fur);
     c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
@@ -3743,6 +3744,24 @@ body.modal { overflow: hidden; }
       return g;
     }
     const bunG = () => gc("bunG", () => toBun(new T.SphereGeometry(1, 40, 28)));
+    // 토끼 귀: 길쭉한 공을 활처럼 안쪽으로 휘어요 (밑동은 바깥으로 벌려 달아서 ( ) 모양). side 1 오른쪽, -1 왼쪽. pink면 앞쪽 바깥 분홍
+    function earG(side, pink) {
+      return gc("earG" + side + (pink ? "p" : ""), () => {
+        const L = pink ? 0.31 : 0.38, w = pink ? 0.022 : 0.048, d = pink ? 0.012 : 0.036, y0 = pink ? 0.035 : 0, ox = pink ? side * 0.017 : 0, oz = pink ? 0.026 : 0;
+        const R = (-side * 0.38) / 0.44; // 휘는 반지름 (부호가 휘는 쪽: 안쪽), 귀 길이만큼 0.44 라디안
+        const g = new T.SphereGeometry(1, 14, 20), pa = g.attributes.position, na = g.attributes.normal;
+        for (let i = 0; i < pa.count; i++) {
+          const ux = pa.getX(i), uy = pa.getY(i), uz = pa.getZ(i);
+          const x = ux * w + ox, y = y0 + ((uy + 1) * L) / 2, z = uz * d + oz;
+          let nx = ux / w, ny = uy / (L / 2), nz = uz / d;
+          const nl = Math.hypot(nx, ny, nz); nx /= nl; ny /= nl; nz /= nl;
+          const th = y / R, cs = Math.cos(th), sn = Math.sin(th);
+          pa.setXYZ(i, R - (R - x) * cs, (R - x) * sn, z);
+          na.setXYZ(i, nx * cs + ny * sn, -nx * sn + ny * cs, nz);
+        }
+        return g;
+      });
+    }
     // 얼굴: 2D와 같은 그림을 머리 앞쪽을 덮는 구 조각에 붙여요. 가로는 경도, 세로는 위도로 펴서 그리는데,
     // 정면에서 봤을 때 2D와 같은 자리에 오게 위쪽·아래쪽일수록 경도를 넓혀요 (안 그러면 눈썹 끝이 안쪽으로 오그라들어요)
     function faceMesh(key) {
@@ -3808,10 +3827,6 @@ body.modal { overflow: hidden; }
         H.add(coneG(0.052, 0.1, 12), mtx(sd * 0.135, 0.19, 0.026, -0.12, 0, -sd * 0.38), C.ear);
       }
       if (k === "mochi") for (const sd of [-1, 1]) H.add(sphG(14), mtx(sd * 0.2, 0.215, -0.03, 0, 0, 0, 0.066, 0.063, 0.055), C.fur);
-      if (k === "rabbit") for (const sd of [-1, 1]) { // 머리 위 가운데 가까이 길쭉한 귀, 앞쪽 바깥 절반이 분홍
-        H.add(sphG(16), mtx(sd * 0.07, 0.4, -0.02, 0, 0, -sd * 0.07, 0.048, 0.19, 0.036), C.fur);
-        H.add(sphG(12), mtx(sd * 0.082, 0.405, 0.012, 0, 0, -sd * 0.07, 0.024, 0.155, 0.012), C.ear);
-      }
       if (k === "bear") for (const sd of [-1, 1]) {
         H.add(sphG(12), mtx(sd * 0.17, 0.18, -0.03, 0, 0, 0, 0.085, 0.085, 0.06), C.fur);
         H.add(sphG(10), mtx(sd * 0.17, 0.18, 0.02, 0, 0, 0, 0.05, 0.05, 0.02), C.ear);
@@ -3836,6 +3851,12 @@ body.modal { overflow: hidden; }
       }
       const head = H.mesh(VSKIN);
       headG.add(head);
+      // 토끼 귀: 밑동에서 따로 움직여요. 바깥으로 벌어졌다가 안쪽으로 휘는 ( ) 모양, 앞쪽 바깥이 분홍. 걸으면 앞뒤로 흔들려요 (poseChar)
+      const ears = k === "rabbit" ? [-1, 1].map((sd) => {
+        const e = sub(headG, sd * 0.07, 0.235, -0.02); e.rotation.z = -sd * 0.22;
+        part(e, earG(sd, false), mat(C.fur)); part(e, earG(sd, true), mat(C.ear));
+        return e;
+      }) : null;
       // 꼬리
       let tail = null;
       if (k === "cat") {
@@ -3856,7 +3877,7 @@ body.modal { overflow: hidden; }
       const footR = part(root, sphG(12), mat(C.dark), -0.11, 0.045, 0.03, 0, 0, 0, 0.075, 0.05, 0.1);
       const hold = sub(bodyG, 0, 0.6, 0.5);
       root.scale.setScalar(1.3);
-      return { k, slot, root, bodyG, headG, handL, handR, footL, footR, tail, knife, hold, ring, held: null, heldSig: "", disp: [torso.geometry, head.geometry] };
+      return { k, slot, root, bodyG, headG, handL, handR, footL, footR, tail, ears, knife, hold, ring, held: null, heldSig: "", disp: [torso.geometry, head.geometry] };
     }
     function poseChar(c, o, now) {
       const tt = now / 1000;
@@ -3897,6 +3918,8 @@ body.modal { overflow: hidden; }
         c.handL.position.set(0.26, 0.33 + r * 0.9, -sw * 0.08 + r);
         c.handR.position.set(-0.26, 0.33 + r * 0.9, sw * 0.08 + r);
       }
+      // 토끼 귀: 걸으면 발걸음에 맞춰 앞뒤로 흔들리고, 대시하면 뒤로 젖혀져요. 서 있으면 살랑살랑
+      if (c.ears) c.ears.forEach((e, j) => { e.rotation.x = dash ? -0.6 * dash : o.moving ? -0.1 + Math.sin(o.phase * Math.PI + j * 0.7) * 0.32 : Math.sin(tt * 2.2 + j) * 0.05; });
       if (c.tail) {
         if (c.k === "cat") c.tail.rotation.z = Math.sin(tt * 3) * 0.25;
         else c.tail.rotation.z = Math.sin(tt * (o.moving ? 22 : 12)) * 0.5;
