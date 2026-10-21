@@ -619,7 +619,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 46;
+  const VERSION = 47;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -4427,7 +4427,7 @@ body.modal { overflow: hidden; }
     }
     // ---- 가로 틈 도로 (사막을 달려요): 차선이 가로로 길게, 모두 오른쪽(+x)으로 흘러가요 ----
     const TR_Z0 = -5.8, TR_Z1 = 12.8, ROAD_YR = -1.2; // 도로 폭 (z)·높이 (바퀴가 커서 세로 틈 도로보다 낮아요)
-    const TRUCK_FA = 0.8; // 벌어지면 한 트럭은 이만큼 앞으로, 다른 트럭은 뒤로 (벌어질 때마다 번갈아 반대로)
+    const TRUCK_FA = 1.3; // 벌어지면 한 트럭은 이만큼 앞으로, 다른 트럭은 뒤로 (벌어질 때마다 번갈아 반대로)
     function roadRowCanvas(row) { // 4칸마다 점선 하나 (가로로 반복). 위 끝엔 노란 실선, 트럭 사이 틈 아래에도 점선
       const key = "roadRow" + row;
       if (decalCache[key]) return decalCache[key];
@@ -5350,7 +5350,7 @@ body.modal { overflow: hidden; }
         TCOL = truck3.col; TROW = !!truck3.row;
         if (TROW) { // 가로 틈: 붙어 있어도 둘이 같이 앞뒤로 살살 (달리는 느낌). 벌어지면 비스듬히: 위 트럭은 위·뒤로, 아래 트럭은 아래·앞으로
           const surge = (k) => Math.sin(ts * 0.55) * 0.22 + Math.sin(ts * 0.23 + 1.3) * 0.1 + Math.sin(ts * 1.3 + k * 2.4) * 0.035;
-          const up = rotView ? 0.45 : 0.35, down = rotView ? 0.45 : 0.85; // 세로 폰은 옆으로 덜 벌어져요 (화면 밖으로 안 나가게)
+          const up = rotView ? 0.5 : 0.55, down = rotView ? 0.5 : 1.15; // 옆으로 벌어지는 거리 (세로 폰은 화면 밖으로 안 나가게 덜)
           const fa = tn ? tn.fa * tn.dir * TRUCK_FA : 0; // 앞뒤 엇갈림: 위 트럭이 뒤로면 아래 트럭은 앞으로 (다음엔 반대로)
           TOFF = [{ dx: surge(0) + fa, dz: -up * op + sway }, { dx: surge(1) - fa, dz: down * op + sway }];
         } else TOFF = [{ dx: -0.5 * op + sway, dz: op * 0.38 * Math.sin(ts * 0.55) }, { dx: 0.5 * op + sway, dz: op * 0.38 * Math.sin(ts * 0.43 + 2.1) }];
