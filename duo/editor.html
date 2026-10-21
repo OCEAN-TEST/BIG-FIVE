@@ -406,11 +406,17 @@ button.yel { background: var(--sign); }
         c.fillStyle = gr; c.fillRect(px, py, s, s);
         break;
       }
-      case "/":
+      case "/": { // 옆도 틈이면 가로 줄 틈 (트럭이 위아래로 나란히): 점선·노란 끝을 가로로
+        const row = at(x - 1, y) === "/" || at(x + 1, y) === "/";
         c.fillStyle = "#3c3f45"; c.fillRect(px, py, s, s);
-        c.fillStyle = "#f4f4f0"; c.fillRect(px + s * 0.44, py + s * 0.1, s * 0.12, s * 0.35); c.fillRect(px + s * 0.44, py + s * 0.6, s * 0.12, s * 0.35);
-        c.fillStyle = "#f2c21b"; c.fillRect(px, py, s * 0.07, s); c.fillRect(px + s * 0.93, py, s * 0.07, s);
+        c.fillStyle = "#f4f4f0";
+        if (row) { c.fillRect(px + s * 0.1, py + s * 0.44, s * 0.35, s * 0.12); c.fillRect(px + s * 0.6, py + s * 0.44, s * 0.35, s * 0.12); }
+        else { c.fillRect(px + s * 0.44, py + s * 0.1, s * 0.12, s * 0.35); c.fillRect(px + s * 0.44, py + s * 0.6, s * 0.12, s * 0.35); }
+        c.fillStyle = "#f2c21b";
+        if (row) { c.fillRect(px, py, s, s * 0.07); c.fillRect(px, py + s * 0.93, s, s * 0.07); }
+        else { c.fillRect(px, py, s * 0.07, s); c.fillRect(px + s * 0.93, py, s * 0.07, s); }
         break;
+      }
       case "#":
         c.fillStyle = "#6d4a30"; c.fillRect(px, py, s, s);
         c.fillStyle = "#82593a"; c.fillRect(px + 2, py + 2, s - 4, s * 0.3);
