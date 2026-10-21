@@ -575,7 +575,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 36;
+  const VERSION = 37;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -776,6 +776,44 @@ body.modal { overflow: hidden; }
     return spawnCache[st.id][i] || spawnCache[st.id][0];
   }
   const stageOf = (id) => STAGES.find((s) => s.id === id) || STAGES[0];
+  // 판마다 시작 자리 뽑기 (방장이 판 시작할 때 뽑아서 모두에게 보내요. 첫 판도 똑같이 뽑아요)
+  // 단계에 적힌 1·2번 자리는 "어느 쪽"만 정해요: 그 자리에서 맨바닥(.)만 밟고 갈 수 있는 칸 중 그 자리에 더 가까운 칸이 그쪽이에요.
+  // 사람 순서를 섞어서 양쪽에 번갈아 보내고 (그래서 둘 이상이면 양쪽에 한 명씩은 꼭 가요), 그쪽 바닥에서 아무 칸이나 골라요.
+  // 두 사람이 바로 붙어서 나오진 않게 하고, 순간이동문이 생기는 칸은 빼요. 쓰러지면 이번 판 시작 자리에서 다시 나와요
+  function rollSpots(st, players) {
+    const m = st.map, flo = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS && m[y][x] === ".";
+    const warp = new Set();
+    if (st.warp) [st.warp.pit, ...st.warp.pairs.flatMap((pr) => [...pr.L, ...pr.R])].forEach(([x, y]) => warp.add(x + "," + y));
+    const dist = st.spawn.slice(0, 2).map(([sx, sy]) => {
+      const x0 = Math.floor(sx), y0 = Math.floor(sy), d = new Map([[x0 + "," + y0, 0]]), q = [[x0, y0]];
+      for (let h = 0; h < q.length; h++) {
+        const [x, y] = q[h], k0 = d.get(x + "," + y);
+        for (const [dx, dy] of NB4C) { const nx = x + dx, ny = y + dy, k = nx + "," + ny; if (!d.has(k) && flo(nx, ny)) { d.set(k, k0 + 1); q.push([nx, ny]); } }
+      }
+      return d;
+    });
+    const side = [[], []];
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      const k = x + "," + y;
+      if (!flo(x, y) || warp.has(k)) continue;
+      const a = dist[0].get(k), b = dist[1] ? dist[1].get(k) : undefined;
+      if (a != null && (b == null || a < b)) side[0].push([x, y]);
+      else if (b != null && (a == null || b < a)) side[1].push([x, y]); // 양쪽에서 똑같이 먼 칸은 빼요
+    }
+    const on = [0, 1, 2, 3].filter((i) => players[i] && players[i].on);
+    for (let j = on.length - 1; j > 0; j--) { const r = Math.floor(Math.random() * (j + 1)); [on[j], on[r]] = [on[r], on[j]]; }
+    const order = on.concat([0, 1, 2, 3].filter((i) => !on.includes(i))); // 빈자리도 뽑아 둬요 (판 중간에 들어오면 거기서)
+    const first = Math.random() < 0.5 ? 0 : 1, taken = [], out = [];
+    order.forEach((i, j) => {
+      const sd = (first + j) % 2, near = ([x, y]) => taken.some(([tx, ty]) => Math.abs(tx - x) <= 1 && Math.abs(ty - y) <= 1);
+      let pool = side[sd].filter((c) => !near(c));
+      if (!pool.length) pool = side[sd].filter(([x, y]) => !taken.some(([tx, ty]) => tx === x && ty === y));
+      const c = pool.length ? pool[Math.floor(Math.random() * pool.length)] : spawnPos(st, j).map(Math.floor); // 고를 칸이 없으면 적힌 자리
+      taken.push(c); out[i] = [c[0] + 0.5, c[1] + 0.5];
+    });
+    return out;
+  }
+  const spotOf = (v, st, i) => (v && v.spots && v.spots[i]) || spawnPos(st, i); // 이번 판 시작 자리 (뽑은 게 없으면 적힌 자리)
 
   const CRATE_CH = { t: "tteok", m: "eomuk", p: "pa", r: "ramyeon", b: "bap", g: "gim", d: "danmuji", o: "ojingeo", h: "hotdog", a: "potato", k: "ketchup", y: "mustard" };
   const TYPE_CH = { ".": "floor", C: "counter", "|": "counter", "#": "wall", K: "board", S: "stove", F: "fryer", W: "serve", T: "trash", P: "plates", H: "sink", R: "return", ">": "belt", "<": "belt", A: "belt", V: "belt", Z: "hole", "%": "railend" };
@@ -1338,8 +1376,8 @@ body.modal { overflow: hidden; }
   const freshPlate = () => ({ k: "plate", items: [], dish: null });
   const plateEmpty = (p) => !!(p && p.k === "plate" && !p.dish && !p.items.length);
 
-  function spawn(i, st) {
-    const sp = spawnPos(st || STAGES[0], i);
+  function spawn(i, st, spots) {
+    const sp = (spots && spots[i]) || spawnPos(st || STAGES[0], i);
     return { x: sp[0], y: sp[1], fx: 0, fy: 1, ax: 0, ay: 1, hold: null, chop: false, on: i === 0, ch: CHAR_KEYS[i] || "cat", an: 0, ds: 0 };
   }
   const onCount = (v) => (v && v.players ? v.players.filter((p) => p && p.on).length : 1);
@@ -1443,9 +1481,11 @@ body.modal { overflow: hidden; }
     W.orders = []; W.score = 0; W.combo = 1; W.served = 0; W.missed = 0; W.left = st.time; W.last = null;
     applyGates(W); applyBars(W); applyWarp(W); W.wsig = warpSig;
     const keep = W.players.map((p) => ({ on: p.on, ch: p.ch, nm: p.nm, an: p.an, ds: p.ds }));
-    W.players = W.players.map((p, i) => spawn(i, st));
+    W.seed = Math.floor(Math.random() * 1e9); // 판마다 새로 뽑는 수 (트럭 박자가 매판 달라요)
+    W.spots = rollSpots(st, W.players); // 판마다 새로 뽑는 시작 자리
+    W.players = W.players.map((p, i) => spawn(i, st, W.spots));
     W.players.forEach((p, i) => Object.assign(p, keep[i]));
-    W.rs++; W.phase = "count"; W.cd = 4; W.paused = false; W.seed = Math.floor(Math.random() * 1e9); // 판마다 새로 뽑는 수 (트럭 박자가 매판 달라요)
+    W.rs++; W.phase = "count"; W.cd = 4; W.paused = false;
     me = W.players[0];
     Object.assign(me, { dashT: 0, dashCD: 0, vx: 0, vy: 0, stun: 0, pLock: null, dead: 0, kbT: 0 });
     anim.forEach((a) => { a.lx = null; a.dashT = 0; });
@@ -2238,7 +2278,7 @@ body.modal { overflow: hidden; }
     W.slots.forEach((it, i) => { if (it) sl.push([i, it]); });
     return {
       t: "s", ph: W.phase, st: W.stage, rs: W.rs, left: W.left, cd: W.cd, sc: W.score, cb: W.combo, sv: W.served, ms: W.missed,
-      sl, racks: W.racks, rets: W.rets, sinks: W.sinks, od: W.orders, prog: W.prog, last: W.last, np: W.np || 1, pz: W.paused ? 1 : 0, sd: W.seed || 0,
+      sl, racks: W.racks, rets: W.rets, sinks: W.sinks, od: W.orders, prog: W.prog, last: W.last, np: W.np || 1, pz: W.paused ? 1 : 0, sd: W.seed || 0, ss: W.spots || null,
       fi: Object.keys(W.fire).map((i) => [+i, Math.round(W.fire[i].hp * 100) / 100]),
       fly: W.fly.map((f) => ({ it: f.it, x: f.x, y: f.y, dx: f.dx, dy: f.dy, d: f.d })),
       pl: W.players.map((p) => ({ x: p.x, y: p.y, fx: p.fx, fy: p.fy, hold: p.hold, chop: p.chop, on: p.on, ch: p.ch, nm: p.nm || undefined, an: p.an, ds: p.ds, sn: p.sn || p.stun > 0 ? 1 : 0, dd: p.dd || p.dead > 0 ? 1 : 0, pz: p.pz ? 1 : undefined })),
@@ -2250,7 +2290,7 @@ body.modal { overflow: hidden; }
     const slots = new Array(COLS * ROWS).fill(null);
     s.sl.forEach(([i, it]) => (slots[i] = it));
     specN = s.sp || 0;
-    return { phase: s.ph, stage: s.st, rs: s.rs, left: s.left, cd: s.cd, score: s.sc, combo: s.cb, served: s.sv, missed: s.ms, slots, racks: s.racks, rets: s.rets, sinks: s.sinks, orders: s.od, prog: s.prog, last: s.last, np: s.np || 1, pz: s.pz || 0, seed: s.sd || 0, rats: s.rt || [], fire: Object.fromEntries((s.fi || []).map(([i, hp]) => [i, { hp }])), fly: s.fly, players: s.pl, at: performance.now() };
+    return { phase: s.ph, stage: s.st, rs: s.rs, left: s.left, cd: s.cd, score: s.sc, combo: s.cb, served: s.sv, missed: s.ms, slots, racks: s.racks, rets: s.rets, sinks: s.sinks, orders: s.od, prog: s.prog, last: s.last, np: s.np || 1, pz: s.pz || 0, seed: s.sd || 0, spots: s.ss || null, rats: s.rt || [], fire: Object.fromEntries((s.fi || []).map(([i, hp]) => [i, { hp }])), fly: s.fly, players: s.pl, at: performance.now() };
   }
 
   // ===== 이동 =====
@@ -2329,7 +2369,7 @@ body.modal { overflow: hidden; }
     if (me.dead > 0) { // 기차에 치여 쓰러진 동안: 안 보이고 못 움직여요. 5초 뒤 처음 자리에서 다시
       me.dead = Math.max(0, me.dead - dt);
       if (me.dead <= 0) {
-        const sp = spawnPos(stageOf(view.stage), myIdx);
+        const sp = spotOf(view, stageOf(view.stage), myIdx);
         me.x = sp[0]; me.y = sp[1]; me.fx = 0; me.fy = 1;
         if (myIdx >= 0) anim[myIdx].lx = null;
         spawnDust(me.x, me.y, 0, 0); sfx.portal();
@@ -2895,7 +2935,7 @@ body.modal { overflow: hidden; }
     }
     drawNames(ctx, view, list.filter(({ i }) => !isDead(i) && fallK(i, now) < 0).map(({ q, i }) => ({ i, x: q.x * TS, y: q.y * TS + TS * 0.42, s: TS })));
     drawTalk(ctx, now, (i) => { const e = list.find((o) => o.i === i); return e ? [e.q.x * TS, e.q.y * TS - TS * 0.35, e.q.y * TS - TS * 1.05, TS] : null; }, (x, y) => [x * TS, y * TS - TS * 0.1, y * TS - TS * 0.45, TS]);
-    list.forEach(({ i }) => { const left = deadLeft(i, now); if (left) { const sp = spawnPos(st, i); drawRespawn(ctx, sp[0] * TS, sp[1] * TS, TS * 0.42, left, APRON[i]); } });
+    list.forEach(({ i }) => { const left = deadLeft(i, now); if (left) { const sp = spotOf(view, st, i); drawRespawn(ctx, sp[0] * TS, sp[1] * TS, TS * 0.42, left, APRON[i]); } });
 
     // 진행 막대·완성·탐 표시
     const ob = lateUI; lateUI = null;
@@ -5088,7 +5128,7 @@ body.modal { overflow: hidden; }
         const rn = railNow(view, now);
         if (rn.bell && !rn.train && Math.floor(now / 210) % 2 === 0) [1.2, ROWS - 1.2].forEach((z) => { const [px, py] = S(stR.col + 0.5, 1.2, z); pill(c, px, py, "!", "#ff3b30", Math.max(13, unit(stR.col + 0.5, 1.2, z) * 0.26), false); });
       }
-      list.forEach(({ i }) => { const left = deadLeft(i, now); if (!left) return; const sp = spawnPos(stageOf(view.stage), i), [px, py] = S(sp[0], 0.05, sp[1]); drawRespawn(c, px, py, unit(sp[0], 0.05, sp[1]) * 0.42, left, APRON[i]); });
+      list.forEach(({ i }) => { const left = deadLeft(i, now); if (!left) return; const sp = spotOf(view, stageOf(view.stage), i), [px, py] = S(sp[0], 0.05, sp[1]); drawRespawn(c, px, py, unit(sp[0], 0.05, sp[1]) * 0.42, left, APRON[i]); });
       // 대시 바람
       list.forEach(({ q, i }) => {
         const a = anim[i];
@@ -6145,7 +6185,7 @@ body.modal { overflow: hidden; }
       if (k < 0) return false;
       seats[k] = id; syncSeats(); remotes[k].init = false; pendingEv[k].length = 0;
       const used = W.players.filter((p, j) => j !== k && p.on).map((p) => p.ch);
-      W.players[k] = Object.assign(spawn(k, stageOf(W.stage)), { on: true, ch: CHAR_KEYS.find((c) => !used.includes(c)) || CHAR_KEYS[k] });
+      W.players[k] = Object.assign(spawn(k, stageOf(W.stage), W.spots), { on: true, ch: CHAR_KEYS.find((c) => !used.includes(c)) || CHAR_KEYS[k] });
       net.send(id, { t: "welcome", as: "guest", slot: k });
       const n = onCount(W);
       if (W.phase === "wait") $("roomStatus").textContent = "친구가 들어왔어요! 지금 " + n + "명이에요. 단계를 고르고 시작해요.";
@@ -6316,7 +6356,7 @@ body.modal { overflow: hidden; }
           if (d.rs !== lastRs) {
             lastRs = d.rs; guestRs = d.rs;
             if (me) {
-              const mine = view.players[myIdx], sp = spawnPos(stageOf(d.st), myIdx);
+              const mine = view.players[myIdx], sp = spotOf(view, stageOf(d.st), myIdx);
               if (d.ph === "count") Object.assign(me, { x: sp[0], y: sp[1], fx: 0, fy: 1 });
               else Object.assign(me, { x: mine.x, y: mine.y, fx: mine.fx, fy: mine.fy });
               Object.assign(me, { dashT: 0, dashCD: 0, vx: 0, vy: 0, stun: 0, pLock: null, dead: 0, kbT: 0 });
