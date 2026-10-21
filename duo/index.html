@@ -369,7 +369,7 @@ body.modal { overflow: hidden; }
 <div class="wrap" id="lobby">
   <header class="sign">
     <h1>둘이서 분식집</h1>
-    <canvas class="crew" id="crew" width="760" height="230" aria-label="고양이, 찹쌀이, 토끼, 곰 요리사"></canvas>
+    <canvas class="crew" id="crew" width="760" height="230" aria-label="고양이, 치이카와, 토끼, 곰 요리사"></canvas>
   </header>
 
   <p class="appnote" id="appNote" hidden><span id="appNoteText"></span><button type="button" id="appNoteX" aria-label="안내 닫기">✕</button></p>
@@ -1109,7 +1109,7 @@ body.modal { overflow: hidden; }
   // ===== 캐릭터: 동물 요리사 4종 =====
   const CHARS = {
     cat:    { name: "고양이", fur: "#f2a65a", dark: "#c9752a", ear: "#f7c9a8", nose: "#e8798a" },
-    mochi:  { name: "찹쌀이", fur: "#ffffff", dark: "#b0a6a0", ear: "#ffffff", nose: "#3a2a24" }, // 하얗고 머리가 큰 동글이, 작은 반달 귀, 걱정 눈썹, 빗금 볼터치
+    mochi:  { name: "치이카와", fur: "#ffffff", dark: "#b0a6a0", ear: "#ffffff", nose: "#3a2a24" }, // 하얗고 머리가 큰 동글이, 작은 반달 귀, 걱정 눈썹, 빗금 볼터치
     rabbit: { name: "토끼",   fur: "#fbf8f2", dark: "#cfc6b8", ear: "#f4b6c2", nose: "#e8798a" },
     bear:   { name: "곰",     fur: "#9a6440", dark: "#5e3a24", ear: "#d1a57c", nose: "#2b1d16" }
   };
@@ -1261,7 +1261,7 @@ body.modal { overflow: hidden; }
 
     c.save(); c.translate(X, by); c.rotate(tilt);
     if (dash) c.scale(1 + 0.12 * dash, 1 - 0.1 * dash);
-    const mochi = o.ch === "mochi"; // 찹쌀이: 몸은 작고 머리가 커요
+    const mochi = o.ch === "mochi"; // 치이카와: 몸은 작고 머리가 커요
     c.beginPath(); c.ellipse(0, (mochi ? 0.13 : 0.08) * S, (mochi ? 0.19 : 0.24) * S, (mochi ? 0.14 : 0.21) * S, 0, 0, Math.PI * 2); c.fillStyle = C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
     if (!back) {
       const ax = fx * 0.05 * S;
@@ -3664,7 +3664,7 @@ body.modal { overflow: hidden; }
       ring.rotation.x = -Math.PI / 2; ring.position.y = 0.009; ring.renderOrder = 1; root.add(ring);
       const bodyG = new T.Group(); root.add(bodyG);
       // 몸통과 앞치마
-      const mochi = k === "mochi"; // 찹쌀이: 작은 몸 위에 옆으로 넓적한 큰 머리가 반쯤 묻혀 있어요
+      const mochi = k === "mochi"; // 치이카와: 작은 몸 위에 옆으로 넓적한 큰 머리가 반쯤 묻혀 있어요
       const B = new Batch();
       if (mochi) {
         B.add(sphG(18), mtx(0, 0.23, 0, 0, 0, 0, 0.22, 0.19, 0.2), C.fur);
