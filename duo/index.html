@@ -1125,7 +1125,7 @@ body.modal { overflow: hidden; }
     mochi:  { name: "치이카와", fur: "#ffffff", dark: "#b0a6a0", ear: "#ffffff", nose: "#3a2a24" }, // 하얗고 머리가 큰 동글이, 작은 반달 귀, 걱정 눈썹, 빗금 볼터치
     rabbit: { name: "토끼",   fur: "#ecd49e", dark: "#c2a46c", ear: "#f1a7b0", nose: "#e8798a" }, // 노란 몸, 머리가 크고 귀가 긴 토끼, 큰 호 눈썹, 혀 보이는 입
     bear:   { name: "곰",     fur: "#9a6440", dark: "#5e3a24", ear: "#d1a57c", nose: "#2b1d16" },
-    otter:  { name: "해달",   fur: "#e9cfa6", body: "#6e5547", body3: "#5a4337", dark: "#4e3b30", ear: "#5a4033", nose: "#4a2e22", tail: "#5e4739", tail3: "#4b3529" } // 해달 인형 색: 크림색 머리, 갈색 몸·귀·꼬리, 하얀 주둥이. body3·tail3: 3D는 조명이 밝아서 더 진하게
+    otter:  { name: "해달",   fur: "#f4f1ec", body: "#6e5547", body3: "#5a4337", dark: "#4e3b30", ear: "#5a4033", nose: "#4a2e22", tail: "#5e4739", tail3: "#4b3529" } // 하얀 머리(얼굴 전체 흰색), 갈색 몸·귀·두툼한 꼬리. body3·tail3: 3D는 조명이 밝아서 더 진하게
   };
   const CHAR_KEYS = Object.keys(CHARS);
   // 머리가 큰 캐릭터 (2D): [머리 반너비, 반높이, 머리 가운데 y] (칸 크기 S 배). 몸은 작게, 얼굴은 그림으로 그려요
@@ -1241,8 +1241,6 @@ body.modal { overflow: hidden; }
     const ink = "#1f1612", nose = "#4a2e22", lw = (w) => Math.max(1, w * k);
     const path = (pts) => { c.beginPath(); pts.forEach((q, i) => { if (i === 0) { const [x, y] = P(...q); c.moveTo(x, y); } else { const [cx, cy] = P(q[0], q[1]), [x, y] = P(q[2], q[3]); c.quadraticCurveTo(cx, cy, x, y); } }); };
     c.save(); c.lineCap = "round"; c.lineJoin = "round";
-    const [zx, zy] = P(0, 0.07); // 주둥이: 코와 입 둘레가 하얘요
-    c.beginPath(); c.ellipse(zx, zy, 0.27 * k, 0.2 * k, 0, 0, Math.PI * 2); c.fillStyle = "rgba(250,244,234,.92)"; c.fill();
     [-1, 1].forEach((sd) => {
       const [bx, by] = P(sd * 0.64, 0.02), r = 0.17 * k; // 볼터치: 가장자리가 번지는 분홍 동그라미 + 짧은 빗금 두 줄
       const gr = c.createRadialGradient(bx, by, 0, bx, by, r); gr.addColorStop(0, "rgba(242,160,166,.85)"); gr.addColorStop(0.6, "rgba(242,160,166,.55)"); gr.addColorStop(1, "rgba(242,160,166,0)");
@@ -1291,9 +1289,9 @@ body.modal { overflow: hidden; }
       dot(c, 0, y0, 0.05 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
     } else if (ch === "bear") {
       dot(c, 0, y0, 0.05 * S, C.dark);
-    } else if (ch === "otter") { // 해달 꼬리: 몸 뒤로 넓적하게 늘어진 노 모양, 걸으면 좌우로 살랑
+    } else if (ch === "otter") { // 해달 꼬리: 몸 뒤로 두툼하고 넓적하게 늘어진 노 모양, 걸으면 좌우로 살랑
       c.save(); c.translate(0, y0 - 0.02 * S); c.rotate(Math.sin(t * (moving ? 9 : 2.5)) * (moving ? 0.3 : 0.1));
-      c.beginPath(); c.ellipse(0, 0.09 * S, 0.06 * S, 0.11 * S, 0, 0, Math.PI * 2); c.fillStyle = C.tail; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
+      c.beginPath(); c.ellipse(0, 0.12 * S, 0.085 * S, 0.15 * S, 0, 0, Math.PI * 2); c.fillStyle = C.tail; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
       c.restore();
     }
   }
@@ -3905,9 +3903,9 @@ body.modal { overflow: hidden; }
         const tg = gc("catTail", () => new T.TubeGeometry(new T.CatmullRomCurve3([new T.Vector3(0, 0, 0), new T.Vector3(0.04, 0.05, -0.13), new T.Vector3(0.1, 0.22, -0.18), new T.Vector3(0.07, 0.36, -0.12)]), 16, 0.03, 8, false));
         part(tail, tg, mat(C.dark));
         part(tail, sphG(8), mat(C.dark), 0.07, 0.36, -0.12, 0, 0, 0, 0.03);
-      } else if (k === "otter") { // 해달 꼬리: 몸 뒤 아래로 넓적하게 뻗은 노 모양 (poseChar에서 좌우로 살랑)
+      } else if (k === "otter") { // 해달 꼬리: 몸 뒤 아래로 두툼하고 넓적하게 뻗은 노 모양 (poseChar에서 좌우로 살랑)
         tail = sub(bodyG, 0, 0.13, -0.17);
-        part(tail, sphG(12), mat(C.tail), 0, -0.035, -0.14, -0.35, 0, 0, 0.075, 0.026, 0.16);
+        part(tail, sphG(14), mat(C.tail), 0, -0.04, -0.2, -0.32, 0, 0, 0.11, 0.05, 0.22);
       } else if (big) part(bodyG, sphG(12), mat(C.fur), 0, 0.24, -0.215, 0, 0, 0, 0.055);
       else part(bodyG, sphG(10), mat(C.dark), 0, 0.24, -0.205, 0, 0, 0, 0.05);
       // 손, 칼, 발
