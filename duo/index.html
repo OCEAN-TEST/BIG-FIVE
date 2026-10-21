@@ -58,7 +58,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sign); outl
 .sign { background: var(--sign); border: 6px solid var(--chili); border-radius: 10px; padding: 14px 20px 12px; text-align: center; box-shadow: 0 8px 0 rgba(0,0,0,.35); }
 .sign h1 { margin: 0; font-family: var(--font-sign); font-weight: 400; color: var(--chili); font-size: clamp(40px, 9vw, 76px); line-height: 1.05; letter-spacing: 0.02em; }
 .sign p { margin: 4px 0 0; font-family: var(--font-ui); color: var(--ink); font-size: clamp(15px, 2.6vw, 19px); }
-.crew { display: block; margin: 4px auto 0; width: min(380px, 86%); height: auto; }
+.crew { display: block; margin: 4px auto 0; width: min(460px, 92%); height: auto; }
 
 .card { background: var(--paper); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
 .card h2 { margin: 0; font-family: var(--font-ui); font-weight: 400; font-size: 22px; color: var(--chili); }
@@ -94,14 +94,15 @@ kbd { font-family: var(--font-ui); background: #fff; border: 2px solid var(--pap
 .waitbox .btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .pick { display: flex; flex-direction: column; gap: 8px; align-items: center; width: 100%; }
 .pick h3 { margin: 0; font-family: var(--font-ui); font-weight: 400; font-size: 20px; color: var(--chili); }
-.chars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 560px; }
-.charbtn { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 6px 4px 8px; background: #fff; border: 3px solid var(--paper-line); border-radius: 12px; cursor: pointer; font-family: var(--font-ui); font-size: 18px; color: var(--ink); }
+.chars { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 640px; }
+.charbtn { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 6px 4px 8px; background: #fff; border: 3px solid var(--paper-line); border-radius: 12px; cursor: pointer; font-family: var(--font-ui); font-size: clamp(13px, 3.6vw, 18px); color: var(--ink); min-width: 0; }
 .charbtn canvas { width: 88px; max-width: 100%; height: auto; aspect-ratio: 1 / 1; }
 .charbtn[aria-pressed="true"] { border-color: var(--chili); background: #fff1cc; }
 .charbtn:disabled { opacity: .45; cursor: default; }
 .charbtn.ro:disabled[aria-pressed="true"] { opacity: 1; }
 .specnote { margin: 0; font-family: var(--font-ui); font-size: 16px; color: var(--ink); background: #fff1cc; border: 2px solid var(--sign); border-radius: 999px; padding: 3px 14px; }
 .charbtn small { font-family: var(--font-body); font-size: 11.5px; color: var(--soft); min-height: 1.4em; }
+@media (max-width: 480px) { .chars { gap: 5px; } .charbtn { padding: 4px 2px 6px; border-width: 2px; font-size: 13px; white-space: nowrap; } .charbtn small { font-size: 10px; white-space: nowrap; } }
 .namerow { display: flex; align-items: center; gap: 10px; margin: 2px 0 4px; }
 .namerow span { font-family: var(--font-ui); font-size: 18px; color: var(--ink); }
 .namerow input { width: 6.2em; font-family: var(--font-ui); font-size: 22px; text-align: center; padding: 5px 8px; border: 3px solid var(--paper-line); border-radius: 10px; background: #fff; color: var(--ink); }
@@ -369,7 +370,7 @@ body.modal { overflow: hidden; }
 <div class="wrap" id="lobby">
   <header class="sign">
     <h1>둘이서 분식집</h1>
-    <canvas class="crew" id="crew" width="760" height="230" aria-label="고양이, 치이카와, 토끼, 곰 요리사"></canvas>
+    <canvas class="crew" id="crew" width="950" height="230" aria-label="고양이, 치이카와, 토끼, 곰, 해달 요리사"></canvas>
   </header>
 
   <p class="appnote" id="appNote" hidden><span id="appNoteText"></span><button type="button" id="appNoteX" aria-label="안내 닫기">✕</button></p>
@@ -575,7 +576,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 39;
+  const VERSION = 40;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -1123,11 +1124,14 @@ body.modal { overflow: hidden; }
     cat:    { name: "고양이", fur: "#f2a65a", dark: "#c9752a", ear: "#f7c9a8", nose: "#e8798a" },
     mochi:  { name: "치이카와", fur: "#ffffff", dark: "#b0a6a0", ear: "#ffffff", nose: "#3a2a24" }, // 하얗고 머리가 큰 동글이, 작은 반달 귀, 걱정 눈썹, 빗금 볼터치
     rabbit: { name: "토끼",   fur: "#ecd49e", dark: "#c2a46c", ear: "#f1a7b0", nose: "#e8798a" }, // 노란 몸, 머리가 크고 귀가 긴 토끼, 큰 호 눈썹, 혀 보이는 입
-    bear:   { name: "곰",     fur: "#9a6440", dark: "#5e3a24", ear: "#d1a57c", nose: "#2b1d16" }
+    bear:   { name: "곰",     fur: "#9a6440", dark: "#5e3a24", ear: "#d1a57c", nose: "#2b1d16" },
+    otter:  { name: "해달",   fur: "#ececec", body: "#9d9d9d", body3: "#6f6f6f", dark: "#767676", ear: "#d9d9d9", nose: "#1f1612", tail: "#878787", tail3: "#5f5f5f" } // body3·tail3: 3D는 조명이 밝아서 더 진하게 // 하얀 찐빵 머리 양옆에 삐죽한 털, 회색 몸, 넓적한 꼬리
   };
   const CHAR_KEYS = Object.keys(CHARS);
   // 머리가 큰 캐릭터 (2D): [머리 반너비, 반높이, 머리 가운데 y] (칸 크기 S 배). 몸은 작게, 얼굴은 그림으로 그려요
-  const BIG_HEAD = { mochi: [0.29, 0.23, -0.12], rabbit: [0.29, 0.215, -0.115] };
+  const BIG_HEAD = { mochi: [0.29, 0.23, -0.12], rabbit: [0.29, 0.215, -0.115], otter: [0.31, 0.19, -0.1] };
+  const BUN_CH = { rabbit: 1, otter: 1 }; // 찐빵 머리 (bunPt)
+  const BIG_BODY = { otter: [0.22, 0.15] }; // 몸 반너비·반높이 (없으면 0.19·0.14)
   // 토끼 머리 모양: 위는 둥근 지붕, 옆은 통통, 아래는 넓고 납작한 찐빵. 공 위의 점(위쪽이 +y)을 이 모양 위로 옮겨요.
   // 가장 넓은 줄이 y=0, 꼭대기는 1.1배 높이, 바닥은 0.88배. 길이가 어떻든 방향만 봐요
   function bunPt(x, y, z) {
@@ -1228,10 +1232,33 @@ body.modal { overflow: hidden; }
     curve([-0.065, 0.575], [0, 0.625], [0.065, 0.575], 0.028);
     c.restore();
   }
+  // 해달 얼굴 (그림에서 잰 자리). drawMochiFace 와 같은 좌표. 까만 점 눈, 큰 까만 코, 분홍 혀가 보이는 입, 번지는 볼터치
+  function drawRakkoFace(c, P0, k) {
+    const P = (x, y) => P0(x, y - 0.066); // 찐빵 머리는 가장 넓은 줄이 테두리 가운데보다 아래라서, 그림에서 잰 자리를 그만큼 올려요
+    const ink = "#1f1612", lw = (w) => Math.max(1, w * k);
+    const path = (pts) => { c.beginPath(); pts.forEach((q, i) => { if (i === 0) { const [x, y] = P(...q); c.moveTo(x, y); } else { const [cx, cy] = P(q[0], q[1]), [x, y] = P(q[2], q[3]); c.quadraticCurveTo(cx, cy, x, y); } }); };
+    c.save(); c.lineCap = "round"; c.lineJoin = "round";
+    [-1, 1].forEach((sd) => {
+      const [bx, by] = P(sd * 0.64, 0.02), r = 0.17 * k; // 볼터치: 가장자리가 번지는 분홍 동그라미 + 짧은 빗금 두 줄
+      const gr = c.createRadialGradient(bx, by, 0, bx, by, r); gr.addColorStop(0, "rgba(242,160,166,.85)"); gr.addColorStop(0.6, "rgba(242,160,166,.55)"); gr.addColorStop(1, "rgba(242,160,166,0)");
+      c.fillStyle = gr; c.beginPath(); c.arc(bx, by, r, 0, Math.PI * 2); c.fill();
+      c.beginPath(); [-0.035, 0.035].forEach((dx) => { c.moveTo(bx + (dx - 0.012) * k, by + 0.03 * k); c.lineTo(bx + (dx + 0.012) * k, by - 0.03 * k); });
+      c.strokeStyle = "#e3868e"; c.lineWidth = lw(0.024); c.stroke();
+      const [ex, ey] = P(sd * 0.41, -0.09); c.beginPath(); c.arc(ex, ey, 0.056 * k, 0, Math.PI * 2); c.fillStyle = ink; c.fill(); // 눈: 까만 점
+    });
+    path([[-0.11, -0.075], [0, -0.118, 0.11, -0.075], [0.135, -0.03, 0.06, 0.03], [0, 0.05, -0.06, 0.03], [-0.135, -0.03, -0.11, -0.075]]); // 코: 위가 넓은 강낭콩
+    c.fillStyle = ink; c.fill();
+    const mouth = () => path([[-0.15, 0.07], [0, 0.092, 0.15, 0.07], [0.13, 0.225, 0, 0.225], [-0.13, 0.225, -0.15, 0.07]]);
+    mouth(); c.fillStyle = "#ffffff"; c.fill();
+    c.save(); mouth(); c.clip(); const [tx, ty] = P(0, 0.175); c.beginPath(); c.ellipse(tx, ty, 0.1 * k, 0.065 * k, 0, 0, Math.PI * 2); c.fillStyle = "#f2a5a3"; c.fill(); c.restore();
+    mouth(); c.strokeStyle = ink; c.lineWidth = lw(0.03); c.stroke();
+    [-1, 1].forEach((sd) => { path([[sd * 0.15, 0.07], [sd * 0.172, 0.064, sd * 0.19, 0.045]]); c.stroke(); }); // 입꼬리 살짝 올라가요
+    c.restore();
+  }
   function drawFace(c, ch, S, fx) {
     const C = CHARS[ch];
     const hy = -0.17 * S, ox = fx * 0.07 * S;
-    if (BIG_HEAD[ch]) { const A = BIG_HEAD[ch][0] * S, hc = BIG_HEAD[ch][2] * S; (ch === "rabbit" ? drawUsagiFace : drawMochiFace)(c, (x, y) => [ox + x * A, hc + y * A], A); return; }
+    if (BIG_HEAD[ch]) { const A = BIG_HEAD[ch][0] * S, hc = BIG_HEAD[ch][2] * S; ({ rabbit: drawUsagiFace, otter: drawRakkoFace }[ch] || drawMochiFace)(c, (x, y) => [ox + x * A, hc + y * A], A); return; }
     if (ch === "bear") { c.beginPath(); c.ellipse(ox * 1.25, hy + 0.075 * S, 0.095 * S, 0.068 * S, 0, 0, Math.PI * 2); c.fillStyle = "#d9b38c"; c.fill(); }
     const eyeY = hy - 0.01 * S;
     const ex = [ox - 0.075 * S + fx * 0.02 * S, ox + 0.075 * S + fx * 0.02 * S];
@@ -1258,6 +1285,10 @@ body.modal { overflow: hidden; }
       dot(c, 0, y0, 0.05 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
     } else if (ch === "bear") {
       dot(c, 0, y0, 0.05 * S, C.dark);
+    } else if (ch === "otter") { // 해달 꼬리: 몸 뒤로 넓적하게 늘어진 노 모양, 걸으면 좌우로 살랑
+      c.save(); c.translate(0, y0 - 0.02 * S); c.rotate(Math.sin(t * (moving ? 9 : 2.5)) * (moving ? 0.3 : 0.1));
+      c.beginPath(); c.ellipse(0, 0.09 * S, 0.06 * S, 0.11 * S, 0, 0, Math.PI * 2); c.fillStyle = C.tail; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
+      c.restore();
     }
   }
 
@@ -1324,14 +1355,14 @@ body.modal { overflow: hidden; }
         rrect(c, -0.02 * S, -0.06 * S, 0.05 * S, 0.08 * S, 0.015 * S); c.fillStyle = "#6b4a2b"; c.fill();
         c.restore();
       }
-      hands.forEach(([hx, hy]) => { dot(c, hx, hy, (BIG_HEAD[o.ch] ? 0.052 : 0.064) * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); });
+      hands.forEach(([hx, hy]) => { dot(c, hx, hy, (BIG_HEAD[o.ch] ? 0.052 : 0.064) * S, C.body || C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); });
     };
     if (back) front();
 
     c.save(); c.translate(X, by); c.rotate(tilt);
     if (dash) c.scale(1 + 0.12 * dash, 1 - 0.1 * dash);
-    const big = BIG_HEAD[o.ch]; // 치이카와·토끼: 몸은 작고 머리가 커요
-    c.beginPath(); c.ellipse(0, (big ? 0.13 : 0.08) * S, (big ? 0.19 : 0.24) * S, (big ? 0.14 : 0.21) * S, 0, 0, Math.PI * 2); c.fillStyle = C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
+    const big = BIG_HEAD[o.ch], bb = BIG_BODY[o.ch] || [0.19, 0.14]; // 치이카와·토끼·해달: 몸은 작고 머리가 커요
+    c.beginPath(); c.ellipse(0, (big ? 0.13 : 0.08) * S, (big ? bb[0] : 0.24) * S, (big ? bb[1] : 0.21) * S, 0, 0, Math.PI * 2); c.fillStyle = C.body || C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
     if (!back) {
       const ax = fx * 0.05 * S;
       if (big) { rrect(c, ax - 0.12 * S, 0.07 * S, 0.24 * S, 0.18 * S, 0.06 * S); c.fillStyle = APRON[o.slot]; c.fill(); c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(ax - 0.05 * S, 0.17 * S, 0.1 * S, 0.02 * S); }
@@ -1343,9 +1374,17 @@ body.modal { overflow: hidden; }
       drawTail(c, o.ch, S, t, o.moving);
     }
     drawEars(c, o.ch, S, back, dash ? -1 : o.moving ? Math.sin(o.phase * Math.PI) : Math.sin(t * 2.2) * 0.15);
-    if (big) { if (o.ch === "rabbit") bunPath(c, big[0] * S, big[1] * S, big[2] * S); else { c.beginPath(); c.ellipse(0, big[2] * S, big[0] * S, big[1] * S, 0, 0, Math.PI * 2); } c.fillStyle = C.fur; c.fill(); } // 옆으로 넓적한 큰 머리가 몸 위를 덮어요
+    if (big) { if (BUN_CH[o.ch]) bunPath(c, big[0] * S, big[1] * S, big[2] * S); else { c.beginPath(); c.ellipse(0, big[2] * S, big[0] * S, big[1] * S, 0, 0, Math.PI * 2); } c.fillStyle = C.fur; c.fill(); } // 옆으로 넓적한 큰 머리가 몸 위를 덮어요
     else dot(c, 0, -0.17 * S, 0.21 * S, C.fur);
     c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
+    if (o.ch === "otter") { // 머리 양옆에 삐죽삐죽한 털 몇 가닥
+      c.strokeStyle = C.dark; c.lineWidth = Math.max(1, 0.012 * S); c.lineCap = "round"; c.beginPath();
+      [-1, 1].forEach((sd) => [-0.32, -0.05, 0.25].forEach((da) => {
+        const a = (sd > 0 ? 0 : Math.PI) + sd * da, [x, y] = bunPt(Math.cos(a), Math.sin(a), 0), px = x * big[0] * S, py = big[2] * S - y * big[1] * S;
+        c.moveTo(px - sd * 0.01 * S, py); c.lineTo(px + sd * 0.03 * S, py + 0.014 * S);
+      }));
+      c.stroke();
+    }
     if (o.ch === "cat") {
       c.strokeStyle = C.dark; c.lineWidth = 0.025 * S; c.lineCap = "round"; c.beginPath();
       [-0.05, 0, 0.05].forEach((dx) => { c.moveTo(dx * S, -0.36 * S); c.lineTo(dx * S, (back ? -0.24 : -0.3) * S); }); c.stroke();
@@ -3726,7 +3765,8 @@ body.modal { overflow: hidden; }
       return "#" + _c.getHexString();
     }
     // 머리가 큰 캐릭터 (3D): 머리 크기 a×b×c, 얼굴 그림, 얼굴 그림이 덮는 범위 (가로 ±al, 세로 ±be 라디안)
-    const BIG3 = { mochi: { a: 0.33, b: 0.28, c: 0.3, al: 1.15, be: 0.7, draw: drawMochiFace }, rabbit: { a: 0.33, b: 0.245, c: 0.29, al: 1.15, be: 1.05, draw: drawUsagiFace, bun: true } };
+    const BIG3 = { mochi: { a: 0.33, b: 0.28, c: 0.3, al: 1.15, be: 0.7, draw: drawMochiFace }, rabbit: { a: 0.33, b: 0.245, c: 0.29, al: 1.15, be: 1.05, draw: drawUsagiFace, bun: true },
+      otter: { a: 0.35, b: 0.215, c: 0.3, al: 1.2, be: 0.95, draw: drawRakkoFace, bun: true, body: [0.26, 0.2, 0.23], hy: 0.55 } };
     // 찐빵 머리 점의 법선: 공 위에서 두 방향으로 조금씩 움직여 본 차이로 구해요 (이음매에서도 똑같이 나와서 금이 안 가요)
     function bunNormal(x, y, z) {
       let t1 = Math.abs(y) < 0.99 ? [-z, 0, x] : [1, 0, 0];
@@ -3792,7 +3832,7 @@ body.modal { overflow: hidden; }
     }
     function buildChar(k, slot) {
       const C0 = CHARS[k] || CHARS.cat, AP = vivid(APRON[slot], 1.1, 0.95);
-      const C = { fur: vivid(C0.fur), dark: vivid(C0.dark), ear: vivid(C0.ear, 1.15), nose: C0.nose };
+      const C = { fur: vivid(C0.fur), dark: vivid(C0.dark), ear: vivid(C0.ear, 1.15), nose: C0.nose, body: vivid(C0.body3 || C0.body || C0.fur), tail: vivid(C0.tail3 || C0.tail || C0.dark) };
       const root = new T.Group();
       const blob = new T.Mesh(planeG(0.72, 0.72), blobMat());
       blob.rotation.x = -Math.PI / 2; blob.position.y = 0.006; blob.renderOrder = 1; root.add(blob);
@@ -3803,11 +3843,12 @@ body.modal { overflow: hidden; }
       const big = BIG3[k]; // 치이카와·토끼: 작은 몸 위에 옆으로 넓적한 큰 머리가 반쯤 묻혀 있어요
       const B = new Batch();
       if (big) {
-        B.add(sphG(18), mtx(0, 0.23, 0, 0, 0, 0, 0.22, 0.19, 0.2), C.fur);
-        B.add(apronG(), mtx(0, 0.23, 0, 0, 0, 0, 0.228, 0.198, 0.208), AP);
-        B.add(rboxG(0.09, 0.045, 0.02, 0.008, 1), mtx(0, 0.16, 0.19, -0.35, 0, 0), "#fff8ee");
-        B.add(sphG(8), mtx(-0.04, 0.21, -0.196, 0, 0, 0.5, 0.045, 0.025, 0.02), AP);
-        B.add(sphG(8), mtx(0.04, 0.21, -0.196, 0, 0, -0.5, 0.045, 0.025, 0.02), AP);
+        const [bw, bh, bd] = big.body || [0.22, 0.19, 0.2];
+        B.add(sphG(18), mtx(0, 0.23, 0, 0, 0, 0, bw, bh, bd), C.body);
+        B.add(apronG(), mtx(0, 0.23, 0, 0, 0, 0, bw + 0.008, bh + 0.008, bd + 0.008), AP);
+        B.add(rboxG(0.09, 0.045, 0.02, 0.008, 1), mtx(0, 0.16, bd - 0.01, -0.35, 0, 0), "#fff8ee");
+        B.add(sphG(8), mtx(-0.04, 0.21, -bd + 0.004, 0, 0, 0.5, 0.045, 0.025, 0.02), AP);
+        B.add(sphG(8), mtx(0.04, 0.21, -bd + 0.004, 0, 0, -0.5, 0.045, 0.025, 0.02), AP);
       } else {
         B.add(sphG(18), mtx(0, 0.33, 0, 0, 0, 0, 0.25, 0.26, 0.22), C.fur);
         B.add(apronG(), mtx(0, 0.33, 0, 0, 0, 0, 0.258, 0.268, 0.228), AP);
@@ -3819,12 +3860,16 @@ body.modal { overflow: hidden; }
       const torso = B.mesh(VSKIN);
       bodyG.add(torso);
       // 머리
-      const headG = new T.Group(); headG.position.y = big ? 0.6 : 0.8; bodyG.add(headG);
+      const headG = new T.Group(); headG.position.y = big ? big.hy || 0.6 : 0.8; bodyG.add(headG);
       const H = new Batch();
       H.add(big && big.bun ? bunG() : sphG(22), big ? mtx(0, 0, 0, 0, 0, 0, big.a, big.b, big.c) : mtx(0, 0, 0, 0, 0, 0, 0.25, 0.235, 0.24), C.fur);
       if (k === "cat") for (const sd of [-1, 1]) {
         H.add(coneG(0.09, 0.16, 14), mtx(sd * 0.14, 0.2, -0.01, -0.12, 0, -sd * 0.38), C.fur);
         H.add(coneG(0.052, 0.1, 12), mtx(sd * 0.135, 0.19, 0.026, -0.12, 0, -sd * 0.38), C.ear);
+      }
+      if (k === "otter") for (const sd of [-1, 1]) for (const [yy, zz] of [[0.32, 0.25], [-0.05, 0.3], [-0.4, 0.2]]) { // 머리 양옆에 삐죽한 털 뭉치
+        const [px, py, pz] = bunPt(sd, yy, zz);
+        H.add(sphG(8), mtx(px * big.a, py * big.b, pz * big.c, 0, 0, -sd * (0.25 + yy * 0.6), 0.05, 0.024, 0.04), C.fur);
       }
       if (k === "mochi") for (const sd of [-1, 1]) H.add(sphG(14), mtx(sd * 0.2, 0.215, -0.03, 0, 0, 0, 0.066, 0.063, 0.055), C.fur);
       if (k === "bear") for (const sd of [-1, 1]) {
@@ -3864,10 +3909,13 @@ body.modal { overflow: hidden; }
         const tg = gc("catTail", () => new T.TubeGeometry(new T.CatmullRomCurve3([new T.Vector3(0, 0, 0), new T.Vector3(0.04, 0.05, -0.13), new T.Vector3(0.1, 0.22, -0.18), new T.Vector3(0.07, 0.36, -0.12)]), 16, 0.03, 8, false));
         part(tail, tg, mat(C.dark));
         part(tail, sphG(8), mat(C.dark), 0.07, 0.36, -0.12, 0, 0, 0, 0.03);
+      } else if (k === "otter") { // 해달 꼬리: 몸 뒤 아래로 넓적하게 뻗은 노 모양 (poseChar에서 좌우로 살랑)
+        tail = sub(bodyG, 0, 0.13, -0.17);
+        part(tail, sphG(12), mat(C.tail), 0, -0.035, -0.14, -0.35, 0, 0, 0.075, 0.026, 0.16);
       } else if (big) part(bodyG, sphG(12), mat(C.fur), 0, 0.24, -0.215, 0, 0, 0, 0.055);
       else part(bodyG, sphG(10), mat(C.dark), 0, 0.24, -0.205, 0, 0, 0, 0.05);
       // 손, 칼, 발
-      const hand = (x) => { const h = sub(bodyG, x, 0.33, 0); part(h, sphG(12), mat(C.fur), 0, 0, 0, 0, 0, 0, big ? 0.06 : 0.072); return h; };
+      const hand = (x) => { const h = sub(bodyG, x, 0.33, 0); part(h, sphG(12), mat(C.body), 0, 0, 0, 0, 0, 0, big ? 0.06 : 0.072); return h; };
       const handL = hand(0.26), handR = hand(-0.26);
       const knife = sub(handR);
       part(knife, boxG(0.011, 0.1, 0.27), mat("#e3e8eb", "p"), 0, -0.05, 0.16);
@@ -3922,6 +3970,7 @@ body.modal { overflow: hidden; }
       if (c.ears) c.ears.forEach((e, j) => { e.rotation.x = dash ? -0.6 * dash : o.moving ? -0.1 + Math.sin(o.phase * Math.PI + j * 0.7) * 0.32 : Math.sin(tt * 2.2 + j) * 0.05; });
       if (c.tail) {
         if (c.k === "cat") c.tail.rotation.z = Math.sin(tt * 3) * 0.25;
+        else if (c.k === "otter") { c.tail.rotation.y = Math.sin(tt * (o.moving ? 9 : 2.5)) * (o.moving ? 0.35 : 0.12); c.tail.rotation.x = o.moving ? Math.sin(tt * 9 + 1.2) * 0.1 : 0; }
         else c.tail.rotation.z = Math.sin(tt * (o.moving ? 22 : 12)) * 0.5;
       }
     }
@@ -6773,7 +6822,7 @@ body.modal { overflow: hidden; }
     const c = $("crew").getContext("2d");
     CHAR_KEYS.forEach((k, i) => {
       const pic = portraitOf(k, i % 2);
-      if (pic) c.drawImage(pic, 95 + i * 190 - 120, -12, 240, 240);
+      if (pic) c.drawImage(pic, 95 + i * 190 - 120, -12, 240, 240); // 5명이라 캔버스가 950 넓이
       else drawChar(c, 150, 95 + i * 190, 150, { ch: k, slot: i % 2, fx: 0, fy: 1, now: 0 });
     });
   })();
