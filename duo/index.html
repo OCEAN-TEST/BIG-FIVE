@@ -58,7 +58,38 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sign); outl
 .sign { background: var(--sign); border: 6px solid var(--chili); border-radius: 10px; padding: 14px 20px 12px; text-align: center; box-shadow: 0 8px 0 rgba(0,0,0,.35); }
 .sign h1 { margin: 0; font-family: var(--font-sign); font-weight: 400; color: var(--chili); font-size: clamp(40px, 9vw, 76px); line-height: 1.05; letter-spacing: 0.02em; }
 .sign p { margin: 4px 0 0; font-family: var(--font-ui); color: var(--ink); font-size: clamp(15px, 2.6vw, 19px); }
-.crew { display: block; margin: 4px auto 0; width: min(460px, 92%); height: auto; }
+
+/* 첫 화면: 포스터 한 장. 그림은 뒤에 깔린 캔버스(#poster), 글씨·버튼은 그 위에 (한 화면에 다 들어가게) */
+.lobby { position: relative; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: max(12px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) max(14px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px)); }
+.poster { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; background: #ffb347; }
+.lobby > :not(.poster) { position: relative; z-index: 1; }
+.ptitle { text-align: center; margin-top: 4px; }
+.ptitle h1 { margin: 0; font-family: var(--font-sign); font-weight: 400; font-size: clamp(48px, 12vw, 112px); line-height: 1.02; letter-spacing: 0.02em; color: var(--sign); transform: rotate(-3deg);
+  text-shadow: 0.05em 0 0 var(--chili), -0.05em 0 0 var(--chili), 0 0.05em 0 var(--chili), 0 -0.05em 0 var(--chili), 0.036em 0.036em 0 var(--chili), -0.036em 0.036em 0 var(--chili), 0.036em -0.036em 0 var(--chili), -0.036em -0.036em 0 var(--chili), 0 0.13em 0 var(--chili-dark), 0 0.2em 0.18em rgba(60,20,10,.35); }
+.pkick { display: inline-block; margin: 0 0 8px; font-family: var(--font-ui); font-size: clamp(15px, 3.8vw, 22px); line-height: 1.5; color: #fff; background: var(--chili); padding: 2px 16px; border-radius: 999px; box-shadow: 0 3px 0 var(--chili-dark); transform: rotate(-3deg); }
+.pgap { flex: 1 1 auto; min-height: 32vh; min-height: 32dvh; }
+.ppanel { width: min(560px, 100%); background: rgba(255,248,230,.95); border: 4px solid var(--chili); border-radius: 18px; box-shadow: 0 8px 0 rgba(60,20,10,.35); padding: 12px; display: flex; flex-direction: column; gap: 9px; }
+.ppanel #hostBtn { font-size: 24px; padding: 11px 12px; }
+.ppanel .status { margin: -2px 0 0; }
+.ppanel .status:empty { display: none; }
+.ppanel .join { align-items: stretch; }
+.plabel { align-self: center; font-family: var(--font-ui); font-size: 17px; color: var(--chili); white-space: nowrap; }
+.ppanel .join input { font-size: 26px; padding: 4px 6px; }
+.ppanel .lobbybar { gap: 8px; flex-wrap: nowrap; }
+.ppanel .lobbybar .btn { font-size: 16px; padding: 7px 6px; gap: 5px; }
+.ppanel .lobbybar svg { width: 17px; height: 17px; }
+@media (max-width: 380px) { .ppanel .lobbybar .btn { font-size: 14px; } .plabel { display: none; } }
+@media (max-height: 520px) { /* 폰을 가로로 눕혔을 때: 제목·판을 줄여서 한 화면에 */
+  .lobby { gap: 6px; padding-top: 6px; padding-bottom: 8px; }
+  .ptitle h1 { font-size: clamp(34px, 11vh, 60px); }
+  .pkick { font-size: 13px; margin-bottom: 2px; padding: 0 12px; }
+  .pgap { min-height: 16vh; }
+  .ppanel { padding: 8px 10px; gap: 6px; border-width: 3px; }
+  .ppanel #hostBtn { font-size: 19px; padding: 6px 10px; }
+  .ppanel .join input { font-size: 20px; padding: 2px 6px; }
+  .ppanel .join .btn { font-size: 18px; padding: 6px 12px; }
+  .ppanel .lobbybar .btn { font-size: 14px; padding: 4px 6px; }
+}
 
 .card { background: var(--paper); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
 .card h2 { margin: 0; font-family: var(--font-ui); font-weight: 400; font-size: 22px; color: var(--chili); }
@@ -366,36 +397,32 @@ body.modal { overflow: hidden; }
 </head>
 <body>
 
-<!-- 로비 -->
-<div class="wrap" id="lobby">
-  <header class="sign">
+<!-- 로비: 포스터 한 장 (그림은 캔버스) 위에 제목, 방 만들기, 코드 넣고 들어가기, 관전, 게임 방법, 설정 -->
+<div class="lobby" id="lobby">
+  <canvas class="poster" id="poster" aria-hidden="true"></canvas>
+  <header class="ptitle" id="ptitle">
+    <p class="pkick">오늘도 정신없이 영업 중!</p>
     <h1>둘이서 분식집</h1>
-    <canvas class="crew" id="crew" width="950" height="230" aria-label="고양이, 치이카와, 토끼, 곰, 해달 요리사"></canvas>
   </header>
+  <div class="pgap" aria-hidden="true"></div>
 
   <p class="appnote" id="appNote" hidden><span id="appNoteText"></span><button type="button" id="appNoteX" aria-label="안내 닫기">✕</button></p>
 
-  <div class="row">
-    <section class="card">
-      <h2>방 만들기</h2>
-      <button class="btn" id="hostBtn" type="button">방 만들기</button>
-      <p class="status" id="hostStatus" aria-live="polite"></p>
-    </section>
-    <section class="card">
-      <h2>방 들어가기</h2>
-      <form class="join" id="joinForm">
-        <input id="codeInput" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="0000" aria-label="방 코드 4자리">
-        <button class="btn alt" id="joinBtn" type="submit">들어가기</button>
-      </form>
+  <section class="ppanel" id="ppanel" aria-label="방 만들기와 들어가기">
+    <button class="btn" id="hostBtn" type="button">방 만들기</button>
+    <p class="status" id="hostStatus" aria-live="polite"></p>
+    <form class="join" id="joinForm">
+      <label class="plabel" for="codeInput">방 코드</label>
+      <input id="codeInput" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="0000" aria-label="방 코드 4자리">
+      <button class="btn alt" id="joinBtn" type="submit">들어가기</button>
+    </form>
+    <p class="status" id="joinStatus" aria-live="polite"></p>
+    <div class="lobbybar">
       <button class="btn watch" id="watchBtn" type="button">관전만 하기</button>
-      <p class="status" id="joinStatus" aria-live="polite"></p>
-    </section>
-  </div>
-
-  <div class="lobbybar">
-    <button class="btn watch" id="howBtn" type="button" aria-haspopup="dialog" aria-controls="howPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5a1 1 0 0 0 0 2H20v2H6.5A2.5 2.5 0 0 1 4 19.5zM8 6v2h8V6zm0 4v2h6v-2z"/></svg>게임 방법</button>
-    <button class="btn watch setopen" id="setBtnTop" type="button" aria-haspopup="dialog" aria-controls="setPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg><span class="setlabel">설정</span></button>
-  </div>
+      <button class="btn watch" id="howBtn" type="button" aria-haspopup="dialog" aria-controls="howPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5a1 1 0 0 0 0 2H20v2H6.5A2.5 2.5 0 0 1 4 19.5zM8 6v2h8V6zm0 4v2h6v-2z"/></svg>게임 방법</button>
+      <button class="btn watch setopen" id="setBtnTop" type="button" aria-haspopup="dialog" aria-controls="setPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg><span class="setlabel">설정</span></button>
+    </div>
+  </section>
 </div>
 
 <!-- 대기실 -->
@@ -576,7 +603,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 41;
+  const VERSION = 42;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -5359,6 +5386,58 @@ body.modal { overflow: hidden; }
       return (pCache[key] = out);
     }
 
+    // ---- 첫 화면 포스터: 일하는 모습·물건 사진 (게임 모델 그대로, 빈 바탕) ----
+    function shot(obj, size, from, at, fov) {
+      pScene.add(obj);
+      pCam.fov = fov || 30; pCam.updateProjectionMatrix();
+      pCam.position.set(from[0], from[1], from[2]); pCam.lookAt(at[0], at[1], at[2]);
+      gl.setPixelRatio(1); gl.setSize(size, size, false);
+      gl.render(pScene, pCam);
+      const out = document.createElement("canvas"); out.width = out.height = size;
+      out.getContext("2d").drawImage(el, 0, 0);
+      pScene.remove(obj);
+      pCam.fov = 30; pCam.updateProjectionMatrix();
+      gl.setPixelRatio(curPR);
+      if (vw) gl.setSize(vw, vh, false);
+      return out;
+    }
+    // o: yaw(돌린 각), moving·phase(걷는 발), dash, reach, chop(썰기: 칼 + 손 밑에 도마·재료), hold(든 물건), lift(뛰어오른 높이), lean(옆으로 기울기)
+    function posePic(k, slot, o, size) {
+      const c = buildChar(k, slot), now = o.now || 0;
+      c.ring.visible = false;
+      poseChar(c, { x: 0, z: 0, yaw: o.yaw || 0, moving: !!o.moving, phase: o.phase || 0, reach: o.reach || 0, dash: o.dash || 0, chop: !!o.chop, wash: false, hold: !!o.hold, club: false }, now);
+      if (o.hold) {
+        const h = itemModel(o.hold);
+        if (isCont(o.hold)) h.rotation.y = -Math.PI / 2;
+        h.scale.setScalar(ING[o.hold.k] ? 1.12 : 0.85);
+        if (h.userData.tick) h.userData.tick(now, o.hold, true);
+        c.hold.add(h);
+      }
+      let bd = null;
+      if (o.chop) { // 도마 위 재료를 탁탁
+        const B = new Batch(true);
+        B.add(rboxG(0.56, 0.05, 0.34, 0.02, 1), mtx(0, 0.47, 0.42), "#e9c48c");
+        B.add(rboxG(0.56, 0.012, 0.34, 0.01, 1), mtx(0, 0.497, 0.42), "#f3d6a6");
+        bd = B.mesh(VMAT); c.root.add(bd);
+        const ing = itemModel({ k: o.chop, cut: true }); ing.position.set(0.06, 0.5, 0.42); ing.scale.setScalar(1.1); c.root.add(ing);
+      }
+      c.root.scale.setScalar(1);
+      c.root.position.y = o.lift || 0;
+      c.root.rotation.z = o.lean || 0;
+      const ly = o.lift || 0;
+      const out = shot(c.root, size, [0.15, 1.05 + ly, 3.2], [0, 0.6 + ly, 0.12], 30);
+      c.disp.forEach((g) => g.dispose());
+      if (bd) bd.geometry.dispose();
+      return out;
+    }
+    function itemPic(it, size, tilt, low) { // 물건: 비스듬히 위에서 (low면 더 옆에서: 큰 냄비 손잡이가 뒤에 숨게)
+      const g = itemModel(it);
+      if (g.userData.tick) g.userData.tick(0, it, true);
+      g.rotation.y = tilt || 0;
+      return low ? shot(g, size, [0, 0.92, 1.38], [0, 0.1, 0], 30) : shot(g, size, [0, 1.05, 1.25], [0, 0.08, 0], 30);
+    }
+    function firePic(size) { const g = fireModel(); return shot(g, size, [0, 0.7, 2.2], [0, 0.35, 0], 30); }
+
     // 글꼴이 늦게 오면 이름표·간판을 다시 그려요
     if (document.fonts && document.fonts.load) {
       Promise.all([
@@ -5368,7 +5447,7 @@ body.modal { overflow: hidden; }
     }
 
     const info = () => ({ made: slotMade, calls: gl.info.render.calls, tris: gl.info.render.triangles, geos: gl.info.memory.geometries, tex: gl.info.memory.textures, progs: gl.info.programs ? gl.info.programs.length : 0, snapMs: Math.round(snapMs), snapN, snapQ: snapQ.length, rootX: chars[0] ? +chars[0].root.rotation.x.toFixed(2) : null, headY: chars[0] ? +chars[0].headG.getWorldPosition(new T.Vector3()).y.toFixed(2) : null });
-    return { el, render: render3, resize, portrait, info, snapURLAsync };
+    return { el, render: render3, resize, portrait, posePic, itemPic, firePic, info, snapURLAsync };
   }
 
   const VIEW_KEY = "bunsik.view";
@@ -6023,6 +6102,7 @@ body.modal { overflow: hidden; }
     if (name !== "game") { $("chatBar").hidden = true; bubbles.length = 0; hits.length = 0; }
     if (name !== "game") { touchIn.chop = false; endStick(); $("pad").hidden = true; if (myCover) setMyCover(false); }
     if (name === "game") { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); requestAnimationFrame(layout); }
+    if (name === "lobby") requestAnimationFrame(() => { try { Poster.paint(); } catch (e) {} }); // 다른 화면에 있는 동안 창 크기가 바뀌었을 수 있어요
   }
 
   const npLabel = (np) => (np <= 1 ? "혼자 기준" : np >= 3 ? np + "명 기준" : "");
@@ -6811,15 +6891,163 @@ body.modal { overflow: hidden; }
     tx.append(b, sm); el.append(c, tx); $("menu").appendChild(el);
   });
 
-  // 간판 아래 직원 소개
-  (function crew() {
-    const c = $("crew").getContext("2d");
-    CHAR_KEYS.forEach((k, i) => {
-      const pic = portraitOf(k, i % 2);
-      if (pic) c.drawImage(pic, 95 + i * 190 - 120, -12, 240, 240); // 5명이라 캔버스가 950 넓이
-      else drawChar(c, 150, 95 + i * 190, 150, { ch: k, slot: i % 2, fx: 0, fy: 1, now: 0 });
-    });
+  // ===== 첫 화면 포스터 =====
+  // 게임 모델로 찍은 일하는 모습(3D가 안 되면 2D 그림)을 햇살·김 구름·날아다니는 음식·주문서 줄과 함께 한 장으로 그려요.
+  // 제목과 방 만들기 판은 HTML이라, 둘의 자리를 재서 그 사이(가운데 그림 자리)와 판 양옆에 배치해요
+  const Poster = (() => {
+    const CAST = { // 캐릭터: 앞치마 색(slot)과 자세, 든 물건
+      mochi:  { slot: 0, o: { yaw: 0.3, moving: true, phase: 0.5, dash: 0.35, hold: { k: "plate", items: [], dish: "gimbap" } } },
+      rabbit: { slot: 2, o: { yaw: 0.6, moving: true, phase: 1.5, lean: 0.1, reach: 0.5, hold: { k: "plate", items: [], dish: "tteokbokki" } } },
+      cat:    { slot: 2, o: { yaw: -0.6, chop: "pa" } },
+      bear:   { slot: 3, o: { yaw: -0.95, reach: 0.6, hold: { k: "ext" } } },
+      otter:  { slot: 1, o: { yaw: -0.95, moving: true, phase: 0.5, dash: 0.3, hold: { k: "basket", items: ["potato"], st: "done", dish: "fries" } } }
+    };
+    const FLY = [ // 날아다니는 음식
+      { it: { k: "plate", items: [], dish: "tteokbokki" } }, { it: { k: "plate", items: [], dish: "gimbap" } }, { it: { k: "plate", items: [], dish: "corndog_k" } },
+      { it: { k: "tteok" } }, { it: { k: "eomuk", cut: true } }, { it: { k: "pa" } }, { it: { k: "danmuji", cut: true } }, { it: { k: "ojingeo" } }, { it: { k: "plate", items: [], dish: "fries" } }
+    ];
+    const POT = { k: "pot", items: ["tteok", "eomuk"], st: "done", dish: "tteokbokki" };
+    let SP = null, timer = 0;
+    // 그림에서 안 비어 있는 곳 (위·아래·왼쪽·오른쪽)
+    function bbox(cv) {
+      const w = cv.width, h = cv.height, d = cv.getContext("2d").getImageData(0, 0, w, h).data;
+      let x0 = w, x1 = -1, y0 = h, y1 = -1;
+      for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) if (d[(y * w + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      return x1 < 0 ? { x0: 0, x1: w, y0: 0, y1: h } : { x0, x1, y0, y1 };
+    }
+    const pic = (cv) => ({ cv, b: bbox(cv) });
+    function pose2D(k, c, size) { // 3D가 안 될 때: 게임 2D 그림으로
+      const cv = document.createElement("canvas"); cv.width = cv.height = size;
+      const S = size * 0.62, fx = c.o.yaw > 0.2 ? 1 : c.o.yaw < -0.2 ? -1 : 0;
+      drawChar(cv.getContext("2d"), S, size / 2, size * 0.6, { ch: k, slot: c.slot, fx, fy: 1, now: 0, moving: !!c.o.moving, phase: c.o.phase || 0, chop: !!c.o.chop, hold: c.o.hold || null, reach: c.o.reach || 0 });
+      return cv;
+    }
+    function item2D(it, size) { const cv = document.createElement("canvas"); cv.width = cv.height = size; drawItem(cv.getContext("2d"), it, size / 2, size / 2, size * 0.78, 0); return cv; }
+    function fire2D(size) { const cv = document.createElement("canvas"); cv.width = cv.height = size; drawFire(cv.getContext("2d"), size / 2, size * 0.62, size * 0.8, 0, 1, 3); return cv; }
+    function sprites() {
+      if (SP) return SP;
+      SP = { cast: {}, fly: [], pot: null, fire: null };
+      for (const k of CHAR_KEYS) { const c = CAST[k] || { slot: 0, o: {} }; let cv = null; try { cv = R3 ? R3.posePic(k, c.slot, c.o, 512) : null; } catch (e) { cv = null; } SP.cast[k] = pic(cv || pose2D(k, c, 512)); }
+      FLY.forEach((f, n) => { let cv = null; try { cv = R3 ? R3.itemPic(f.it, 256, n * 0.7) : null; } catch (e) { cv = null; } SP.fly.push(pic(cv || item2D(f.it, 256))); });
+      let pc = null; try { pc = R3 ? R3.itemPic(POT, 512, Math.PI, true) : null; } catch (e) { pc = null; } SP.pot = pic(pc || item2D(POT, 512)); // 냄비 손잡이는 뒤로 (π 가까이 돌려서)
+      let fc = null; try { fc = R3 ? R3.firePic(256) : null; } catch (e) { fc = null; } SP.fire = pic(fc || fire2D(256));
+      return SP;
+    }
+    // 그림을 놓아요: (cx, 아랫변 y)에 맞춰, 보이는 부분 높이가 h가 되게
+    function place(g, p, cx, by, h, rot, flip) {
+      const b = p.b, sc = h / Math.max(1, b.y1 - b.y0), w = p.cv.width * sc, hh = p.cv.height * sc;
+      g.save(); g.translate(cx, by); if (rot) g.rotate(rot); if (flip) g.scale(-1, 1);
+      g.drawImage(p.cv, -((b.x0 + b.x1) / 2) * sc, -b.y1 * sc, w, hh);
+      g.restore();
+      return { x: cx, top: by - h, h, w: (b.x1 - b.x0) * sc };
+    }
+    function cloud(g, x, y, r, n, seed, col, shade) { // 뭉게구름 (김)
+      let sd = seed; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+      const pts = Array.from({ length: n }, (_, i) => { const a = (i / n) * Math.PI * 2 + rnd() * 0.4; return [x + Math.cos(a) * r * (0.55 + rnd() * 0.35), y + Math.sin(a) * r * 0.42 * (0.6 + rnd() * 0.4), r * (0.38 + rnd() * 0.22)]; });
+      if (shade) { g.fillStyle = shade; pts.forEach(([px, py, pr]) => { g.beginPath(); g.arc(px + pr * 0.08, py + pr * 0.16, pr, 0, Math.PI * 2); g.fill(); }); }
+      g.fillStyle = col; pts.forEach(([px, py, pr]) => { g.beginPath(); g.arc(px, py, pr, 0, Math.PI * 2); g.fill(); });
+      g.beginPath(); g.ellipse(x, y, r * 0.75, r * 0.32, 0, 0, Math.PI * 2); g.fill();
+    }
+    function sweat(g, x, y, s) { g.save(); g.translate(x, y); g.beginPath(); g.moveTo(0, -s); g.quadraticCurveTo(s * 0.75, 0, 0, s * 0.6); g.quadraticCurveTo(-s * 0.75, 0, 0, -s); g.fillStyle = "#8fd3ff"; g.fill(); g.lineWidth = Math.max(1.5, s * 0.16); g.strokeStyle = "#2f6fb0"; g.stroke(); g.restore(); }
+    function speed(g, x, y, len, n, sp, dir) { g.save(); g.strokeStyle = "rgba(255,255,255,.85)"; g.lineCap = "round"; for (let k = 0; k < n; k++) { const yy = y + (k - (n - 1) / 2) * sp, l = len * (0.6 + 0.4 * ((k * 37) % 5) / 4); g.lineWidth = Math.max(2, sp * 0.28); g.beginPath(); g.moveTo(x, yy); g.lineTo(x - dir * l, yy); g.stroke(); } g.restore(); }
+    function star(g, x, y, r, col) { g.save(); g.translate(x, y); g.beginPath(); for (let k = 0; k < 8; k++) { const a = (k * Math.PI) / 4, rr = k % 2 ? r * 0.32 : r; g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } g.closePath(); g.fillStyle = col; g.fill(); g.restore(); }
+    function ticket(g, x, y, s, rot, dish) { // 주문서 한 장 (줄에 집게로)
+      g.save(); g.translate(x, y); g.rotate(rot);
+      g.fillStyle = "rgba(60,30,10,.2)"; g.fillRect(-s * 0.42 + 3, 4, s * 0.84, s * 1.05);
+      g.fillStyle = "#fffdf3"; g.fillRect(-s * 0.42, 0, s * 0.84, s * 1.05);
+      g.fillStyle = "#d7372b"; g.fillRect(-s * 0.42, 0, s * 0.84, s * 0.14);
+      drawIcon(g, dish, 0, s * 0.6, s * 0.62);
+      g.fillStyle = "#8a8f94"; g.fillRect(-s * 0.1, -s * 0.12, s * 0.2, s * 0.2);
+      g.restore();
+    }
+    function paint() {
+      const cv = $("poster");
+      if (!cv || $("lobby").hidden) return;
+      const W = cv.clientWidth || innerWidth, H = cv.clientHeight || innerHeight, pr = Math.min(2, devicePixelRatio || 1);
+      cv.width = Math.round(W * pr); cv.height = Math.round(H * pr);
+      const g = cv.getContext("2d"); g.setTransform(pr, 0, 0, pr, 0, 0);
+      const sp = sprites(), land = W > H * 1.15;
+      const tb = $("ptitle").getBoundingClientRect(), pb = $("ppanel").getBoundingClientRect();
+      const top = tb.bottom, base = Math.min(H, pb.top + 8), Ha = Math.max(120, base - top), U = Math.min(W, H);
+
+      // 햇살 바탕
+      const cx = W / 2, cy = top + Ha * 0.42, R = Math.hypot(W, H);
+      const gr = g.createRadialGradient(cx, cy, 0, cx, cy, R * 0.7);
+      gr.addColorStop(0, "#fff6c4"); gr.addColorStop(0.28, "#ffd65c"); gr.addColorStop(0.62, "#ff9e3d"); gr.addColorStop(1, "#e2502e");
+      g.fillStyle = gr; g.fillRect(0, 0, W, H);
+      g.save(); g.translate(cx, cy); g.fillStyle = "rgba(255,255,255,.17)";
+      for (let k = 0; k < 20; k++) { g.rotate((Math.PI * 2) / 20); if (k % 2) continue; g.beginPath(); g.moveTo(0, 0); g.lineTo(R, -R * 0.12); g.lineTo(R, R * 0.12); g.closePath(); g.fill(); }
+      g.restore();
+
+      // 위쪽 주문서 줄
+      const ry = Math.max(10, Math.min(28, H * 0.025));
+      g.strokeStyle = "#5a4636"; g.lineWidth = 3; g.beginPath(); g.moveTo(0, ry); g.quadraticCurveTo(W / 2, ry + 14, W, ry); g.stroke();
+      const ts = Math.max(34, Math.min(62, U * 0.11)), dishes = ["tteokbokki", "gimbap", "ramen", "twigim", "corndog_k", "fries", "tteokbokki", "gimbap", "ramen", "fries"];
+      for (let x = ts * 0.7, n = 0; x < W; x += ts * 1.25, n++) ticket(g, x, ry + 10 * (1 - Math.pow((x / W - 0.5) * 2, 2)), ts, ((n * 37) % 7 - 3) * 0.03, dishes[n % dishes.length]);
+
+      // 김 구름 (뒤): 양옆 가장자리에 큰 물결처럼
+      const cw = "rgba(255,255,255,.95)", cs = "rgba(120,150,190,.35)";
+      cloud(g, -U * 0.05, top + Ha * 0.2, U * 0.3, 9, 11, cw, cs); cloud(g, W + U * 0.05, top + Ha * 0.3, U * 0.32, 9, 23, cw, cs);
+      cloud(g, W * 0.06, base - Ha * 0.05, U * 0.22, 8, 37, cw, cs); cloud(g, W * 0.94, base - Ha * 0.08, U * 0.24, 8, 41, cw, cs);
+
+      // 가운데 거대한 떡볶이 냄비 + 모락모락 김
+      const potH = Math.min(Ha * (land ? 0.66 : 0.58), W * (land ? 0.34 : 0.62)), potY = top + Ha * (land ? 0.64 : 0.66);
+      cloud(g, cx, potY - potH * 1.0, potH * 0.55, 10, 5, cw, cs);
+      cloud(g, cx - potH * 0.45, potY - potH * 1.25, potH * 0.32, 7, 9, cw, null);
+      cloud(g, cx + potH * 0.5, potY - potH * 1.2, potH * 0.3, 7, 13, cw, null);
+      place(g, sp.pot, cx, potY, potH);
+      [[-0.62, -0.55, 0.09], [0.6, -0.7, 0.07], [0.42, -1.05, 0.06], [-0.4, -1.1, 0.05], [0.75, -0.25, 0.05]].forEach(([dx, dy, r]) => star(g, cx + dx * potH, potY + dy * potH, r * potH * 1.3, "#fff7c2"));
+
+      // 날아다니는 음식 (꼬리 선과 함께)
+      const flySpots = land
+        ? [[0.3, 0.18, 0.13], [0.7, 0.14, 0.13], [0.86, 0.36, 0.11], [0.2, 0.42, 0.09], [0.4, 0.06, 0.08], [0.6, 0.04, 0.08], [0.1, 0.18, 0.08], [0.93, 0.12, 0.09], [0.78, 0.6, 0.1]]
+        : [[0.2, 0.12, 0.2], [0.82, 0.1, 0.2], [0.9, 0.42, 0.17], [0.08, 0.4, 0.14], [0.36, 0.02, 0.12], [0.64, 0.0, 0.12], [0.1, 0.62, 0.12], [0.9, 0.68, 0.13], [0.5, 0.26, 0.11]];
+      flySpots.forEach(([fx, fy, fs], n) => {
+        const p = sp.fly[n % sp.fly.length], x = W * fx, y = top + Ha * fy + Ha * fs * 0.5, s = (land ? H : W) * fs * 0.62;
+        g.save(); g.strokeStyle = "rgba(255,255,255,.7)"; g.lineWidth = Math.max(2, s * 0.06); g.lineCap = "round";
+        const dir = fx < 0.5 ? -1 : 1;
+        for (let k = -1; k <= 1; k++) { g.beginPath(); g.arc(x - dir * s * 0.9, y + s * 0.5 + k * s * 0.12, s * 0.9, dir > 0 ? Math.PI * 1.05 : -Math.PI * 0.05, dir > 0 ? Math.PI * 1.35 : -Math.PI * 0.35, dir < 0); g.stroke(); }
+        g.restore();
+        place(g, p, x, y + s * 0.5, s, (((n * 53) % 9) - 4) * 0.08);
+      });
+
+      // 아래 조리대 (판 뒤로 이어져요)
+      g.fillStyle = "#c98b4f"; g.fillRect(0, base, W, H - base);
+      g.fillStyle = "#e0a96a"; g.fillRect(0, base, W, Math.max(10, U * 0.03));
+      g.fillStyle = "rgba(0,0,0,.14)"; for (let x = 0; x < W; x += U * 0.18) g.fillRect(x, base + U * 0.03, 2, H - base);
+      g.fillStyle = "rgba(0,0,0,.18)"; g.fillRect(0, base + Math.max(10, U * 0.03), W, 4);
+
+      // 요리사들: 뒤(위쪽)부터
+      const ch = (k) => sp.cast[k];
+      const big = Math.min(Ha * (land ? 0.6 : 0.56), W * (land ? 0.24 : 0.44)), mid = big * 0.8;
+      const L = land
+        ? { rabbit: [0.3, 0.6, mid, 0.06], cat: [0.71, 0.66, mid], bear: [0.14, 1.0, big * 0.98], otter: [0.86, 1.0, big * 0.98], mochi: [0.5, 1.0, big] }
+        : { rabbit: [0.2, 0.56, mid * 0.9, 0.06], cat: [0.81, 0.6, mid * 0.88], bear: [0.18, 1.0, mid * 1.02], otter: [0.83, 1.0, mid * 1.02], mochi: [0.5, 1.0, big] };
+      const at = (k) => { const [fx, fy, h, rot] = L[k]; return { x: W * fx, y: top + Ha * fy, h, rot: rot || 0 }; };
+      // 불 + 소화기 거품 (곰 왼쪽)
+      const bp = at("bear"), fire = { x: bp.x - bp.h * 0.55, y: bp.y - bp.h * 0.05 };
+      if (fire.x > -bp.h * 0.2) {
+        place(g, sp.fire, fire.x, fire.y, bp.h * 0.45);
+        cloud(g, fire.x + bp.h * 0.18, fire.y - bp.h * 0.25, bp.h * 0.22, 7, 61, "rgba(255,255,255,.92)", null);
+      }
+      // 뛰어오른 토끼: 바닥 그림자
+      const rp = at("rabbit");
+      g.fillStyle = "rgba(90,40,10,.18)"; g.beginPath(); g.ellipse(rp.x, rp.y + rp.h * 0.22, rp.h * 0.22, rp.h * 0.05, 0, 0, Math.PI * 2); g.fill();
+      ["rabbit", "cat", "bear", "otter", "mochi"].forEach((k) => {
+        if (!ch(k)) return;
+        const p = at(k), r = place(g, ch(k), p.x, p.y, p.h, p.rot);
+        if (k === "mochi") speed(g, p.x - p.h * 0.34, p.y - p.h * 0.45, p.h * 0.32, 4, p.h * 0.07, 1);
+        if (k === "otter") speed(g, p.x + p.h * 0.36, p.y - p.h * 0.4, p.h * 0.28, 3, p.h * 0.07, -1);
+        if (k === "cat" || k === "bear") { sweat(g, p.x + (k === "cat" ? -1 : 1) * r.w * 0.42, r.top + p.h * 0.18, p.h * 0.05); sweat(g, p.x + (k === "cat" ? -1 : 1) * r.w * 0.5, r.top + p.h * 0.3, p.h * 0.035); }
+        if (k === "rabbit") { g.save(); g.font = Math.round(p.h * 0.16) + "px \"Black Han Sans\", sans-serif"; g.fillStyle = "#d7372b"; g.textAlign = "center"; g.lineWidth = p.h * 0.03; g.strokeStyle = "#fff"; g.strokeText("!!", p.x + r.w * 0.55, r.top + p.h * 0.15); g.fillText("!!", p.x + r.w * 0.55, r.top + p.h * 0.15); g.restore(); }
+      });
+    }
+    const schedule = () => { clearTimeout(timer); timer = setTimeout(() => requestAnimationFrame(paint), 80); };
+    addEventListener("resize", schedule);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule, () => {});
+    return { paint: schedule };
   })();
+  Poster.paint();
 
   // ===== 메인 루프 =====
   let lastFrame = performance.now();
