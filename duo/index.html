@@ -1128,6 +1128,19 @@ body.modal { overflow: hidden; }
   const CHAR_KEYS = Object.keys(CHARS);
   // 머리가 큰 캐릭터 (2D): [머리 반너비, 반높이, 머리 가운데 y] (칸 크기 S 배). 몸은 작게, 얼굴은 그림으로 그려요
   const BIG_HEAD = { mochi: [0.29, 0.23, -0.12], rabbit: [0.29, 0.215, -0.115] };
+  // 토끼 머리 모양: 위는 둥근 지붕, 옆은 통통, 아래는 넓고 납작한 찐빵. 공 위의 점(위쪽이 +y)을 이 모양 위로 옮겨요.
+  // 가장 넓은 줄이 y=0, 꼭대기는 1.1배 높이, 바닥은 0.88배. 길이가 어떻든 방향만 봐요
+  function bunPt(x, y, z) {
+    const l = Math.hypot(x, y, z) || 1; x /= l; y /= l; z /= l;
+    const t = Math.min(1, Math.max(0, -y / 0.6)), n = 2.15 + 0.35 * t * t * (3 - 2 * t);
+    const f = Math.pow(Math.pow(Math.abs(x), n) + Math.pow(Math.abs(y), n) + Math.pow(Math.abs(z), n), -1 / n);
+    return [x * f, y * f * (0.99 + 0.11 * Math.tanh(y * 4)), z * f];
+  }
+  function bunPath(c, A, B, cy) { // 2D 머리 테두리 (A 반너비, B 높이 단위, cy 가장 넓은 줄)
+    c.beginPath();
+    for (let i = 0; i <= 64; i++) { const a = (i / 64) * Math.PI * 2, [x, y] = bunPt(Math.cos(a), Math.sin(a), 0); if (i) c.lineTo(x * A, cy - y * B); else c.moveTo(x * A, cy - y * B); }
+    c.closePath();
+  }
   const APRON = ["#d7372b", "#2f8f5b", "#2f6fd1", "#8e4fc9"];
   const APRON_NAME = ["빨간 앞치마", "초록 앞치마", "파란 앞치마", "보라 앞치마"];
 
@@ -1179,7 +1192,8 @@ body.modal { overflow: hidden; }
     c.restore();
   }
   // 토끼 얼굴 (피규어 사진에서 잰 자리). drawMochiFace 와 같은 좌표 (머리 가운데 (0, 0), 머리 반너비 1, 아래가 +)
-  function drawUsagiFace(c, P, k) {
+  function drawUsagiFace(c, P0, k) {
+    const P = (x, y) => P0(x, y - 0.08); // 찐빵 머리는 가장 넓은 줄이 테두리 가운데보다 0.08 아래라서, 사진에서 잰 자리를 그만큼 올려요
     const ink = "#1f1612", lw = (w) => Math.max(1, w * k);
     const curve = (a, ctl, b, w) => { // 곡선을 잘게 나눠 점마다 P로 옮겨요 (3D 머리에 붙여도 정면에서 같은 모양)
       c.beginPath();
@@ -1328,7 +1342,7 @@ body.modal { overflow: hidden; }
       drawTail(c, o.ch, S, t, o.moving);
     }
     drawEars(c, o.ch, S, back);
-    if (big) { c.beginPath(); c.ellipse(0, big[2] * S, big[0] * S, big[1] * S, 0, 0, Math.PI * 2); c.fillStyle = C.fur; c.fill(); } // 옆으로 넓적한 큰 머리가 몸 위를 덮어요
+    if (big) { if (o.ch === "rabbit") bunPath(c, big[0] * S, big[1] * S, big[2] * S); else { c.beginPath(); c.ellipse(0, big[2] * S, big[0] * S, big[1] * S, 0, 0, Math.PI * 2); } c.fillStyle = C.fur; c.fill(); } // 옆으로 넓적한 큰 머리가 몸 위를 덮어요
     else dot(c, 0, -0.17 * S, 0.21 * S, C.fur);
     c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
     if (o.ch === "cat") {
@@ -3711,22 +3725,50 @@ body.modal { overflow: hidden; }
       return "#" + _c.getHexString();
     }
     // 머리가 큰 캐릭터 (3D): 머리 크기 a×b×c, 얼굴 그림, 얼굴 그림이 덮는 범위 (가로 ±al, 세로 ±be 라디안)
-    const BIG3 = { mochi: { a: 0.33, b: 0.28, c: 0.3, al: 1.15, be: 0.7, draw: drawMochiFace }, rabbit: { a: 0.33, b: 0.245, c: 0.29, al: 1.15, be: 1.05, draw: drawUsagiFace } };
+    const BIG3 = { mochi: { a: 0.33, b: 0.28, c: 0.3, al: 1.15, be: 0.7, draw: drawMochiFace }, rabbit: { a: 0.33, b: 0.245, c: 0.29, al: 1.15, be: 1.05, draw: drawUsagiFace, bun: true } };
+    // 찐빵 머리 점의 법선: 공 위에서 두 방향으로 조금씩 움직여 본 차이로 구해요 (이음매에서도 똑같이 나와서 금이 안 가요)
+    function bunNormal(x, y, z) {
+      let t1 = Math.abs(y) < 0.99 ? [-z, 0, x] : [1, 0, 0];
+      const l1 = Math.hypot(...t1); t1 = t1.map((v) => v / l1);
+      const t2 = [y * t1[2] - z * t1[1], z * t1[0] - x * t1[2], x * t1[1] - y * t1[0]], e = 1e-3;
+      const d = (t) => { const p = bunPt(x + e * t[0], y + e * t[1], z + e * t[2]), q = bunPt(x - e * t[0], y - e * t[1], z - e * t[2]); return [p[0] - q[0], p[1] - q[1], p[2] - q[2]]; };
+      const a = d(t1), b = d(t2), o = bunPt(x, y, z);
+      let nn = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+      if (nn[0] * o[0] + nn[1] * o[1] + nn[2] * o[2] < 0) nn = nn.map((v) => -v);
+      const ln = Math.hypot(...nn) || 1; return nn.map((v) => v / ln);
+    }
+    function toBun(g) { // 공 모양 도형의 점·법선을 찐빵 머리 위로 옮겨요
+      const pa = g.attributes.position, na = g.attributes.normal;
+      for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i); pa.setXYZ(i, ...bunPt(x, y, z)); na.setXYZ(i, ...bunNormal(x, y, z)); }
+      return g;
+    }
+    const bunG = () => gc("bunG", () => toBun(new T.SphereGeometry(1, 40, 28)));
     // 얼굴: 2D와 같은 그림을 머리 앞쪽을 덮는 구 조각에 붙여요. 가로는 경도, 세로는 위도로 펴서 그리는데,
     // 정면에서 봤을 때 2D와 같은 자리에 오게 위쪽·아래쪽일수록 경도를 넓혀요 (안 그러면 눈썹 끝이 안쪽으로 오그라들어요)
     function faceMesh(key) {
-      const { a, b, c: cz, al, be, draw } = BIG3[key];
-      const g = gc("faceG" + key, () => new T.SphereGeometry(1, 40, 24, Math.PI / 2 - al, 2 * al, Math.PI / 2 - be, 2 * be));
+      const { a, b, c: cz, al, be, draw, bun } = BIG3[key], TILT = 0.12; // 카메라가 위에서 내려다보니 얼굴을 살짝 위로 올려 정면처럼 보이게
+      const g = gc("faceG" + key, () => { const sg = new T.SphereGeometry(1, 40, 24, Math.PI / 2 - al, 2 * al, Math.PI / 2 - be, 2 * be); return bun ? toBun(sg) : sg; });
       const m = gc("faceM" + key, () => {
         const W = 512, H = Math.round((W * be * b) / (al * a)), k = W / (2 * al), ky = H / (2 * be);
         const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
         const cl = (v) => Math.max(-1, Math.min(1, v));
-        draw(cv.getContext("2d"), (x, y) => { const la = Math.asin(cl((y * a) / b)); return [W / 2 + Math.asin(cl(x / Math.max(0.05, Math.cos(la)))) * k, H / 2 + la * ky]; }, k);
+        const P = bun ? (x, y) => { // 찐빵 머리: 정면에서 (x, y) 자리에 보이는 공 위 방향을 몇 번 고쳐 가며 찾아요
+          const tx = x, ty = -(y * a) / b;
+          let ux = tx, uy = ty;
+          for (let it = 0; it < 14; it++) {
+            const uz = Math.sqrt(Math.max(1e-4, 1 - ux * ux - uy * uy)), [px, py] = bunPt(ux, uy, uz);
+            ux += (tx - px) * 0.8; uy += (ty - py) * 0.8;
+            const r = Math.hypot(ux, uy); if (r > 0.995) { ux *= 0.995 / r; uy *= 0.995 / r; }
+          }
+          const uz = Math.sqrt(Math.max(1e-4, 1 - ux * ux - uy * uy)), y2 = uy * Math.cos(TILT) + uz * Math.sin(TILT), z2 = uz * Math.cos(TILT) - uy * Math.sin(TILT);
+          return [W / 2 + Math.atan2(ux, z2) * k, H / 2 - Math.asin(cl(y2)) * ky];
+        } : (x, y) => { const la = Math.asin(cl((y * a) / b)); return [W / 2 + Math.asin(cl(x / Math.max(0.05, Math.cos(la)))) * k, H / 2 + la * ky]; };
+        draw(cv.getContext("2d"), P, k);
         return std({ map: canvasTex(cv), transparent: true, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
       });
       const mesh = new T.Mesh(g, m);
       mesh.scale.set(a * 1.004, b * 1.004, cz * 1.004);
-      mesh.rotation.x = -0.12; // 카메라가 위에서 내려다보니 얼굴을 살짝 위로 올려 정면처럼 보이게
+      if (!bun) mesh.rotation.x = -TILT; // 찐빵 머리는 얼굴 자리를 셈할 때 이미 올렸어요
       return mesh;
     }
     function buildChar(k, slot) {
@@ -3760,7 +3802,7 @@ body.modal { overflow: hidden; }
       // 머리
       const headG = new T.Group(); headG.position.y = big ? 0.6 : 0.8; bodyG.add(headG);
       const H = new Batch();
-      H.add(sphG(22), big ? mtx(0, 0, 0, 0, 0, 0, big.a, big.b, big.c) : mtx(0, 0, 0, 0, 0, 0, 0.25, 0.235, 0.24), C.fur);
+      H.add(big && big.bun ? bunG() : sphG(22), big ? mtx(0, 0, 0, 0, 0, 0, big.a, big.b, big.c) : mtx(0, 0, 0, 0, 0, 0, 0.25, 0.235, 0.24), C.fur);
       if (k === "cat") for (const sd of [-1, 1]) {
         H.add(coneG(0.09, 0.16, 14), mtx(sd * 0.14, 0.2, -0.01, -0.12, 0, -sd * 0.38), C.fur);
         H.add(coneG(0.052, 0.1, 12), mtx(sd * 0.135, 0.19, 0.026, -0.12, 0, -sd * 0.38), C.ear);
