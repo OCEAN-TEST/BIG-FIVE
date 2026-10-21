@@ -102,7 +102,6 @@ button.yel { background: var(--sign); }
         <span class="grow"></span>
         <label><input type="checkbox" id="tagChk" checked> 이름표</label>
         <label><input type="checkbox" id="gridChk" checked> 칸 선</label>
-        <label title="리스폰 도구를 고르면 저절로 보여요"><input type="checkbox" id="areaChk"> 시작 구역</label>
         <button type="button" id="undoBtn">↶ 되돌리기</button>
         <button type="button" id="redoBtn">↷ 다시하기</button>
       </div>
@@ -111,7 +110,7 @@ button.yel { background: var(--sign); }
       <div class="legendrow">
         <span>누르고 끌면 여러 칸을 한 번에 칠해요 · 오른쪽 클릭은 바닥으로 지우기 · Ctrl+Z 되돌리기</span>
         <span><i style="outline:2px dashed #e0119a;outline-offset:-2px"></i>원래 맵에서 바뀐 칸</span>
-        <span><i style="background:rgba(215,55,43,.35)"></i><i style="background:rgba(47,143,91,.35)"></i>시작 구역: 게임에선 판마다 누가 어느 쪽인지 섞고, 그쪽 칠한 칸 중 아무 데서나 시작해요</span>
+        <span>리스폰 1·2: 게임에선 판마다 누가 어느 자리에 설지 섞어요 (3·4명이면 그 바로 옆 칸도 써요)</span>
         <span><i style="box-shadow:inset 0 0 0 3px #d7372b"></i>점검에 걸린 칸</span>
       </div>
     </section>
@@ -539,9 +538,6 @@ button.yel { background: var(--sign); }
   $("tagChk").checked = showTags; $("gridChk").checked = showGrid;
   $("tagChk").addEventListener("change", (e) => { showTags = e.target.checked; setPref("tags", showTags); draw(); });
   $("gridChk").addEventListener("change", (e) => { showGrid = e.target.checked; setPref("grid", showGrid); draw(); });
-  let showArea = pref("area", false);
-  $("areaChk").checked = showArea;
-  $("areaChk").addEventListener("change", (e) => { showArea = e.target.checked; setPref("area", showArea); draw(); });
   const chAt = (x, y) => cur.map[y][x];
   const fl = (p) => [Math.floor(p[0]), Math.floor(p[1])];
   const at = (x, y) => (x < 0 || y < 0 || x >= COLS || y >= ROWS ? "#" : cur.map[y][x]);
@@ -560,12 +556,6 @@ button.yel { background: var(--sign); }
       for (let x = 1; x < COLS; x++) { g.moveTo(PX(x) + 0.5, RU); g.lineTo(PX(x) + 0.5, cv.height); }
       for (let y = 1; y < ROWS; y++) { g.moveTo(RU, PY(y) + 0.5); g.lineTo(cv.width, PY(y) + 0.5); }
       g.stroke();
-    }
-    if (showArea || tool === "@sp1" || tool === "@sp2") { // 시작 구역 (게임 rollSpots 와 같은 셈)
-      startSides().forEach((cells, k) => {
-        g.fillStyle = k ? "rgba(47,143,91,.32)" : "rgba(215,55,43,.32)";
-        cells.forEach(([x, y]) => g.fillRect(PX(x), PY(y), TS, TS));
-      });
     }
     if (cur.warp) { // 순간이동문이 옮겨 다니는 자리 후보
       const w = cur.warp, spots = [w.pit, ...w.pairs.flatMap((p) => [...p.L, ...p.R])];
@@ -620,7 +610,7 @@ button.yel { background: var(--sign); }
       });
       grp.appendChild(p); box.appendChild(grp);
     };
-    mk("자리 표시 (칸은 그대로 두고 위에 놓아요. 리스폰은 '어느 쪽'만 정해요)", Object.entries(MARKS));
+    mk("자리 표시 (칸은 그대로 두고 위에 놓아요)", Object.entries(MARKS));
     TILES.forEach((grp) => mk(grp.g, grp.list));
   }
   function setTool(k) {
@@ -734,31 +724,6 @@ button.yel { background: var(--sign); }
   $("extra").addEventListener("input", () => refresh());
 
   // ===== 점검 ===== (걸린 칸은 판에 빨강·주황 테두리로 보여요)
-  // 시작 구역: 게임(index.html rollSpots)과 같은 셈. 리스폰 1·2 자리에서 맨바닥(.)만 밟고 갈 수 있는 칸 중
-  // 그 자리에 더 가까운 칸이 그쪽 구역이에요. 판마다 사람을 양쪽에 번갈아 보내고 구역 안에서 아무 칸이나 골라요
-  function startSides() {
-    const m = cur.map, flo = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS && m[y][x] === ".";
-    const warp = new Set();
-    if (cur.warp) [cur.warp.pit, ...cur.warp.pairs.flatMap((pr) => [...pr.L, ...pr.R])].forEach(([x, y]) => warp.add(x + "," + y));
-    const dist = (cur.spawn || []).slice(0, 2).map(([sx, sy]) => {
-      const x0 = Math.floor(sx), y0 = Math.floor(sy), d = new Map([[x0 + "," + y0, 0]]), q = [[x0, y0]];
-      for (let h = 0; h < q.length; h++) {
-        const [x, y] = q[h], k0 = d.get(x + "," + y);
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, k = nx + "," + ny; if (!d.has(k) && flo(nx, ny)) { d.set(k, k0 + 1); q.push([nx, ny]); } }
-      }
-      return d;
-    });
-    const side = [[], []];
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-      const k = x + "," + y;
-      if (!flo(x, y) || warp.has(k)) continue;
-      const a = dist[0] && dist[0].get(k), b = dist[1] && dist[1].get(k);
-      if (a != null && (b == null || a < b)) side[0].push([x, y]);
-      else if (b != null && (a == null || b < a)) side[1].push([x, y]);
-    }
-    return side;
-  }
-
   function check() {
     const out = [], m = cur.map, all = m.join("");
     const has = (c) => all.includes(c);
@@ -787,8 +752,6 @@ button.yel { background: var(--sign); }
       if (!WALK.includes(m[y][x])) add("bad", "리스폰 " + (i + 1) + " 이 걸을 수 있는 바닥이 아닌 곳(" + (INFO[m[y][x]] || {}).name + ")에 있어요", [[x, y]]);
     });
     if (sp[0] && sp[1] && fl(sp[0]).join() === fl(sp[1]).join()) add("bad", "리스폰 1·2 가 같은 칸이에요", [fl(sp[0])]);
-    const sides = startSides();
-    [0, 1].forEach((k) => { if (sp[k] && sides[k].length < 2) add("warn", "리스폰 " + (k + 1) + " 쪽 시작 구역이 " + sides[k].length + "칸뿐이에요 (3·4명이면 한쪽에 두 명이 서요). 주변에 맨바닥(.)을 더 둬요", [fl(sp[k])]); });
     if (!cur.ext) add("warn", "소화기 자리가 없어요");
     else if (!"C|".includes(m[cur.ext[1]][cur.ext[0]])) add("warn", "소화기는 빈 조리대 위에 둬요 — 지금 " + (INFO[m[cur.ext[1]][cur.ext[0]]] || {}).name + " 위예요", [cur.ext]);
     // 닿는지: 리스폰에서 걸어갈 수 있는 바닥 옆에 장비가 있는지

@@ -776,41 +776,15 @@ body.modal { overflow: hidden; }
     return spawnCache[st.id][i] || spawnCache[st.id][0];
   }
   const stageOf = (id) => STAGES.find((s) => s.id === id) || STAGES[0];
-  // 판마다 시작 자리 뽑기 (방장이 판 시작할 때 뽑아서 모두에게 보내요. 첫 판도 똑같이 뽑아요)
-  // 단계에 적힌 1·2번 자리는 "어느 쪽"만 정해요: 그 자리에서 맨바닥(.)만 밟고 갈 수 있는 칸 중 그 자리에 더 가까운 칸이 그쪽이에요.
-  // 사람 순서를 섞어서 양쪽에 번갈아 보내고 (그래서 둘 이상이면 양쪽에 한 명씩은 꼭 가요), 그쪽 바닥에서 아무 칸이나 골라요.
-  // 두 사람이 바로 붙어서 나오진 않게 하고, 순간이동문이 생기는 칸은 빼요. 쓰러지면 이번 판 시작 자리에서 다시 나와요
+  // 판마다 시작 자리 섞기 (방장이 판 시작할 때 섞어서 모두에게 보내요. 첫 판도 똑같이 섞어요)
+  // 자리는 단계에 적힌 그대로예요 (1·2번 자리, 3·4명이면 그 바로 옆 칸). 누가 어느 자리에 서는지만 바뀌어요.
+  // 1·2번 자리를 먼저 채워서, 둘 이상이면 양쪽에 한 명씩은 꼭 가요. 쓰러지면 이번 판 자기 자리에서 다시 나와요
   function rollSpots(st, players) {
-    const m = st.map, flo = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS && m[y][x] === ".";
-    const warp = new Set();
-    if (st.warp) [st.warp.pit, ...st.warp.pairs.flatMap((pr) => [...pr.L, ...pr.R])].forEach(([x, y]) => warp.add(x + "," + y));
-    const dist = st.spawn.slice(0, 2).map(([sx, sy]) => {
-      const x0 = Math.floor(sx), y0 = Math.floor(sy), d = new Map([[x0 + "," + y0, 0]]), q = [[x0, y0]];
-      for (let h = 0; h < q.length; h++) {
-        const [x, y] = q[h], k0 = d.get(x + "," + y);
-        for (const [dx, dy] of NB4C) { const nx = x + dx, ny = y + dy, k = nx + "," + ny; if (!d.has(k) && flo(nx, ny)) { d.set(k, k0 + 1); q.push([nx, ny]); } }
-      }
-      return d;
-    });
-    const side = [[], []];
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-      const k = x + "," + y;
-      if (!flo(x, y) || warp.has(k)) continue;
-      const a = dist[0].get(k), b = dist[1] ? dist[1].get(k) : undefined;
-      if (a != null && (b == null || a < b)) side[0].push([x, y]);
-      else if (b != null && (a == null || b < a)) side[1].push([x, y]); // 양쪽에서 똑같이 먼 칸은 빼요
-    }
     const on = [0, 1, 2, 3].filter((i) => players[i] && players[i].on);
     for (let j = on.length - 1; j > 0; j--) { const r = Math.floor(Math.random() * (j + 1)); [on[j], on[r]] = [on[r], on[j]]; }
-    const order = on.concat([0, 1, 2, 3].filter((i) => !on.includes(i))); // 빈자리도 뽑아 둬요 (판 중간에 들어오면 거기서)
-    const first = Math.random() < 0.5 ? 0 : 1, taken = [], out = [];
-    order.forEach((i, j) => {
-      const sd = (first + j) % 2, near = ([x, y]) => taken.some(([tx, ty]) => Math.abs(tx - x) <= 1 && Math.abs(ty - y) <= 1);
-      let pool = side[sd].filter((c) => !near(c));
-      if (!pool.length) pool = side[sd].filter(([x, y]) => !taken.some(([tx, ty]) => tx === x && ty === y));
-      const c = pool.length ? pool[Math.floor(Math.random() * pool.length)] : spawnPos(st, j).map(Math.floor); // 고를 칸이 없으면 적힌 자리
-      taken.push(c); out[i] = [c[0] + 0.5, c[1] + 0.5];
-    });
+    const order = on.concat([0, 1, 2, 3].filter((i) => !on.includes(i))); // 빈자리도 정해 둬요 (판 중간에 들어오면 거기서)
+    const seat = Math.random() < 0.5 ? [0, 1, 2, 3] : [1, 0, 3, 2], out = []; // 혼자거나 셋일 때도 어느 쪽이 먼저인지 섞여요
+    order.forEach((i, j) => (out[i] = spawnPos(st, seat[j]).slice()));
     return out;
   }
   const spotOf = (v, st, i) => (v && v.spots && v.spots[i]) || spawnPos(st, i); // 이번 판 시작 자리 (뽑은 게 없으면 적힌 자리)
