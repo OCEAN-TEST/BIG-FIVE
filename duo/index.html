@@ -5430,11 +5430,15 @@ body.modal { overflow: hidden; }
       if (bd) bd.geometry.dispose();
       return out;
     }
-    function itemPic(it, size, tilt, low) { // 물건: 비스듬히 위에서 (low면 더 옆에서: 큰 냄비 손잡이가 뒤에 숨게)
+    const _pbx = new T.Box3(), _pbs = new T.Sphere();
+    function itemPic(it, size, tilt, low) { // 물건: 비스듬히 위에서 (low면 더 옆에서: 큰 냄비 손잡이가 뒤에 숨게). 물건 크기에 맞춰 물러나서 안 잘려요
       const g = itemModel(it);
       if (g.userData.tick) g.userData.tick(0, it, true);
       g.rotation.y = tilt || 0;
-      return low ? shot(g, size, [0, 0.92, 1.38], [0, 0.1, 0], 30) : shot(g, size, [0, 1.05, 1.25], [0, 0.08, 0], 30);
+      g.updateMatrixWorld(true);
+      _pbx.setFromObject(g).getBoundingSphere(_pbs);
+      const d = low ? [0, 0.82, 1.38] : [0, 0.97, 1.25], l = Math.hypot(d[0], d[1], d[2]), r = (_pbs.radius / Math.sin((15 * Math.PI) / 180)) * 1.08, c = _pbs.center;
+      return shot(g, size, [c.x + (d[0] / l) * r, c.y + (d[1] / l) * r, c.z + (d[2] / l) * r], [c.x, c.y, c.z], 30);
     }
     function firePic(size) { const g = fireModel(); return shot(g, size, [0, 0.7, 2.2], [0, 0.35, 0], 30); }
 
