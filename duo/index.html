@@ -575,7 +575,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 35;
+  const VERSION = 36;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -1138,32 +1138,36 @@ body.modal { overflow: hidden; }
       [-1, 1].forEach((sd) => { dot(c, sd * 0.16 * S, -0.35 * S, 0.08 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); if (!back) dot(c, sd * 0.16 * S, -0.35 * S, 0.042 * S, C.ear); });
     }
   }
+  // 치이카와 얼굴 (피규어 사진에서 잰 자리). 머리 가운데가 (0, 0), 머리 반너비가 1, 아래가 +.
+  // P(x, y) → 캔버스 좌표, k = 1의 픽셀 크기. 2D는 머리 위에 바로, 3D는 머리 앞을 덮는 텍스처에 그려요
+  function drawMochiFace(c, P, k) {
+    const ink = "#1f1612", lw = (w) => Math.max(1, w * k);
+    c.save(); c.lineCap = "round"; c.lineJoin = "round";
+    [-1, 1].forEach((sd) => {
+      const [bx, by] = P(sd * 0.62, 0.22); // 볼터치: 분홍 타원 + 까만 빗금 네 줄 (/)
+      c.beginPath(); c.ellipse(bx, by, 0.19 * k, 0.134 * k, 0, 0, Math.PI * 2); c.fillStyle = "#f3a8bb"; c.fill();
+      c.beginPath();
+      [-1.5, -0.5, 0.5, 1.5].forEach((j) => { const hx = bx + j * 0.07 * k; c.moveTo(hx - 0.025 * k, by + 0.055 * k); c.lineTo(hx + 0.025 * k, by - 0.055 * k); });
+      c.strokeStyle = ink; c.lineWidth = lw(0.032); c.stroke();
+      const [ex, ey] = P(sd * 0.33, 0.03); // 눈: 까만 동그라미 안에 위쪽 하얀 타원, 아래쪽 하얀 초승달
+      c.beginPath(); c.ellipse(ex, ey, 0.13 * k, 0.135 * k, 0, 0, Math.PI * 2); c.fillStyle = ink; c.fill();
+      c.beginPath(); c.ellipse(ex + 0.006 * k, ey - 0.036 * k, 0.056 * k, 0.04 * k, 0, 0, Math.PI * 2); c.fillStyle = "#ffffff"; c.fill();
+      c.beginPath(); c.moveTo(ex - 0.05 * k, ey + 0.068 * k); c.quadraticCurveTo(ex, ey + 0.098 * k, ex + 0.05 * k, ey + 0.068 * k);
+      c.strokeStyle = "#ffffff"; c.lineWidth = Math.max(0.8, 0.014 * k); c.stroke();
+      c.beginPath(); c.moveTo(ex + sd * 0.089 * k, ey - 0.312 * k); c.quadraticCurveTo(ex - sd * 0.01 * k, ey - 0.372 * k, ex - sd * 0.089 * k, ey - 0.362 * k); // 눈썹: 안쪽이 올라간 가는 호
+      c.strokeStyle = ink; c.lineWidth = lw(0.034); c.stroke();
+    });
+    const [mx, my] = P(0, 0.277), [dx, dy] = P(0, 0.39); // 입: 작은 ω + 가운데 위로 짧은 선, 그 아래 짧은 가로선
+    c.beginPath(); c.moveTo(mx - 0.11 * k, my); c.quadraticCurveTo(mx - 0.055 * k, my + 0.075 * k, mx, my); c.quadraticCurveTo(mx + 0.055 * k, my + 0.075 * k, mx + 0.11 * k, my);
+    c.moveTo(mx, my); c.lineTo(mx, my - 0.032 * k);
+    c.moveTo(dx - 0.033 * k, dy); c.lineTo(dx + 0.033 * k, dy);
+    c.strokeStyle = ink; c.lineWidth = lw(0.03); c.stroke();
+    c.restore();
+  }
   function drawFace(c, ch, S, fx) {
     const C = CHARS[ch];
     const hy = -0.17 * S, ox = fx * 0.07 * S;
-    if (ch === "mochi") { // 머리(가운데 -0.12, 반지름 0.29×0.23) 기준: 큰 눈에 위쪽 하얀 반짝임, 높이 뜬 걱정 눈썹, 바깥쪽 빗금 볼터치, ω 아래로 짧은 선
-      const ey = -0.115 * S, lw = Math.max(1, 0.012 * S);
-      c.lineCap = "round"; c.lineJoin = "round";
-      [-1, 1].forEach((sd) => {
-        const x = ox + sd * 0.093 * S;
-        const bx = ox + sd * 0.172 * S, by = ey + 0.062 * S; // 볼터치: 눈 바깥 아래, 머리 가장자리 가까이
-        c.beginPath(); c.ellipse(bx, by, 0.05 * S, 0.032 * S, 0, 0, Math.PI * 2); c.fillStyle = "#f4a7b9"; c.fill();
-        c.strokeStyle = "rgba(58,42,36,.8)"; c.lineWidth = Math.max(1, 0.007 * S); c.beginPath();
-        [-1.5, -0.5, 0.5, 1.5].forEach((k) => { const hx = bx + k * 0.016 * S; c.moveTo(hx - 0.005 * S, by + 0.012 * S); c.lineTo(hx + 0.005 * S, by - 0.012 * S); });
-        c.stroke();
-        c.beginPath(); c.ellipse(x, ey, 0.036 * S, 0.033 * S, 0, 0, Math.PI * 2); c.fillStyle = "#1f1612"; c.fill();
-        c.beginPath(); c.ellipse(x + 0.002 * S, ey - 0.009 * S, 0.019 * S, 0.012 * S, 0, 0, Math.PI * 2); c.fillStyle = "#ffffff"; c.fill();
-        const yb = ey - 0.1 * S; // 눈썹: 안쪽 끝이 살짝 올라간 걱정 눈썹
-        c.beginPath(); c.moveTo(x + sd * 0.032 * S, yb + 0.006 * S); c.quadraticCurveTo(x, yb - 0.01 * S, x - sd * 0.032 * S, yb - 0.003 * S);
-        c.strokeStyle = "#1f1612"; c.lineWidth = lw; c.stroke();
-      });
-      const mx = ox * 1.2, my = ey + 0.078 * S; // 입: 얕은 ω 가운데에서 짧은 선이 아래로
-      c.beginPath(); c.moveTo(mx - 0.032 * S, my - 0.004 * S); c.quadraticCurveTo(mx - 0.016 * S, my + 0.014 * S, mx, my);
-      c.quadraticCurveTo(mx + 0.016 * S, my + 0.014 * S, mx + 0.032 * S, my - 0.004 * S);
-      c.moveTo(mx, my); c.lineTo(mx, my + 0.018 * S);
-      c.strokeStyle = "#1f1612"; c.lineWidth = lw; c.stroke();
-      return;
-    }
+    if (ch === "mochi") { const A = 0.29 * S, hc = -0.12 * S; drawMochiFace(c, (x, y) => [ox + x * A, hc + y * A], A); return; }
     if (ch === "bear") { c.beginPath(); c.ellipse(ox * 1.25, hy + 0.075 * S, 0.095 * S, 0.068 * S, 0, 0, Math.PI * 2); c.fillStyle = "#d9b38c"; c.fill(); }
     const eyeY = hy - 0.01 * S;
     const ex = [ox - 0.075 * S + fx * 0.02 * S, ox + 0.075 * S + fx * 0.02 * S];
@@ -3655,6 +3659,23 @@ body.modal { overflow: hidden; }
       _c.setHSL(_hsl.h, Math.min(1, _hsl.s * (sat || 1.25)), Math.min(1, _hsl.l * (lit || 0.96)));
       return "#" + _c.getHexString();
     }
+    // 치이카와 얼굴: 2D와 같은 그림(drawMochiFace)을 머리 앞쪽을 덮는 구 조각에 붙여요.
+    // 가로는 경도, 세로는 위도로 펴서 그려요 (머리 0.33×0.28×0.3, 가로 ±al, 세로 ±be 라디안)
+    function mochiFace() {
+      const a = 0.33, b = 0.28, cz = 0.3, al = 1.15, be = 0.7;
+      const g = gc("mochiFaceG", () => new T.SphereGeometry(1, 40, 24, Math.PI / 2 - al, 2 * al, Math.PI / 2 - be, 2 * be));
+      const m = gc("mochiFaceM", () => {
+        const W = 512, H = Math.round((W * be * b) / (al * a)), k = W / (2 * al), ky = H / (2 * be);
+        const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+        const cl = (v) => Math.max(-1, Math.min(1, v));
+        drawMochiFace(cv.getContext("2d"), (x, y) => [W / 2 + Math.asin(cl(x)) * k, H / 2 + Math.asin(cl((y * a) / b)) * ky], k);
+        return std({ map: canvasTex(cv), transparent: true, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+      });
+      const mesh = new T.Mesh(g, m);
+      mesh.scale.set(a * 1.004, b * 1.004, cz * 1.004);
+      mesh.rotation.x = -0.12; // 카메라가 위에서 내려다보니 얼굴을 살짝 위로 올려 정면처럼 보이게
+      return mesh;
+    }
     function buildChar(k, slot) {
       const C0 = CHARS[k] || CHARS.cat, AP = vivid(APRON[slot], 1.1, 0.95);
       const C = { fur: vivid(C0.fur), dark: vivid(C0.dark), ear: vivid(C0.ear, 1.15), nose: C0.nose };
@@ -3701,26 +3722,13 @@ body.modal { overflow: hidden; }
         H.add(sphG(10), mtx(sd * 0.17, 0.18, 0.02, 0, 0, 0, 0.05, 0.05, 0.02), C.ear);
       }
       for (const sd of [-1, 1]) {
-        if (mochi) { // 머리(0.33×0.28×0.3) 겉면에 붙여요: 큰 눈 + 위쪽 하얀 반짝임, 높이 뜬 걱정 눈썹, 바깥쪽 빗금 볼터치
-          H.add(sphG(12), mtx(sd * 0.108, -0.005, 0.268, 0, sd * 0.3, 0, 0.047, 0.043, 0.022), "#1f1612");
-          H.add(sphG(10), mtx(sd * 0.113, 0.008, 0.288, 0, sd * 0.3, 0, 0.025, 0.017, 0.008), "#ffffff");
-          H.add(torG(0.045, 0.0055, 1.1, 4, 12), mtx(sd * 0.108, 0.08, 0.275, -0.45, sd * 0.33, Math.PI / 2 - 0.55 - sd * 0.15), "#1f1612"); // 눈썹: 살짝 굽은 호
-          H.add(sphG(10), mtx(sd * 0.2, -0.078, 0.226, 0.25, sd * 0.7, 0, 0.062, 0.04, 0.012), "#f4a7b9");
-          for (const kk of [-1.5, -0.5, 0.5, 1.5]) {
-            const hx = sd * 0.2 + kk * 0.0137, hz = 0.3 * Math.sqrt(Math.max(0, 1 - (hx / 0.33) ** 2 - (0.078 / 0.28) ** 2)) + 0.006;
-            H.add(boxG(0.004, 0.026, 0.004), mtx(hx, -0.078, hz, 0.25, sd * 0.7, -0.45), "#3a2a24");
-          }
-          continue;
-        }
+        if (mochi) continue; // 얼굴은 텍스처로 (mochiFace)
         H.add(sphG(10), mtx(sd * 0.085, 0.02, 0.214, 0, 0, 0, 0.034, 0.039, 0.025), "#241a14");
         H.add(sphG(6), mtx(sd * 0.085 + 0.012, 0.037, 0.236, 0, 0, 0, 0.011, 0.011, 0.008), "#ffffff");
         H.add(sphG(8), mtx(sd * 0.148, -0.058, 0.18, 0, sd * 0.68, 0, 0.044, 0.026, 0.012), "#ff9aa8");
       }
       const smallNose = k === "cat" || k === "rabbit";
-      if (mochi) { // 입: 얕은 ω 가운데에서 짧은 선이 아래로
-        for (const sd of [-1, 1]) H.add(torG(0.016, 0.004, Math.PI, 4, 10), mtx(sd * 0.016, -0.09, 0.281, -0.35, 0, Math.PI), "#1f1612");
-        H.add(boxG(0.005, 0.02, 0.005), mtx(0, -0.1, 0.279, -0.4, 0, 0), "#1f1612");
-      }
+      if (mochi) headG.add(mochiFace());
       else if (smallNose) H.add(sphG(8), mtx(0, -0.035, 0.235, 0, 0, 0, 0.026, 0.019, 0.016), C.nose);
       else {
         H.add(sphG(12), mtx(0, -0.065, 0.2, 0, 0, 0, 0.1, 0.07, 0.075), k === "bear" ? "#d9b38c" : "#fffaf0");
