@@ -185,13 +185,13 @@ button.yel { background: var(--sign); }
       ["~", "얼음", "얼음"], ["}", "무빙워크 →", "→"], ["{", "무빙워크 ←", "←"], ["^", "무빙워크 ↑", "↑"], ["v", "무빙워크 ↓", "↓"],
       ["=", "오토바이 길", "오토바이"], ["@", "순간이동문 보라", "문①"], ["$", "순간이동문 청록", "문②"],
       ["X", "칸막이 (나중에 올라옴)", "칸막이B"], ["Y", "칸막이 (처음에 올라옴)", "칸막이A"],
-      ["!", "철길", "철길"], [":", "차단봉 칸", "차단봉"], ["%", "철길 끝", "철길끝"], ["_", "낭떠러지", "낭떠러지"], ["/", "트럭 사이 틈", "틈"] ] }
+      ["!", "철길", "철길"], [":", "차단봉 칸", "차단봉"], ["%", "철길 끝", "철길끝"], ["_", "낭떠러지", "낭떠러지"], ["/", "트럭 사이 틈", "틈"], [" ", "트럭 밖 (빈 도로)", "빈곳"] ] }
   ];
   const INFO = {};
   TILES.forEach((grp) => grp.list.forEach(([ch, name, tag]) => (INFO[ch] = { ch, name, tag })));
   const MARKS = { "@sp1": "리스폰 1P", "@sp2": "리스폰 2P", "@ext": "소화기" };
   const WALK = ".~}{^v";
-  const AREA_CH = "~}{^v=!:%_/XY|><AV";
+  const AREA_CH = "~}{^v=!:%_/XY|><AV ";
   // 장치마다 단계에 따로 붙어야 하는 설정 (없으면 게임에서 안 움직여요)
   const NEEDS = { "=": ["road", "오토바이 길"], "!": ["rail", "철길"], ":": ["rail", "차단봉"], "%": ["rail", "철길 끝"], "/": ["truck", "트럭 틈"], X: ["gate", "움직이는 칸막이"], Y: ["gate", "움직이는 칸막이"] };
 
@@ -341,6 +341,11 @@ button.yel { background: var(--sign); }
     switch (ch) {
       case ".":
         c.fillStyle = fl; c.fillRect(px, py, s, s); break;
+      case " ": // 트럭 밖: 빈 도로 (못 들어가요)
+        c.fillStyle = "#5a534c"; c.fillRect(px, py, s, s);
+        c.strokeStyle = "rgba(255,255,255,.12)"; c.lineWidth = Math.max(1, s * 0.04);
+        for (let k = -1; k < 3; k++) { c.beginPath(); c.moveTo(px + k * s * 0.5, py + s); c.lineTo(px + (k + 1) * s * 0.5, py); c.stroke(); }
+        break;
       case "~": {
         c.fillStyle = (x + y) % 2 ? "#cfe8f5" : "#d9eef8"; c.fillRect(px, py, s, s);
         c.strokeStyle = "rgba(255,255,255,.95)"; c.lineWidth = Math.max(1.5, s * 0.05);
