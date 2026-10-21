@@ -1125,8 +1125,8 @@ body.modal { overflow: hidden; }
         c.fillStyle = C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
         if (!back) { c.beginPath(); c.moveTo(sd * 0.165 * S, -0.31 * S); c.lineTo(sd * 0.15 * S, -0.43 * S); c.lineTo(sd * 0.07 * S, -0.35 * S); c.closePath(); c.fillStyle = C.ear; c.fill(); }
       });
-    } else if (ch === "mochi") { // 머리 테두리 위에 작게 얹어요 (머리 뒤에 그려서 반달만 보여요)
-      [-1, 1].forEach((sd) => { dot(c, sd * 0.13 * S, -0.326 * S, 0.045 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); });
+    } else if (ch === "mochi") { // 머리 위 양쪽 어깨에 동그란 귀 (머리 뒤에 그려서 위쪽만 보여요)
+      [-1, 1].forEach((sd) => { dot(c, sd * 0.18 * S, -0.3 * S, 0.05 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); });
     } else if (ch === "rabbit") {
       [-1, 1].forEach((sd) => {
         c.save(); c.translate(sd * 0.09 * S, -0.4 * S); c.rotate(sd * 0.16);
@@ -1141,26 +1141,27 @@ body.modal { overflow: hidden; }
   function drawFace(c, ch, S, fx) {
     const C = CHARS[ch];
     const hy = -0.17 * S, ox = fx * 0.07 * S;
-    if (ch === "mochi") { // 머리(가운데 -0.12, 반지름 0.29×0.23) 기준: 반짝이는 동그란 눈, 걱정 눈썹, 빗금 볼터치, ω 입
-      const ey = -0.1 * S, lw = Math.max(1, 0.011 * S);
+    if (ch === "mochi") { // 머리(가운데 -0.12, 반지름 0.29×0.23) 기준: 큰 눈에 위쪽 하얀 반짝임, 높이 뜬 걱정 눈썹, 바깥쪽 빗금 볼터치, ω 아래로 짧은 선
+      const ey = -0.115 * S, lw = Math.max(1, 0.012 * S);
       c.lineCap = "round"; c.lineJoin = "round";
       [-1, 1].forEach((sd) => {
         const x = ox + sd * 0.093 * S;
-        const bx = ox + sd * 0.158 * S, by = ey + 0.05 * S; // 볼터치: 눈 바깥 아래
-        c.globalAlpha = 0.85; c.beginPath(); c.ellipse(bx, by, 0.05 * S, 0.03 * S, 0, 0, Math.PI * 2); c.fillStyle = "#f7a6b8"; c.fill(); c.globalAlpha = 1;
-        c.strokeStyle = "#e07893"; c.lineWidth = Math.max(1, 0.008 * S); c.beginPath();
-        [-1, 0, 1].forEach((k) => { const hx = bx + k * 0.018 * S; c.moveTo(hx - 0.006 * S, by + 0.009 * S); c.lineTo(hx + 0.006 * S, by - 0.009 * S); });
+        const bx = ox + sd * 0.172 * S, by = ey + 0.062 * S; // 볼터치: 눈 바깥 아래, 머리 가장자리 가까이
+        c.beginPath(); c.ellipse(bx, by, 0.05 * S, 0.032 * S, 0, 0, Math.PI * 2); c.fillStyle = "#f4a7b9"; c.fill();
+        c.strokeStyle = "rgba(58,42,36,.8)"; c.lineWidth = Math.max(1, 0.007 * S); c.beginPath();
+        [-1.5, -0.5, 0.5, 1.5].forEach((k) => { const hx = bx + k * 0.016 * S; c.moveTo(hx - 0.005 * S, by + 0.012 * S); c.lineTo(hx + 0.005 * S, by - 0.012 * S); });
         c.stroke();
-        c.beginPath(); c.ellipse(x, ey, 0.027 * S, 0.031 * S, 0, 0, Math.PI * 2); c.fillStyle = "#2b1d16"; c.fill();
-        dot(c, x + 0.009 * S, ey - 0.011 * S, 0.0105 * S, "#ffffff"); dot(c, x - 0.008 * S, ey + 0.011 * S, 0.004 * S, "#ffffff");
-        const yb = ey - 0.075 * S; // 눈썹: 안쪽 끝이 살짝 올라간 걱정 눈썹
-        c.beginPath(); c.moveTo(x + sd * 0.022 * S, yb + 0.004 * S); c.quadraticCurveTo(x, yb - 0.008 * S, x - sd * 0.022 * S, yb - 0.004 * S);
-        c.strokeStyle = "#3a2a24"; c.lineWidth = lw; c.stroke();
+        c.beginPath(); c.ellipse(x, ey, 0.036 * S, 0.033 * S, 0, 0, Math.PI * 2); c.fillStyle = "#1f1612"; c.fill();
+        c.beginPath(); c.ellipse(x + 0.002 * S, ey - 0.009 * S, 0.019 * S, 0.012 * S, 0, 0, Math.PI * 2); c.fillStyle = "#ffffff"; c.fill();
+        const yb = ey - 0.1 * S; // 눈썹: 안쪽 끝이 살짝 올라간 걱정 눈썹
+        c.beginPath(); c.moveTo(x + sd * 0.032 * S, yb + 0.006 * S); c.quadraticCurveTo(x, yb - 0.01 * S, x - sd * 0.032 * S, yb - 0.003 * S);
+        c.strokeStyle = "#1f1612"; c.lineWidth = lw; c.stroke();
       });
-      const mx = ox * 1.2, my = ey + 0.065 * S, r = 0.011 * S; // 입: 짧은 세로선 + 작은 ω
-      c.beginPath(); c.moveTo(mx, my - 0.014 * S); c.lineTo(mx, my);
-      c.moveTo(mx - 2 * r, my); c.arc(mx - r, my, r, Math.PI, 0, true); c.arc(mx + r, my, r, Math.PI, 0, true);
-      c.strokeStyle = "#3a2a24"; c.lineWidth = lw; c.stroke();
+      const mx = ox * 1.2, my = ey + 0.078 * S; // 입: 얕은 ω 가운데에서 짧은 선이 아래로
+      c.beginPath(); c.moveTo(mx - 0.032 * S, my - 0.004 * S); c.quadraticCurveTo(mx - 0.016 * S, my + 0.014 * S, mx, my);
+      c.quadraticCurveTo(mx + 0.016 * S, my + 0.014 * S, mx + 0.032 * S, my - 0.004 * S);
+      c.moveTo(mx, my); c.lineTo(mx, my + 0.018 * S);
+      c.strokeStyle = "#1f1612"; c.lineWidth = lw; c.stroke();
       return;
     }
     if (ch === "bear") { c.beginPath(); c.ellipse(ox * 1.25, hy + 0.075 * S, 0.095 * S, 0.068 * S, 0, 0, Math.PI * 2); c.fillStyle = "#d9b38c"; c.fill(); }
@@ -1255,7 +1256,7 @@ body.modal { overflow: hidden; }
         rrect(c, -0.02 * S, -0.06 * S, 0.05 * S, 0.08 * S, 0.015 * S); c.fillStyle = "#6b4a2b"; c.fill();
         c.restore();
       }
-      hands.forEach(([hx, hy]) => { dot(c, hx, hy, 0.064 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); });
+      hands.forEach(([hx, hy]) => { dot(c, hx, hy, (o.ch === "mochi" ? 0.052 : 0.064) * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); });
     };
     if (back) front();
 
@@ -3683,14 +3684,14 @@ body.modal { overflow: hidden; }
       const torso = B.mesh(VSKIN);
       bodyG.add(torso);
       // 머리
-      const headG = new T.Group(); headG.position.y = mochi ? 0.59 : 0.8; bodyG.add(headG);
+      const headG = new T.Group(); headG.position.y = mochi ? 0.6 : 0.8; bodyG.add(headG);
       const H = new Batch();
-      H.add(sphG(22), mochi ? mtx(0, 0, 0, 0, 0, 0, 0.31, 0.26, 0.28) : mtx(0, 0, 0, 0, 0, 0, 0.25, 0.235, 0.24), C.fur);
+      H.add(sphG(22), mochi ? mtx(0, 0, 0, 0, 0, 0, 0.33, 0.28, 0.3) : mtx(0, 0, 0, 0, 0, 0, 0.25, 0.235, 0.24), C.fur);
       if (k === "cat") for (const sd of [-1, 1]) {
         H.add(coneG(0.09, 0.16, 14), mtx(sd * 0.14, 0.2, -0.01, -0.12, 0, -sd * 0.38), C.fur);
         H.add(coneG(0.052, 0.1, 12), mtx(sd * 0.135, 0.19, 0.026, -0.12, 0, -sd * 0.38), C.ear);
       }
-      if (mochi) for (const sd of [-1, 1]) H.add(sphG(12), mtx(sd * 0.14, 0.225, -0.02, 0, 0, 0, 0.052, 0.05, 0.042), C.fur);
+      if (mochi) for (const sd of [-1, 1]) H.add(sphG(14), mtx(sd * 0.2, 0.215, -0.03, 0, 0, 0, 0.066, 0.063, 0.055), C.fur);
       if (k === "rabbit") for (const sd of [-1, 1]) {
         H.add(sphG(14), mtx(sd * 0.085, 0.37, -0.03, -0.12, 0, -sd * 0.12, 0.062, 0.2, 0.045), C.fur);
         H.add(sphG(12), mtx(sd * 0.087, 0.37, 0.006, -0.12, 0, -sd * 0.12, 0.032, 0.15, 0.02), C.ear);
@@ -3700,12 +3701,15 @@ body.modal { overflow: hidden; }
         H.add(sphG(10), mtx(sd * 0.17, 0.18, 0.02, 0, 0, 0, 0.05, 0.05, 0.02), C.ear);
       }
       for (const sd of [-1, 1]) {
-        if (mochi) { // 반짝이는 동그란 눈, 안쪽이 올라간 걱정 눈썹, 눈 바깥 아래 볼터치
-          H.add(sphG(10), mtx(sd * 0.1, 0.015, 0.255, 0, 0, 0, 0.034, 0.04, 0.022), "#2b1d16");
-          H.add(sphG(6), mtx(sd * 0.1 + 0.012, 0.031, 0.274, 0, 0, 0, 0.012, 0.012, 0.006), "#ffffff");
-          H.add(sphG(6), mtx(sd * 0.1 - 0.01, 0.001, 0.274, 0, 0, 0, 0.005, 0.005, 0.004), "#ffffff");
-          H.add(boxG(0.045, 0.008, 0.008), mtx(sd * 0.1, 0.087, 0.25, -0.3, sd * 0.35, -sd * 0.18), "#3a2a24");
-          H.add(sphG(8), mtx(sd * 0.168, -0.03, 0.228, 0, sd * 0.62, 0, 0.055, 0.032, 0.012), "#f7a6b8");
+        if (mochi) { // 머리(0.33×0.28×0.3) 겉면에 붙여요: 큰 눈 + 위쪽 하얀 반짝임, 높이 뜬 걱정 눈썹, 바깥쪽 빗금 볼터치
+          H.add(sphG(12), mtx(sd * 0.108, -0.005, 0.268, 0, sd * 0.3, 0, 0.047, 0.043, 0.022), "#1f1612");
+          H.add(sphG(10), mtx(sd * 0.113, 0.008, 0.288, 0, sd * 0.3, 0, 0.025, 0.017, 0.008), "#ffffff");
+          H.add(torG(0.045, 0.0055, 1.1, 4, 12), mtx(sd * 0.108, 0.08, 0.275, -0.45, sd * 0.33, Math.PI / 2 - 0.55 - sd * 0.15), "#1f1612"); // 눈썹: 살짝 굽은 호
+          H.add(sphG(10), mtx(sd * 0.2, -0.078, 0.226, 0.25, sd * 0.7, 0, 0.062, 0.04, 0.012), "#f4a7b9");
+          for (const kk of [-1.5, -0.5, 0.5, 1.5]) {
+            const hx = sd * 0.2 + kk * 0.0137, hz = 0.3 * Math.sqrt(Math.max(0, 1 - (hx / 0.33) ** 2 - (0.078 / 0.28) ** 2)) + 0.006;
+            H.add(boxG(0.004, 0.026, 0.004), mtx(hx, -0.078, hz, 0.25, sd * 0.7, -0.45), "#3a2a24");
+          }
           continue;
         }
         H.add(sphG(10), mtx(sd * 0.085, 0.02, 0.214, 0, 0, 0, 0.034, 0.039, 0.025), "#241a14");
@@ -3713,9 +3717,9 @@ body.modal { overflow: hidden; }
         H.add(sphG(8), mtx(sd * 0.148, -0.058, 0.18, 0, sd * 0.68, 0, 0.044, 0.026, 0.012), "#ff9aa8");
       }
       const smallNose = k === "cat" || k === "rabbit";
-      if (mochi) { // 입: 짧은 세로선 + 작은 ω
-        H.add(boxG(0.005, 0.016, 0.005), mtx(0, -0.036, 0.273, -0.15, 0, 0), "#3a2a24");
-        for (const sd of [-1, 1]) H.add(torG(0.011, 0.0035, Math.PI, 4, 10), mtx(sd * 0.011, -0.044, 0.271, -0.2, 0, Math.PI), "#3a2a24");
+      if (mochi) { // 입: 얕은 ω 가운데에서 짧은 선이 아래로
+        for (const sd of [-1, 1]) H.add(torG(0.016, 0.004, Math.PI, 4, 10), mtx(sd * 0.016, -0.09, 0.281, -0.35, 0, Math.PI), "#1f1612");
+        H.add(boxG(0.005, 0.02, 0.005), mtx(0, -0.1, 0.279, -0.4, 0, 0), "#1f1612");
       }
       else if (smallNose) H.add(sphG(8), mtx(0, -0.035, 0.235, 0, 0, 0, 0.026, 0.019, 0.016), C.nose);
       else {
@@ -3740,7 +3744,7 @@ body.modal { overflow: hidden; }
       else if (k === "rabbit") part(bodyG, sphG(12), mat("#ffffff"), 0, 0.24, -0.215, 0, 0, 0, 0.07);
       else part(bodyG, sphG(10), mat(C.dark), 0, 0.24, -0.205, 0, 0, 0, 0.05);
       // 손, 칼, 발
-      const hand = (x) => { const h = sub(bodyG, x, 0.33, 0); part(h, sphG(12), mat(C.fur), 0, 0, 0, 0, 0, 0, 0.072); return h; };
+      const hand = (x) => { const h = sub(bodyG, x, 0.33, 0); part(h, sphG(12), mat(C.fur), 0, 0, 0, 0, 0, 0, mochi ? 0.06 : 0.072); return h; };
       const handL = hand(0.26), handR = hand(-0.26);
       const knife = sub(handR);
       part(knife, boxG(0.011, 0.1, 0.27), mat("#e3e8eb", "p"), 0, -0.05, 0.16);
