@@ -575,7 +575,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 34;
+  const VERSION = 35;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -625,7 +625,7 @@ body.modal { overflow: hidden; }
   const PLATE_DISHES = Object.values(DISH).filter((d) => d.where === "plate");
 
   // 맵 기호: . 바닥  C 조리대  | 칸막이 조리대(노랑, 어디서든 넘겨요)  # 벽  K 도마  S 화구+냄비  F 튀김기+바구니  W 내는 곳  T 쓰레기통
-  //          P 접시  H 개수대  R 반납구  > 컨베이어  t m p r b g d o 재료 상자
+  //          P 접시  H 개수대  R 반납구  > < A V 컨베이어(오른쪽·왼쪽·위·아래로 옮겨요)  t m p r b g d o 재료 상자
   //   장치:  ~ 얼음 바닥  } { ^ v 무빙워크(화살표 쪽으로 밀어요)  = 오토바이 길  @ $ 순간이동문(같은 기호끼리 연결)
   //          X Y 움직이는 칸막이 (X는 둘째 구간, Y는 첫째 구간에 올라와요)
   //          ! 철길  : 차단봉 칸(기차 올 때 막혀요)  % 철길 끝(못 들어가요)  _ 낭떠러지(밟으면 떨어져요)  / 트럭 사이 틈(붙으면 발판)
@@ -778,8 +778,8 @@ body.modal { overflow: hidden; }
   const stageOf = (id) => STAGES.find((s) => s.id === id) || STAGES[0];
 
   const CRATE_CH = { t: "tteok", m: "eomuk", p: "pa", r: "ramyeon", b: "bap", g: "gim", d: "danmuji", o: "ojingeo", h: "hotdog", a: "potato", k: "ketchup", y: "mustard" };
-  const TYPE_CH = { ".": "floor", C: "counter", "|": "counter", "#": "wall", K: "board", S: "stove", F: "fryer", W: "serve", T: "trash", P: "plates", H: "sink", R: "return", ">": "belt", Z: "hole", "%": "railend" };
-  const BELT_DIR = { ">": [1, 0] };
+  const TYPE_CH = { ".": "floor", C: "counter", "|": "counter", "#": "wall", K: "board", S: "stove", F: "fryer", W: "serve", T: "trash", P: "plates", H: "sink", R: "return", ">": "belt", "<": "belt", A: "belt", V: "belt", Z: "hole", "%": "railend" };
+  const BELT_DIR = { ">": [1, 0], "<": [-1, 0], A: [0, -1], V: [0, 1] };
   // 바닥 장치: 걸어 다닐 수 있는 바닥인데 성질이 달라요
   const FLOOR_CH = { "~": { ice: true }, "}": { push: [1, 0] }, "{": { push: [-1, 0] }, "^": { push: [0, -1] }, "v": { push: [0, 1] }, "=": { road: true }, "@": { portal: 0 }, "$": { portal: 1 }, "!": { rail: true }, ":": { bar: true }, _: { pit: true }, "/": { gap: true } };
   function buildTiles(map) {
@@ -2584,15 +2584,16 @@ body.modal { overflow: hidden; }
           ctx.restore();
         }
         return;
-      case "belt": {
+      case "belt": { // 오른쪽으로 가는 벨트를 그린 다음 방향만큼 돌려요
         ctx.fillStyle = "#34373a"; ctx.fillRect(px, py, s, s);
-        ctx.fillStyle = "#26282a"; ctx.fillRect(px, py + s * 0.08, s, s * 0.06); ctx.fillRect(px, py + s * 0.86, s, s * 0.06);
+        ctx.save(); ctx.translate(px + s / 2, py + s / 2); ctx.rotate(Math.atan2(t.dir[1], t.dir[0])); ctx.translate(-s / 2, -s / 2);
+        ctx.fillStyle = "#26282a"; ctx.fillRect(0, s * 0.08, s, s * 0.06); ctx.fillRect(0, s * 0.86, s, s * 0.06);
         const off = ((now / 1000) / BELT_STEP) % 1;
-        ctx.save(); ctx.beginPath(); ctx.rect(px, py + s * 0.14, s, s * 0.72); ctx.clip();
+        ctx.beginPath(); ctx.rect(0, s * 0.14, s, s * 0.72); ctx.clip();
         ctx.strokeStyle = "#55595d"; ctx.lineWidth = Math.max(2, s * 0.06);
         for (let k = -1; k < 2; k++) {
-          const x0 = px + (k + off) * s * 0.5 + s * 0.15;
-          ctx.beginPath(); ctx.moveTo(x0, py + s * 0.3); ctx.lineTo(x0 + s * 0.16, py + s * 0.5); ctx.lineTo(x0, py + s * 0.7); ctx.stroke();
+          const x0 = (k + off) * s * 0.5 + s * 0.15;
+          ctx.beginPath(); ctx.moveTo(x0, s * 0.3); ctx.lineTo(x0 + s * 0.16, s * 0.5); ctx.lineTo(x0, s * 0.7); ctx.stroke();
         }
         ctx.restore();
         return;
@@ -4573,12 +4574,12 @@ body.modal { overflow: hidden; }
             A.add(rboxG(0.98, 0.05, 0.13, 0.02, 1), L(t, 0, CH + 0.37, -0.42), "#d7372b");
             return;
           }
-          case "belt": {
-            M.add(rboxG(0.98, CH - 0.09, 0.9, 0.03, 1), mtx(cx, (CH - 0.09) / 2, cz), "#4a4e52");
-            M.add(boxG(1.0, 0.06, 0.05), mtx(cx, CH - 0.03, cz - 0.43), "#aab2b7");
-            M.add(boxG(1.0, 0.06, 0.05), mtx(cx, CH - 0.03, cz + 0.43), "#aab2b7");
+          case "belt": { // 세로 벨트는 옆 난간을 세로로, 무늬는 가는 쪽으로 돌려요
+            const [dx, dz] = t.dir, sd = dz !== 0;
+            M.add(rboxG(sd ? 0.9 : 0.98, CH - 0.09, sd ? 0.98 : 0.9, 0.03, 1), mtx(cx, (CH - 0.09) / 2, cz), "#4a4e52");
+            for (const k of [-0.43, 0.43]) M.add(sd ? boxG(0.05, 0.06, 1.0) : boxG(1.0, 0.06, 0.05), mtx(sd ? cx + k : cx, CH - 0.03, sd ? cz : cz + k), "#aab2b7");
             const m = new T.Mesh(planeG(1.0, 0.8), beltMat());
-            m.rotation.x = -Math.PI / 2; m.position.set(cx, CH - 0.045, cz); m.receiveShadow = true;
+            m.rotation.set(-Math.PI / 2, 0, Math.atan2(-dz, dx)); m.position.set(cx, CH - 0.045, cz); m.receiveShadow = true;
             stageRoot.add(m);
             return;
           }
