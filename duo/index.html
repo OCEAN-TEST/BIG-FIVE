@@ -619,7 +619,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 45;
+  const VERSION = 46;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -731,9 +731,9 @@ body.modal { overflow: hidden; }
     { id: 12, name: "달리는 푸드트럭", time: 200, menu: ["corndog_k", "corndog_m", "fries"], stars: [16000, 37000, 68000], plates: 0, gap: [8, 11], extra: 12, duo: false,
       // 트럭 두 대가 위아래 차선에서 나란히 왼쪽으로 달려요. 가운데 틈(row 줄)은 붙어 있을 땐 바닥끼리 맞닿아 건너고, 벌어지면 떨어져요 (달리는 반대쪽으로 날아가요).
       // 트럭은 12칸 (오른쪽 세 칸 " "은 트럭 밖 빈 도로예요)
-      truck: { row: 4, first: [8, 16], join: [5, 19], apart: [6, 13], quick: [2.5, 4], quickP: 0.15, warn: 1.0, speed: 10 },
+      truck: { row: 4, first: [8, 16], join: [5, 19], apart: [6, 13], warn: 1.0, speed: 10 },
       ext: [4, 0], floor: ["#c48e5a", "#b98450"], spawn: [[3.5, 6.5], [8.5, 2.5]],
-      tip: "트럭 두 대가 위아래 차선에서 나란히 달려요. 아래 트럭엔 핫도그·감자·도마, 위 트럭엔 튀김기·소스·접시·내는 곳이 있어요. 트럭이 붙어 있을 땐 가운데 틈을 걸어서 건너고, 빵빵 소리와 함께 트럭이 슬금슬금 벌어지기 시작하면 곧 휙 떨어지니 틈에서 나와요. 벌어진 틈으로 떨어지면 뒤로 날아가서 5초 뒤에 돌아와요. 벌어져 있을 땐 재료를 던져서 넘겨요. 핫도그는 튀긴 다음 접시에 담고 케첩이나 머스타드를 뿌려요.",
+      tip: "트럭 두 대가 위아래 차선에서 나란히 달려요. 아래 트럭엔 핫도그·감자·도마, 위 트럭엔 튀김기·소스·접시·내는 곳이 있어요. 트럭이 붙어 있을 땐 가운데 틈을 걸어서 건너고, 빵빵 소리가 나고 깜빡이가 켜지면 곧 벌어지니 틈에서 나와요. 벌어진 틈으로 떨어지면 뒤로 날아가서 5초 뒤에 돌아와요. 벌어져 있을 땐 재료를 던져서 넘겨요. 핫도그는 튀긴 다음 접시에 담고 케첩이나 머스타드를 뿌려요.",
       map: ["CFFFCWWCPkyC   ", "C..........C   ", "T..........C   ", "C..........C   ", "////////////   ", "C..........C   ", "C..........C   ", "C..........T   ", "ChaCCCCCKKCC   "] }
   ];
   // 맵 에디터(editor.html)의 "게임에서 시험하기": ?test 화면에서만 그 단계를 이 기기에 저장된 맵으로 바꿔 끼워요
@@ -2300,30 +2300,30 @@ body.modal { overflow: hidden; }
     truckKey = key; truckSeg = [];
     const r = rng((v.seed || v.rs * 3571) + v.stage * 49157); // 방장이 판마다 뽑은 수라 매판 다르고, 모든 화면에선 같아요
     const pick = (rg) => rg[0] + r() * (rg[1] - rg[0]);
-    let t = 0, joined = true, len = pick(tk.first), quick = false; // 언제 벌어질지 판마다·매번 달라요. 가끔은 잠깐만 벌어졌다 붙어요 (두 번 연달아는 안 해요)
+    let t = 0, joined = true, len = pick(tk.first); // 언제 벌어질지 판마다·매번 달라요
     while (t < st.time + 30) {
       truckSeg.push({ t0: t, t1: t + len, joined }); t += len; joined = !joined;
-      if (joined) len = pick(tk.join);
-      else { quick = !quick && r() < tk.quickP; len = pick(quick ? tk.quick : tk.apart); }
+      len = pick(joined ? tk.join : tk.apart);
     }
     return truckSeg;
   }
-  const TRUCK_MOVE = 0.7; // 트럭이 벌어지고 붙는 시간. 쇠 발판은 없고, 트럭이 벌어지기 시작하는 순간 가운데에 있으면 바로 떨어져요
+  const TRUCK_MOVE = 1.6, TRUCK_FA_T = 2.4; // 트럭이 벌어지고 붙는 시간 (천천히 출발해서 천천히 멈춰요), 앞뒤로 엇갈리는 데 걸리는 시간. 쇠 발판은 없고, 트럭이 벌어지기 시작하는 순간 가운데에 있으면 바로 떨어져요
   // joined: 지금 건널 수 있나, open: 트럭 벌어진 정도 (0 붙음 ~ 1 벌어짐), warn: 곧 벌어져요
-  // vis: 그림으로 벌어진 정도. 곧 벌어질 땐 슬금슬금(0.1까지) 벌어지다가, 벌어질 땐 처음엔 천천히 끝에 휙. 다시 붙을 땐 부드럽게
+  // vis: 그림으로 옆으로 벌어진 정도 (부드럽게), fa: 앞뒤로 엇갈린 정도 (벌어지고 나서 천천히 생겼다가 다시 붙기 전에 돌아와요), dir: 이번엔 어느 트럭이 앞으로 가는지 (벌어질 때마다 번갈아)
   function truckNow(v, now) {
     const tk = v && stageOf(v.stage).truck;
     if (!tk) return null;
-    if (v.phase !== "play") return { joined: true, open: 0, vis: 0, warn: false };
-    const e = clockOf(v, now), seg = truckSegs(v).find((q) => e < q.t1) || truckSegs(v)[0];
-    const left = seg.t1 - e, sm = (k) => k * k * (3 - 2 * k);
+    if (v.phase !== "play") return { joined: true, open: 0, vis: 0, fa: 0, dir: 1, warn: false };
+    const segs = truckSegs(v), e = clockOf(v, now);
+    let i = segs.findIndex((q) => e < q.t1); if (i < 0) i = 0;
+    const seg = segs[i], left = seg.t1 - e, dir = Math.floor(i / 2) % 2 ? -1 : 1;
+    const sm = (k) => k * k * (3 - 2 * k), cl = (k) => Math.max(0, Math.min(1, k));
     if (seg.joined) {
-      if (left < TRUCK_MOVE) { const p = 1 - left / TRUCK_MOVE; return { joined: false, open: p, vis: 0.1 + 0.9 * p * p * p, warn: false, left }; } // 벌어지기 시작: 이미 못 건너요
-      const w = left < TRUCK_MOVE + tk.warn;
-      return { joined: true, open: 0, vis: w ? 0.1 * sm(1 - (left - TRUCK_MOVE) / tk.warn) : 0, warn: w, left };
+      if (left < TRUCK_MOVE) { const p = 1 - left / TRUCK_MOVE; return { joined: false, open: p, vis: sm(p), fa: sm(cl((TRUCK_MOVE - left) / TRUCK_FA_T)), dir, warn: false, left }; } // 벌어지기 시작: 이미 못 건너요
+      return { joined: true, open: 0, vis: 0, fa: 0, dir, warn: left < TRUCK_MOVE + tk.warn, left };
     }
-    const op = left < TRUCK_MOVE ? left / TRUCK_MOVE : 1;
-    return { joined: false, open: op, vis: sm(op), warn: false, left }; // 다 붙어야 건너요
+    const op = left < TRUCK_MOVE ? left / TRUCK_MOVE : 1, since = e - seg.t0 + TRUCK_MOVE;
+    return { joined: false, open: op, vis: sm(op), fa: sm(cl(since / TRUCK_FA_T)) * sm(cl(left / TRUCK_FA_T)), dir, warn: false, left }; // 다 붙어야 건너요
   }
   // 움직이는 순간이동문: 판 번호로 정한 순서라 모든 화면이 같은 때 같은 자리로 옮겨요
   let warpKey = "", warpChain = null;
@@ -4423,7 +4423,7 @@ body.modal { overflow: hidden; }
     }
     // ---- 가로 틈 도로 (사막을 달려요): 차선이 가로로 길게, 모두 오른쪽(+x)으로 흘러가요 ----
     const TR_Z0 = -5.8, TR_Z1 = 12.8, ROAD_YR = -1.2; // 도로 폭 (z)·높이 (바퀴가 커서 세로 틈 도로보다 낮아요)
-    const TRUCK_BACK = 1.1, TRUCK_FWD = 0.5; // 벌어지면 위 트럭은 이만큼 뒤로, 아래 트럭은 이만큼 앞으로 (비스듬히 벌어져요)
+    const TRUCK_FA = 0.8; // 벌어지면 한 트럭은 이만큼 앞으로, 다른 트럭은 뒤로 (벌어질 때마다 번갈아 반대로)
     function roadRowCanvas(row) { // 4칸마다 점선 하나 (가로로 반복). 위 끝엔 노란 실선, 트럭 사이 틈 아래에도 점선
       const key = "roadRow" + row;
       if (decalCache[key]) return decalCache[key];
@@ -4651,7 +4651,7 @@ body.modal { overflow: hidden; }
       const puffG = gc("puffG", () => new T.SphereGeometry(1, 10, 8));
       const WR = 0.58, WY = ROAD_YR + WR, AX = [-1.95, X1 - 3.7, X1 - 2.25]; // 바퀴 반지름·가운데 높이. 축: 앞(운전석 밑)·짐칸 뒤 두 줄
       const sh = rotView ? -0.35 : 0; // 돌린 화면은 카메라가 운전석 쪽이라 운전석을 조금 앞으로 (주방 첫 줄을 안 가리게)
-      const wheels = [], puffSets = [];
+      const wheels = [], puffSets = [], blink = [];
       // 바퀴 한 벌 (축이 z, 바깥 면이 +z): 둥근 검은 타이어 + 흙먼지 색 휠 + 너트 여섯 + 주황 캡 (도는 게 보여요). 한 덩어리로 그려요
       const WB = new Batch();
       WB.add(torG(0.41, 0.17, 0, 10, 32), mtx(0, 0, 0), "#24221f");
@@ -4671,7 +4671,7 @@ body.modal { overflow: hidden; }
         im.frustumCulled = false; grp.add(im); puffSets.push(Object.assign({ im, n }, o));
       };
       [[-0.3, row + 0.5], [row + 0.5, ROWS + 0.3]].forEach(([z0, z1], n) => { // z0: 먼 쪽 옆면, z1: 카메라 쪽 옆면. 둘은 틈 가운데에서 맞닿아요
-        const grp = groups[n], colr = cols[n], B = new Batch(), MB = new Batch(), LB = new Batch();
+        const grp = groups[n], colr = cols[n], B = new Batch(), MB = new Batch(), LB = new Batch(), BL = new Batch(); // BL: 깜빡이 (따로 켰다 껐다)
         const zc = (z0 + z1) / 2, wd = z1 - z0, cz0 = z0 + 0.22, cz1 = z1 - 0.22, outer = n === 1; // outer: 카메라 쪽 옆면이 길가 쪽 (아래 트럭)
         // 짐칸: 트럭 색 옆판 + 위 끝 크림색 띠 + 밑에 검은 뼈대 (운전석까지 이어져요)
         B.add(rboxG(LEN, 0.42, wd, 0.05, 2), mtx(CX, -0.245, zc), colr);
@@ -4695,7 +4695,7 @@ body.modal { overflow: hidden; }
         for (const sx of [1.85, 2.85]) B.add(cylG(0.255, 0.255, 0.08, 20), mtx(sx, -0.66, z1 - 0.27, 0, 0, Math.PI / 2), "#e8822f");
         B.add(rboxG(1.1, 0.34, 0.3, 0.04, 1), mtx(5.3, -0.66, z1 - 0.2), "#4a4743");
         for (let k = 0; k < 4; k++) B.add(boxG(0.9, 0.025, 0.02), mtx(5.3, -0.78 + k * 0.08, z1 - 0.045), "#2a2826");
-        for (const lx of [0.7, 4.1, X1 - 5.0, X1 - 0.25]) LB.add(rboxG(0.13, 0.07, 0.03, 0.02, 1), mtx(lx, -0.38, z1 + 0.012), "#ffa41b");
+        for (const lx of [0.7, 4.1, X1 - 5.0, X1 - 0.25]) BL.add(rboxG(0.13, 0.07, 0.03, 0.02, 1), mtx(lx, -0.38, z1 + 0.012), "#ffa41b"); // 옆 깜빡이
         // 뒤꽁무니: 범퍼·미등
         B.add(rboxG(0.18, 0.18, wd - 0.2, 0.05, 1), mtx(X1 + 0.03, -0.55, zc), DARK);
         for (const lz of [z0 + 0.4, z1 - 0.4]) LB.add(rboxG(0.03, 0.17, 0.36, 0.03, 1), mtx(X1 + 0.012, -0.25, lz), "#ff3b30");
@@ -4754,7 +4754,7 @@ body.modal { overflow: hidden; }
           B.add(boxG(1.62, 0.02, 0.02), mtx(c0 + 1.01, 0.1, zs + out * 0.004), "#1b1c1f");
           B.add(rboxG(0.16, 0.05, 0.03, 0.015, 1), mtx(c0 + 1.6, 0.55, zs + out * 0.014), STEEL);
           B.add(rboxG(0.5, 0.06, 0.18, 0.02, 1), mtx(c0 + 2.08, -0.38, zs + out * 0.07), "#4a4743");
-          LB.add(rboxG(0.2, 0.09, 0.03, 0.02, 1), mtx(c0 + 0.17, 0.0, zs + out * 0.012), "#ffa41b");
+          BL.add(rboxG(0.2, 0.09, 0.03, 0.02, 1), mtx(c0 + 0.17, 0.0, zs + out * 0.012), "#ffa41b");
           if (out > 0 ? outer : n === 0) { // 길가 쪽은 큰 거울, 트럭 사이 쪽은 붙을 때 부딪혀서 작게
             B.add(boxG(0.05, 0.05, 0.38), mtx(c0 + 0.14, 1.2, zs + out * 0.19), DARK);
             B.add(rboxG(0.1, 0.46, 0.26, 0.05, 1), mtx(c0 + 0.06, 1.04, zs + out * 0.42), DARK);
@@ -4763,7 +4763,7 @@ body.modal { overflow: hidden; }
         for (const hz of [cz0 + 0.5, cz1 - 0.5]) { // 앞: 둥근 전조등(은색 테)·깜빡이·그릴·은색 범퍼
           LB.add(cylG(0.14, 0.14, 0.03, 18), mtx(c0 - 0.012, 0.05, hz, 0, 0, Math.PI / 2), "#fff6d0");
           MB.add(torG(0.15, 0.03, 0, 6, 18), mtx(c0 - 0.012, 0.05, hz, 0, Math.PI / 2, 0), STEEL);
-          LB.add(rboxG(0.03, 0.1, 0.18, 0.03, 1), mtx(c0 - 0.008, 0.05, hz + (hz < ccz ? 0.34 : -0.34)), "#ffa41b");
+          BL.add(rboxG(0.03, 0.1, 0.18, 0.03, 1), mtx(c0 - 0.008, 0.05, hz + (hz < ccz ? 0.34 : -0.34)), "#ffa41b");
         }
         B.add(rboxG(0.03, 0.4, cw - 2.0, 0.05, 1), mtx(c0 - 0.006, 0.1, ccz), "#3a3d42");
         for (let k = 0; k < 4; k++) MB.add(boxG(0.034, 0.03, cw - 2.1), mtx(c0 - 0.008, -0.03 + k * 0.09, ccz), STEEL);
@@ -4777,12 +4777,12 @@ body.modal { overflow: hidden; }
           puff(grp, 0x5d5650, 6, { x: ex + R + 0.22, y: ET + R, z: ez, d: [0.7, 0.55, 0.05], wob: [0, 0.05, 0.05], s: [0.12, 0.32], op: 0.5, per: 950 });
         }
         puff(grp, 0xb48a5c, 7, { x: AX[2] + 0.62, y: ROAD_YR + 0.14, z: z1 - 0.1, d: [2.6, 0.55, 0.35], wob: [0, 0.06, 0.08], s: [0.14, 0.46], op: 0.42, per: 700 }); // 뒷바퀴 흙먼지
-        const a = B.mesh(VSKIN), m = MB.mesh(CLS_MAT.p), l = LB.mesh(glowM, false); own(a.geometry); own(m.geometry); own(l.geometry); grp.add(a, m, l);
+        const a = B.mesh(VSKIN), m = MB.mesh(CLS_MAT.p), l = LB.mesh(glowM, false), bl = BL.mesh(glowM, false); own(a.geometry); own(m.geometry); own(l.geometry); own(bl.geometry); grp.add(a, m, l, bl); blink.push(bl);
         // 트럭 사이 반 칸 바닥 (붙으면 맞닿아요)
         const pm = new T.Mesh(own(new T.PlaneGeometry(L, 0.5)), own(std({ map: own(canvasTex(plateRowCanvas(st, n, L))), roughness: 0.6 })));
         pm.rotation.x = -Math.PI / 2; pm.position.set(L / 2, 0, row + (n ? 0.75 : 0.25)); pm.receiveShadow = true; grp.add(pm);
       });
-      truck3 = { wheels, spin: ["z", 1 / WR], plates: [], groups, col: row, row: true, speed: tk.speed, puffs: [], puffSets, awnings: [] };
+      truck3 = { wheels, spin: ["z", 1 / WR], plates: [], groups, col: row, row: true, speed: tk.speed, puffs: [], puffSets, awnings: [], blink };
     }
     // 움직이는 순간이동문: 쌍마다 문 두 개 + 곧 옮겨 갈 자리 점선 고리 두 개
     let warp3 = null;
@@ -5254,8 +5254,9 @@ body.modal { overflow: hidden; }
     const FIT_ROT = [[-0.3, -0.5, -0.3], [-0.3, -0.5, ROWS + 0.3], [COLS + 0.3, CH + 0.7, -0.3], [COLS + 0.3, CH + 0.7, ROWS + 0.3], [-0.3, CH + 0.7, -0.3], [-0.3, CH + 0.7, ROWS + 0.3]];
     // 가로 틈 트럭 (L칸): 왼쪽 운전석 (벌어지면 아래 트럭이 앞·아래로), 오른쪽 뒤꽁무니 (벌어지면 위 트럭이 뒤로), 아래 트럭 바퀴와 그 앞 도로 조금.
     // 돌린 화면은 아래쪽이 운전석이라 앞유리 아래 끝까지, 위쪽은 뒤로 물러난 위 트럭 끝까지 (세로 폰은 캔버스가 그만큼 길어져요)
-    const FIT_TROW = (L) => [[-3.25, -0.6, ROWS - 0.1], [-3.45 - TRUCK_FWD, -0.6, ROWS + 0.7], [-2.95, 1.28, ROWS + 0.42], [L + 0.5, ROAD_YR, ROWS + 0.4], [L + 0.95 + TRUCK_BACK, -0.6, ROWS / 2 - 0.4], [0, ROAD_YR, ROWS + 0.7], [L, ROAD_YR, ROWS + 0.7]];
-    const FIT_ROT_TROW = (L) => [[-3.25, 1.0, ROWS / 2], [L + 0.45 + TRUCK_BACK, CH + 0.7, 0.4], [L + 0.45 + TRUCK_BACK, CH + 0.7, 4.2]];
+    const FIT_TROW = (L) => [[-3.25, -0.6, ROWS - 0.1], [-3.6 - TRUCK_FA, -0.6, ROWS + 0.7], [-3.6 - TRUCK_FA, -0.6, 3.9], [-2.95, 1.28, ROWS + 0.42], [L + 0.5, ROAD_YR, ROWS + 0.4],
+      [L + 0.95 + TRUCK_FA, -0.6, ROWS / 2 - 0.4], [L + 0.95 + TRUCK_FA, -0.6, ROWS + 0.4], [0, ROAD_YR, ROWS + 0.7], [L, ROAD_YR, ROWS + 0.7]];
+    const FIT_ROT_TROW = (L) => [[-3.25, 1.0, ROWS / 2], ...[0.4, 4.2, 4.8, 8.6].map((z) => [L + 0.6 + TRUCK_FA, CH + 0.7, z])];
     let fitTrow = false;
     let rotView = false;
     const VUP = () => (rotView ? [1, 0] : [0, -1]);   // 화면 위쪽이 주방에서 어느 방향인지
@@ -5339,16 +5340,18 @@ body.modal { overflow: hidden; }
       });
       const busy = new Set(list.filter((o) => o.w && !o.w.wash).map((o) => o.w.i));
       for (const k in knives) knives[k].visible = !busy.has(+k);
-      // 트럭 움직임: 붙어 있을 땐 나란히, 벌어지면 옆으로 멀어지고 앞뒤로 조금씩 엇갈려요
+      // 트럭 움직임: 붙어 있을 땐 나란히, 벌어지면 옆으로 멀어지고 앞뒤로 엇갈려요. 벌어지기 전·움직이는 동안 깜빡이를 켜요
       if (truck3) {
         const tn = truckNow(view, now), op = tn ? tn.vis : 0, ts = now / 1000, sway = Math.sin(ts * 0.9) * 0.035;
         TCOL = truck3.col; TROW = !!truck3.row;
         if (TROW) { // 가로 틈: 붙어 있어도 둘이 같이 앞뒤로 살살 (달리는 느낌). 벌어지면 비스듬히: 위 트럭은 위·뒤로, 아래 트럭은 아래·앞으로
-          const surge = (k) => Math.sin(ts * 0.8) * 0.09 + Math.sin(ts * 0.37 + 1.3) * 0.05 + Math.sin(ts * 1.9 + k * 2.4) * 0.02;
+          const surge = (k) => Math.sin(ts * 0.55) * 0.22 + Math.sin(ts * 0.23 + 1.3) * 0.1 + Math.sin(ts * 1.3 + k * 2.4) * 0.035;
           const up = rotView ? 0.45 : 0.35, down = rotView ? 0.45 : 0.85; // 세로 폰은 옆으로 덜 벌어져요 (화면 밖으로 안 나가게)
-          TOFF = [{ dx: surge(0) + TRUCK_BACK * op, dz: -up * op + sway }, { dx: surge(1) - TRUCK_FWD * op, dz: down * op + sway }];
+          const fa = tn ? tn.fa * tn.dir * TRUCK_FA : 0; // 앞뒤 엇갈림: 위 트럭이 뒤로면 아래 트럭은 앞으로 (다음엔 반대로)
+          TOFF = [{ dx: surge(0) + fa, dz: -up * op + sway }, { dx: surge(1) - fa, dz: down * op + sway }];
         } else TOFF = [{ dx: -0.5 * op + sway, dz: op * 0.38 * Math.sin(ts * 0.55) }, { dx: 0.5 * op + sway, dz: op * 0.38 * Math.sin(ts * 0.43 + 2.1) }];
         truck3.groups.forEach((g, n) => g.position.set(TOFF[n].dx, Math.sin(ts * 11 + n * 1.7) * 0.006, TOFF[n].dz));
+        if (truck3.blink) { const sig = tn && (tn.warn || (tn.open > 0 && tn.open < 1)), on = !sig || Math.floor(now / 330) % 2 === 0; truck3.blink.forEach((m) => (m.visible = on)); }
       } else TOFF = null;
 
       // 벨트·무빙워크로 칸을 옮긴 물건은 모델을 그대로 넘겨요 (칸마다 다시 '톡' 커지지 않게)
