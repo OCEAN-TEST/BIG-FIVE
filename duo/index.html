@@ -1181,7 +1181,11 @@ body.modal { overflow: hidden; }
   // 토끼 얼굴 (피규어 사진에서 잰 자리). drawMochiFace 와 같은 좌표 (머리 가운데 (0, 0), 머리 반너비 1, 아래가 +)
   function drawUsagiFace(c, P, k) {
     const ink = "#1f1612", lw = (w) => Math.max(1, w * k);
-    const curve = (a, ctl, b, w) => { const [x0, y0] = P(...a), [cx, cy] = P(...ctl), [x1, y1] = P(...b); c.beginPath(); c.moveTo(x0, y0); c.quadraticCurveTo(cx, cy, x1, y1); c.strokeStyle = ink; c.lineWidth = lw(w); c.stroke(); };
+    const curve = (a, ctl, b, w) => { // 곡선을 잘게 나눠 점마다 P로 옮겨요 (3D 머리에 붙여도 정면에서 같은 모양)
+      c.beginPath();
+      for (let i = 0; i <= 20; i++) { const t = i / 20, u = 1 - t, [x, y] = P(u * u * a[0] + 2 * u * t * ctl[0] + t * t * b[0], u * u * a[1] + 2 * u * t * ctl[1] + t * t * b[1]); if (i) c.lineTo(x, y); else c.moveTo(x, y); }
+      c.strokeStyle = ink; c.lineWidth = lw(w); c.stroke();
+    };
     c.save(); c.lineCap = "round"; c.lineJoin = "round";
     [-1, 1].forEach((sd) => {
       const [bx, by] = P(sd * 0.56, 0.235); // 볼터치: 분홍 타원 + 까만 빗금 네 줄 (/)
@@ -1194,7 +1198,9 @@ body.modal { overflow: hidden; }
       c.fillStyle = "#ececf0";
       c.beginPath(); c.ellipse(ex - 0.004 * k, ey - 0.03 * k, 0.044 * k, 0.031 * k, 0, 0, Math.PI * 2); c.fill();
       c.beginPath(); c.ellipse(ex + 0.006 * k, ey + 0.062 * k, 0.026 * k, 0.01 * k, 0, 0, Math.PI * 2); c.fill();
-      curve([sd * 0.24, -0.555], [sd * 0.575, -0.6], [sd * 0.65, -0.25], 0.03); // 눈썹: 눈 위 바깥쪽으로 크게 굽은 호
+      c.beginPath(); // 눈썹: 눈 위 안쪽 끝(위, 거의 가로)에서 바깥쪽 끝(아래, 거의 세로)으로 둥글게 도는 타원 1/4 호
+      for (let i = 0; i <= 24; i++) { const f = ((93 - (85 * i) / 24) * Math.PI) / 180, [x, y] = P(sd * (0.26 + 0.384 * Math.cos(f)), -0.2 - 0.356 * Math.sin(f)); if (i) c.lineTo(x, y); else c.moveTo(x, y); }
+      c.strokeStyle = ink; c.lineWidth = lw(0.03); c.stroke();
     });
     // 입: 혀가 보이게 벌린 입, 양쪽으로 올라간 입꼬리, 가운데 위로 짧은 선, 그 아래 작게 웃는 턱 선
     const mouth = () => { const [x0, y0] = P(-0.105, 0.25), [c0x, c0y] = P(-0.12, 0.5), [bx, by] = P(0, 0.5), [c1x, c1y] = P(0.12, 0.5), [x1, y1] = P(0.105, 0.25); c.beginPath(); c.moveTo(x0, y0); c.quadraticCurveTo(c0x, c0y, bx, by); c.quadraticCurveTo(c1x, c1y, x1, y1); c.closePath(); };
@@ -3706,7 +3712,8 @@ body.modal { overflow: hidden; }
     }
     // 머리가 큰 캐릭터 (3D): 머리 크기 a×b×c, 얼굴 그림, 얼굴 그림이 덮는 범위 (가로 ±al, 세로 ±be 라디안)
     const BIG3 = { mochi: { a: 0.33, b: 0.28, c: 0.3, al: 1.15, be: 0.7, draw: drawMochiFace }, rabbit: { a: 0.33, b: 0.245, c: 0.29, al: 1.15, be: 1.05, draw: drawUsagiFace } };
-    // 얼굴: 2D와 같은 그림을 머리 앞쪽을 덮는 구 조각에 붙여요. 가로는 경도, 세로는 위도로 펴서 그려요
+    // 얼굴: 2D와 같은 그림을 머리 앞쪽을 덮는 구 조각에 붙여요. 가로는 경도, 세로는 위도로 펴서 그리는데,
+    // 정면에서 봤을 때 2D와 같은 자리에 오게 위쪽·아래쪽일수록 경도를 넓혀요 (안 그러면 눈썹 끝이 안쪽으로 오그라들어요)
     function faceMesh(key) {
       const { a, b, c: cz, al, be, draw } = BIG3[key];
       const g = gc("faceG" + key, () => new T.SphereGeometry(1, 40, 24, Math.PI / 2 - al, 2 * al, Math.PI / 2 - be, 2 * be));
@@ -3714,7 +3721,7 @@ body.modal { overflow: hidden; }
         const W = 512, H = Math.round((W * be * b) / (al * a)), k = W / (2 * al), ky = H / (2 * be);
         const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
         const cl = (v) => Math.max(-1, Math.min(1, v));
-        draw(cv.getContext("2d"), (x, y) => [W / 2 + Math.asin(cl(x)) * k, H / 2 + Math.asin(cl((y * a) / b)) * ky], k);
+        draw(cv.getContext("2d"), (x, y) => { const la = Math.asin(cl((y * a) / b)); return [W / 2 + Math.asin(cl(x / Math.max(0.05, Math.cos(la)))) * k, H / 2 + la * ky]; }, k);
         return std({ map: canvasTex(cv), transparent: true, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
       });
       const mesh = new T.Mesh(g, m);
