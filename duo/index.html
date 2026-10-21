@@ -1262,11 +1262,11 @@ body.modal { overflow: hidden; }
     c.save(); c.translate(X, by); c.rotate(tilt);
     if (dash) c.scale(1 + 0.12 * dash, 1 - 0.1 * dash);
     const mochi = o.ch === "mochi"; // 찹쌀이: 몸은 작고 머리가 커요
-    c.beginPath(); c.ellipse(0, (mochi ? 0.12 : 0.08) * S, (mochi ? 0.22 : 0.24) * S, (mochi ? 0.16 : 0.21) * S, 0, 0, Math.PI * 2); c.fillStyle = C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
+    c.beginPath(); c.ellipse(0, (mochi ? 0.13 : 0.08) * S, (mochi ? 0.19 : 0.24) * S, (mochi ? 0.14 : 0.21) * S, 0, 0, Math.PI * 2); c.fillStyle = C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
     if (!back) {
       const ax = fx * 0.05 * S;
-      rrect(c, ax - 0.14 * S, (mochi ? 0.05 : 0) * S, 0.28 * S, (mochi ? 0.21 : 0.25) * S, 0.07 * S); c.fillStyle = APRON[o.slot]; c.fill();
-      c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(ax - 0.06 * S, (mochi ? 0.17 : 0.11) * S, 0.12 * S, 0.022 * S);
+      if (mochi) { rrect(c, ax - 0.12 * S, 0.07 * S, 0.24 * S, 0.18 * S, 0.06 * S); c.fillStyle = APRON[o.slot]; c.fill(); c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(ax - 0.05 * S, 0.17 * S, 0.1 * S, 0.02 * S); }
+      else { rrect(c, ax - 0.14 * S, 0.0, 0.28 * S, 0.25 * S, 0.07 * S); c.fillStyle = APRON[o.slot]; c.fill(); c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(ax - 0.06 * S, 0.11 * S, 0.12 * S, 0.022 * S); }
     } else {
       c.strokeStyle = APRON[o.slot]; c.lineWidth = 0.04 * S; c.lineCap = "round";
       c.beginPath(); c.moveTo(-0.15 * S, -0.03 * S); c.lineTo(0.12 * S, 0.16 * S); c.moveTo(0.15 * S, -0.03 * S); c.lineTo(-0.12 * S, 0.16 * S); c.stroke();
@@ -3667,11 +3667,11 @@ body.modal { overflow: hidden; }
       const mochi = k === "mochi"; // 찹쌀이: 작은 몸 위에 옆으로 넓적한 큰 머리가 반쯤 묻혀 있어요
       const B = new Batch();
       if (mochi) {
-        B.add(sphG(18), mtx(0, 0.26, 0, 0, 0, 0, 0.255, 0.22, 0.23), C.fur);
-        B.add(apronG(), mtx(0, 0.26, 0, 0, 0, 0, 0.263, 0.228, 0.238), AP);
-        B.add(rboxG(0.1, 0.05, 0.02, 0.008, 1), mtx(0, 0.18, 0.218, -0.35, 0, 0), "#fff8ee");
-        B.add(sphG(8), mtx(-0.045, 0.25, -0.205, 0, 0, 0.5, 0.05, 0.028, 0.02), AP);
-        B.add(sphG(8), mtx(0.045, 0.25, -0.205, 0, 0, -0.5, 0.05, 0.028, 0.02), AP);
+        B.add(sphG(18), mtx(0, 0.23, 0, 0, 0, 0, 0.22, 0.19, 0.2), C.fur);
+        B.add(apronG(), mtx(0, 0.23, 0, 0, 0, 0, 0.228, 0.198, 0.208), AP);
+        B.add(rboxG(0.09, 0.045, 0.02, 0.008, 1), mtx(0, 0.16, 0.19, -0.35, 0, 0), "#fff8ee");
+        B.add(sphG(8), mtx(-0.04, 0.21, -0.196, 0, 0, 0.5, 0.045, 0.025, 0.02), AP);
+        B.add(sphG(8), mtx(0.04, 0.21, -0.196, 0, 0, -0.5, 0.045, 0.025, 0.02), AP);
       } else {
         B.add(sphG(18), mtx(0, 0.33, 0, 0, 0, 0, 0.25, 0.26, 0.22), C.fur);
         B.add(apronG(), mtx(0, 0.33, 0, 0, 0, 0, 0.258, 0.268, 0.228), AP);
@@ -3683,7 +3683,7 @@ body.modal { overflow: hidden; }
       const torso = B.mesh(VSKIN);
       bodyG.add(torso);
       // 머리
-      const headG = new T.Group(); headG.position.y = mochi ? 0.62 : 0.8; bodyG.add(headG);
+      const headG = new T.Group(); headG.position.y = mochi ? 0.59 : 0.8; bodyG.add(headG);
       const H = new Batch();
       H.add(sphG(22), mochi ? mtx(0, 0, 0, 0, 0, 0, 0.31, 0.26, 0.28) : mtx(0, 0, 0, 0, 0, 0, 0.25, 0.235, 0.24), C.fur);
       if (k === "cat") for (const sd of [-1, 1]) {
