@@ -369,7 +369,7 @@ body.modal { overflow: hidden; }
 <div class="wrap" id="lobby">
   <header class="sign">
     <h1>둘이서 분식집</h1>
-    <canvas class="crew" id="crew" width="760" height="230" aria-label="고양이, 강아지, 토끼, 곰 요리사"></canvas>
+    <canvas class="crew" id="crew" width="760" height="230" aria-label="고양이, 찹쌀이, 토끼, 곰 요리사"></canvas>
   </header>
 
   <p class="appnote" id="appNote" hidden><span id="appNoteText"></span><button type="button" id="appNoteX" aria-label="안내 닫기">✕</button></p>
@@ -1109,7 +1109,7 @@ body.modal { overflow: hidden; }
   // ===== 캐릭터: 동물 요리사 4종 =====
   const CHARS = {
     cat:    { name: "고양이", fur: "#f2a65a", dark: "#c9752a", ear: "#f7c9a8", nose: "#e8798a" },
-    dog:    { name: "강아지", fur: "#f3e2c6", dark: "#8a5a3b", ear: "#8a5a3b", nose: "#2b1d16" },
+    mochi:  { name: "찹쌀이", fur: "#ffffff", dark: "#cdc5bf", ear: "#ffffff", nose: "#3a2a24" }, // 하얗고 동글동글, 작은 반달 귀에 큰 볼터치
     rabbit: { name: "토끼",   fur: "#fbf8f2", dark: "#cfc6b8", ear: "#f4b6c2", nose: "#e8798a" },
     bear:   { name: "곰",     fur: "#9a6440", dark: "#5e3a24", ear: "#d1a57c", nose: "#2b1d16" }
   };
@@ -1125,8 +1125,8 @@ body.modal { overflow: hidden; }
         c.fillStyle = C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
         if (!back) { c.beginPath(); c.moveTo(sd * 0.165 * S, -0.31 * S); c.lineTo(sd * 0.15 * S, -0.43 * S); c.lineTo(sd * 0.07 * S, -0.35 * S); c.closePath(); c.fillStyle = C.ear; c.fill(); }
       });
-    } else if (ch === "dog") {
-      [-1, 1].forEach((sd) => { c.save(); c.translate(sd * 0.19 * S, -0.22 * S); c.rotate(sd * 0.3); c.beginPath(); c.ellipse(0, 0.07 * S, 0.075 * S, 0.15 * S, 0, 0, Math.PI * 2); c.fillStyle = C.ear; c.fill(); c.restore(); });
+    } else if (ch === "mochi") { // 머리 뒤에 그려서 위쪽 반달만 보여요
+      [-1, 1].forEach((sd) => { dot(c, sd * 0.135 * S, -0.31 * S, 0.06 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); });
     } else if (ch === "rabbit") {
       [-1, 1].forEach((sd) => {
         c.save(); c.translate(sd * 0.09 * S, -0.4 * S); c.rotate(sd * 0.16);
@@ -1141,7 +1141,18 @@ body.modal { overflow: hidden; }
   function drawFace(c, ch, S, fx) {
     const C = CHARS[ch];
     const hy = -0.17 * S, ox = fx * 0.07 * S;
-    if (ch === "bear" || ch === "dog") { c.beginPath(); c.ellipse(ox * 1.25, hy + 0.075 * S, 0.095 * S, 0.068 * S, 0, 0, Math.PI * 2); c.fillStyle = ch === "bear" ? "#d9b38c" : "#fffaf0"; c.fill(); }
+    if (ch === "mochi") { // 코 없이 세로로 긴 까만 눈, 작은 입, 진한 볼터치
+      const ey = hy + 0.005 * S;
+      [-1, 1].forEach((sd) => {
+        const x = ox + sd * 0.085 * S;
+        c.globalAlpha = 0.6; c.beginPath(); c.ellipse(x + sd * 0.04 * S, ey + 0.06 * S, 0.048 * S, 0.03 * S, 0, 0, Math.PI * 2); c.fillStyle = "#ff8fa3"; c.fill(); c.globalAlpha = 1;
+        c.beginPath(); c.ellipse(x, ey, 0.022 * S, 0.032 * S, 0, 0, Math.PI * 2); c.fillStyle = "#241a14"; c.fill();
+        dot(c, x + 0.007 * S, ey - 0.013 * S, 0.008 * S, "#ffffff");
+      });
+      c.beginPath(); c.arc(ox * 1.2, hy + 0.045 * S, 0.018 * S, 0.15 * Math.PI, 0.85 * Math.PI); c.strokeStyle = "#5a3a2c"; c.lineWidth = Math.max(1, 0.012 * S); c.lineCap = "round"; c.stroke();
+      return;
+    }
+    if (ch === "bear") { c.beginPath(); c.ellipse(ox * 1.25, hy + 0.075 * S, 0.095 * S, 0.068 * S, 0, 0, Math.PI * 2); c.fillStyle = "#d9b38c"; c.fill(); }
     const eyeY = hy - 0.01 * S;
     const ex = [ox - 0.075 * S + fx * 0.02 * S, ox + 0.075 * S + fx * 0.02 * S];
     ex.forEach((x) => { dot(c, x, eyeY, 0.03 * S, "#241a14"); dot(c, x + 0.01 * S, eyeY - 0.011 * S, 0.01 * S, "#ffffff"); });
@@ -1161,9 +1172,8 @@ body.modal { overflow: hidden; }
       const w = Math.sin(t * 3) * 0.05 * S;
       c.strokeStyle = C.dark; c.lineWidth = 0.05 * S; c.lineCap = "round";
       c.beginPath(); c.moveTo(0, y0); c.quadraticCurveTo(0.16 * S + w, y0 + 0.06 * S, 0.12 * S + w, y0 - 0.12 * S); c.stroke();
-    } else if (ch === "dog") {
-      c.save(); c.translate(0, y0); c.rotate(Math.sin(t * (moving ? 22 : 12)) * 0.5);
-      c.beginPath(); c.ellipse(0, 0.05 * S, 0.035 * S, 0.075 * S, 0, 0, Math.PI * 2); c.fillStyle = C.ear; c.fill(); c.restore();
+    } else if (ch === "mochi") {
+      dot(c, 0, y0, 0.05 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
     } else if (ch === "rabbit") {
       dot(c, 0, y0, 0.065 * S, "#ffffff"); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
     } else if (ch === "bear") {
@@ -1251,9 +1261,10 @@ body.modal { overflow: hidden; }
       dot(c, -0.045 * S, 0.17 * S, 0.04 * S, APRON[o.slot]); dot(c, 0.045 * S, 0.17 * S, 0.04 * S, APRON[o.slot]);
       drawTail(c, o.ch, S, t, o.moving);
     }
-    if (o.ch !== "dog") drawEars(c, o.ch, S, back);
-    dot(c, 0, -0.17 * S, 0.21 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
-    if (o.ch === "dog") drawEars(c, o.ch, S, back);
+    drawEars(c, o.ch, S, back);
+    if (o.ch === "mochi") { c.beginPath(); c.ellipse(0, -0.16 * S, 0.235 * S, 0.205 * S, 0, 0, Math.PI * 2); c.fillStyle = C.fur; c.fill(); } // 찹쌀이는 옆으로 조금 넓적한 머리
+    else dot(c, 0, -0.17 * S, 0.21 * S, C.fur);
+    c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
     if (o.ch === "cat") {
       c.strokeStyle = C.dark; c.lineWidth = 0.025 * S; c.lineCap = "round"; c.beginPath();
       [-0.05, 0, 0.05].forEach((dx) => { c.moveTo(dx * S, -0.36 * S); c.lineTo(dx * S, (back ? -0.24 : -0.3) * S); }); c.stroke();
@@ -3653,12 +3664,13 @@ body.modal { overflow: hidden; }
       // 머리
       const headG = new T.Group(); headG.position.y = 0.8; bodyG.add(headG);
       const H = new Batch();
-      H.add(sphG(22), mtx(0, 0, 0, 0, 0, 0, 0.25, 0.235, 0.24), C.fur);
+      const mochi = k === "mochi"; // 찹쌀이: 옆으로 넓적한 머리, 작은 반달 귀, 코 없이 큰 볼터치
+      H.add(sphG(22), mochi ? mtx(0, 0, 0, 0, 0, 0, 0.275, 0.235, 0.25) : mtx(0, 0, 0, 0, 0, 0, 0.25, 0.235, 0.24), C.fur);
       if (k === "cat") for (const sd of [-1, 1]) {
         H.add(coneG(0.09, 0.16, 14), mtx(sd * 0.14, 0.2, -0.01, -0.12, 0, -sd * 0.38), C.fur);
         H.add(coneG(0.052, 0.1, 12), mtx(sd * 0.135, 0.19, 0.026, -0.12, 0, -sd * 0.38), C.ear);
       }
-      if (k === "dog") for (const sd of [-1, 1]) H.add(sphG(12), mtx(sd * 0.23, -0.02, -0.01, 0, 0, sd * 0.32, 0.075, 0.15, 0.055), C.ear);
+      if (mochi) for (const sd of [-1, 1]) H.add(sphG(12), mtx(sd * 0.155, 0.19, -0.02, 0, 0, 0, 0.064, 0.06, 0.052), C.fur);
       if (k === "rabbit") for (const sd of [-1, 1]) {
         H.add(sphG(14), mtx(sd * 0.085, 0.37, -0.03, -0.12, 0, -sd * 0.12, 0.062, 0.2, 0.045), C.fur);
         H.add(sphG(12), mtx(sd * 0.087, 0.37, 0.006, -0.12, 0, -sd * 0.12, 0.032, 0.15, 0.02), C.ear);
@@ -3668,17 +3680,24 @@ body.modal { overflow: hidden; }
         H.add(sphG(10), mtx(sd * 0.17, 0.18, 0.02, 0, 0, 0, 0.05, 0.05, 0.02), C.ear);
       }
       for (const sd of [-1, 1]) {
+        if (mochi) {
+          H.add(sphG(10), mtx(sd * 0.085, 0.02, 0.226, 0, 0, 0, 0.028, 0.042, 0.022), "#241a14");
+          H.add(sphG(6), mtx(sd * 0.085 + 0.01, 0.04, 0.246, 0, 0, 0, 0.01, 0.01, 0.006), "#ffffff");
+          H.add(sphG(8), mtx(sd * 0.16, -0.05, 0.19, 0, sd * 0.6, 0, 0.062, 0.036, 0.012), "#ff8fa3");
+          continue;
+        }
         H.add(sphG(10), mtx(sd * 0.085, 0.02, 0.214, 0, 0, 0, 0.034, 0.039, 0.025), "#241a14");
         H.add(sphG(6), mtx(sd * 0.085 + 0.012, 0.037, 0.236, 0, 0, 0, 0.011, 0.011, 0.008), "#ffffff");
         H.add(sphG(8), mtx(sd * 0.148, -0.058, 0.18, 0, sd * 0.68, 0, 0.044, 0.026, 0.012), "#ff9aa8");
       }
       const smallNose = k === "cat" || k === "rabbit";
-      if (smallNose) H.add(sphG(8), mtx(0, -0.035, 0.235, 0, 0, 0, 0.026, 0.019, 0.016), C.nose);
+      if (mochi) H.add(torG(0.02, 0.006, Math.PI, 4, 10), mtx(0, -0.045, 0.24, -0.3, 0, Math.PI), "#5a3a2c");
+      else if (smallNose) H.add(sphG(8), mtx(0, -0.035, 0.235, 0, 0, 0, 0.026, 0.019, 0.016), C.nose);
       else {
         H.add(sphG(12), mtx(0, -0.065, 0.2, 0, 0, 0, 0.1, 0.07, 0.075), k === "bear" ? "#d9b38c" : "#fffaf0");
         H.add(sphG(8), mtx(0, -0.035, 0.272, 0, 0, 0, 0.036, 0.026, 0.022), C.nose);
       }
-      H.add(torG(0.022, 0.006, Math.PI, 4, 10), mtx(0, smallNose ? -0.062 : -0.088, smallNose ? 0.229 : 0.266, -0.3, 0, Math.PI), "#5a3a2c");
+      if (!mochi) H.add(torG(0.022, 0.006, Math.PI, 4, 10), mtx(0, smallNose ? -0.062 : -0.088, smallNose ? 0.229 : 0.266, -0.3, 0, Math.PI), "#5a3a2c");
       if (k === "cat") {
         for (const sd of [-1, 1]) for (const tl of [-0.12, 0.1]) H.add(boxG(0.12, 0.006, 0.006), mtx(sd * 0.17, -0.05 + tl * 0.2, 0.165, 0, sd * 0.45, tl * sd), "#6b5040");
         for (const dx of [-0.05, 0, 0.05]) H.add(boxG(0.024, 0.012, 0.08), mtx(dx, 0.205, 0.1, 0.45, 0, 0), C.dark);
@@ -3692,10 +3711,8 @@ body.modal { overflow: hidden; }
         const tg = gc("catTail", () => new T.TubeGeometry(new T.CatmullRomCurve3([new T.Vector3(0, 0, 0), new T.Vector3(0.04, 0.05, -0.13), new T.Vector3(0.1, 0.22, -0.18), new T.Vector3(0.07, 0.36, -0.12)]), 16, 0.03, 8, false));
         part(tail, tg, mat(C.dark));
         part(tail, sphG(8), mat(C.dark), 0.07, 0.36, -0.12, 0, 0, 0, 0.03);
-      } else if (k === "dog") {
-        tail = sub(bodyG, 0, 0.32, -0.19);
-        part(tail, sphG(10), mat(C.ear), 0, 0.07, -0.03, -0.5, 0, 0, 0.04, 0.09, 0.04);
-      } else if (k === "rabbit") part(bodyG, sphG(12), mat("#ffffff"), 0, 0.24, -0.215, 0, 0, 0, 0.07);
+      } else if (mochi) part(bodyG, sphG(12), mat(C.fur), 0, 0.24, -0.215, 0, 0, 0, 0.055);
+      else if (k === "rabbit") part(bodyG, sphG(12), mat("#ffffff"), 0, 0.24, -0.215, 0, 0, 0, 0.07);
       else part(bodyG, sphG(10), mat(C.dark), 0, 0.24, -0.205, 0, 0, 0, 0.05);
       // 손, 칼, 발
       const hand = (x) => { const h = sub(bodyG, x, 0.33, 0); part(h, sphG(12), mat(C.fur), 0, 0, 0, 0, 0, 0, 0.072); return h; };
