@@ -150,12 +150,17 @@ kbd { font-family: var(--font-ui); background: #fff; border: 2px solid var(--pap
 .stage-tip { font-size: 13.5px; color: var(--soft); max-width: 560px; margin: 0; }
 
 /* 게임 화면 */
-#game { max-width: 1240px; margin: 0 auto; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); padding-block: max(10px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; height: 100vh; height: 100dvh; }
+/* 폰 화면 가장자리 여백 (노치·홈 막대). 눕혀 그릴 땐 게임의 위 = 폰의 오른쪽, 오른쪽 = 아래, 아래 = 왼쪽, 왼쪽 = 위 */
+#game { --sat: env(safe-area-inset-top, 0px); --sar: env(safe-area-inset-right, 0px); --sab: env(safe-area-inset-bottom, 0px); --sal: env(safe-area-inset-left, 0px); }
+body.side #game { --sat: env(safe-area-inset-right, 0px); --sar: env(safe-area-inset-bottom, 0px); --sab: env(safe-area-inset-left, 0px); --sal: env(safe-area-inset-top, 0px); }
+/* 세로로 든 폰: 게임 화면(과 게임 중 여는 창)을 시계 방향으로 90도 눕혀요. 폰만 가로로 돌리면 바로 가로 화면이에요 */
+body.side #game, body.side .setwrap, body.side .xl { position: fixed; inset: auto; left: 0; top: 0; width: var(--sw); height: var(--sh); max-width: none; margin: 0; transform-origin: 0 0; transform: translateX(var(--sh)) rotate(90deg); }
+#game { max-width: 1240px; margin: 0 auto; padding-left: max(12px, var(--sal)); padding-right: max(12px, var(--sar)); padding-block: max(10px, var(--sat)) max(10px, var(--sab)); display: flex; flex-direction: column; gap: 8px; height: 100vh; height: 100dvh; }
 body.ingame { overflow: hidden; overscroll-behavior: none; }
 body.ingame #game { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
 .hud { display: grid; grid-template-columns: 1fr auto auto auto auto; grid-template-areas: "orders score time chat gear"; gap: 8px; align-items: start; }
 #game.spec .hudchat { display: none; }
-.chatbar { position: absolute; z-index: 8; left: 50%; top: max(70px, calc(env(safe-area-inset-top, 0px) + 64px)); transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; background: rgba(36,26,20,.88); border-radius: 12px; box-shadow: 0 4px 0 rgba(0,0,0,.3); }
+.chatbar { position: absolute; z-index: 8; left: 50%; top: max(70px, calc(var(--sat) + 64px)); transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; background: rgba(36,26,20,.88); border-radius: 12px; box-shadow: 0 4px 0 rgba(0,0,0,.3); }
 .chatbar[hidden] { display: none; }
 .chatbar input { width: 6.5em; font-family: var(--font-ui); font-size: 20px; padding: 6px 10px; border-radius: 8px; border: 0; background: #fff; color: var(--ink); text-align: center; }
 .chatbar .btn { font-size: 17px; padding: 6px 12px; }
@@ -202,12 +207,12 @@ body.ingame #game { -webkit-user-select: none; user-select: none; -webkit-touch-
 @keyframes drop { from { transform: translateY(-14px); opacity: 0; } to { transform: none; opacity: 1; } }
 .stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
 #game { position: relative; }
-#game.over .hud { position: absolute; z-index: 4; top: max(10px, env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); pointer-events: none; }
+#game.over .hud { position: absolute; z-index: 4; top: max(10px, var(--sat)); left: max(12px, var(--sal)); right: max(12px, var(--sar)); pointer-events: none; }
 #game.over .hudset { pointer-events: auto; }
-#game.over, #game.touch.over:not(.portrait) { padding: 0; max-width: none; }
-#game.over .foot { padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)); }
+#game.over, #game.touch.over { padding: 0; max-width: none; }
+#game.over .foot { padding-left: max(12px, var(--sal)); padding-right: max(12px, var(--sar)); padding-bottom: max(6px, var(--sab)); }
 #safeProbe { position: fixed; left: 0; top: 0; width: 0; height: 0; visibility: hidden; pointer-events: none; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
-#game.touch.over:not(.portrait) .hud { top: max(6px, env(safe-area-inset-top, 0px)); }
+#game.touch.over .hud { top: max(6px, var(--sat)); }
 #game.over .hudset { background: rgba(36,26,20,.55); }
 #game.over .hudset:hover { background: rgba(36,26,20,.75); }
 .view { position: relative; flex: none; }
@@ -306,14 +311,6 @@ body.modal { overflow: hidden; }
 .toast.hide { opacity: 0; }
 .peer { display: none; }
 /* 폰 세로일 때 가로로 돌려 달라는 화면 */
-.rotask { position: fixed; inset: 0; z-index: 50; background: rgba(28,20,15,.94); display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; }
-.rotbox { display: flex; flex-direction: column; align-items: center; gap: 10px; color: #fff; max-width: 320px; }
-.rotbox b { font-family: var(--font-ui); font-weight: 400; font-size: 26px; color: var(--sign); }
-.rotbox small { font-size: 14px; line-height: 1.55; color: #e9dccb; }
-.rotphone { width: 92px; height: 92px; color: #fff; animation: rotphone 2.2s ease-in-out infinite; }
-.rotphone svg { width: 100%; height: 100%; }
-@keyframes rotphone { 0%, 25% { transform: rotate(0deg); } 55%, 100% { transform: rotate(-90deg); } }
-@media (prefers-reduced-motion: reduce) { .rotphone { animation: none; transform: rotate(-90deg); } }
 .rotate-tip { position: absolute; left: 50%; transform: translateX(-50%); bottom: 300px; background: rgba(36,26,20,.8); color: #fff; font-family: var(--font-ui); font-size: 14px; padding: 3px 12px; border-radius: 999px; white-space: nowrap; pointer-events: none; }
 
 /* 폰 조작 */
@@ -322,7 +319,7 @@ body.modal { overflow: hidden; }
 .stick { position: absolute; width: 124px; height: 124px; margin: -62px 0 0 -62px; border-radius: 50%; background: rgba(255,248,230,.14); border: 3px solid rgba(255,248,230,.45); opacity: .7; transition: opacity .15s; }
 .stick.active { opacity: 1; transition: none; }
 .knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: rgba(255,207,51,.92); box-shadow: 0 4px 0 #c99a12; }
-.pbtns { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(14px, env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: auto auto; grid-template-areas: ". dash" "work grab"; gap: 10px 12px; align-items: end; justify-items: center; pointer-events: auto; touch-action: none; }
+.pbtns { position: absolute; right: max(16px, var(--sar)); bottom: max(14px, var(--sab)); display: grid; grid-template-columns: auto auto; grid-template-areas: ". dash" "work grab"; gap: 10px 12px; align-items: end; justify-items: center; pointer-events: auto; touch-action: none; }
 .pbtn.dash { grid-area: dash; }
 .pbtn.work { grid-area: work; margin-bottom: 8px; }
 .pbtn.grab { grid-area: grab; }
@@ -337,14 +334,14 @@ body.modal { overflow: hidden; }
 #game:not(.portrait) .pbtns { grid-template-columns: auto; grid-template-areas: "dash" "work" "grab"; }
 #game:not(.portrait) .pbtn.work { margin-bottom: 0; }
 /* 가로 폰: 위 메뉴를 낮게 */
-#game.touch { gap: 6px; padding-top: max(6px, env(safe-area-inset-top, 0px)); padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)); }
+#game.touch { gap: 6px; padding-top: max(6px, var(--sat)); padding-bottom: max(6px, var(--sab)); }
 #game.touch .meter { --m: .72; }
 #game.touch .hud { --t: .66; }
 #game.touch .orders { gap: 5px; }
 #game.touch .hudset { width: 32px; height: 32px; }
 #game.touch .hudset svg { width: 19px; height: 19px; }
 @media (max-height: 360px) {
-  .pbtns { gap: 7px 10px; bottom: max(8px, env(safe-area-inset-bottom, 0px)); }
+  .pbtns { gap: 7px 10px; bottom: max(8px, var(--sab)); }
   .pbtn.grab { width: 76px; height: 76px; font-size: 21px; }
   .pbtn.work { width: 64px; height: 64px; font-size: 17px; margin-bottom: 6px; }
   .pbtn.work small { font-size: 9.5px; }
@@ -526,13 +523,6 @@ body.modal { overflow: hidden; }
     <div class="toast hide" id="toast"></div>
     <div class="overlay" id="overlay" hidden></div>
     <span class="rotate-tip" id="rotateTip" hidden>폰을 가로로 돌리면 더 크게 보여요</span>
-    <div class="rotask" id="rotAsk" hidden role="dialog" aria-labelledby="rotTitle">
-      <div class="rotbox">
-        <div class="rotphone"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="20" y="6" width="24" height="44" rx="5" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="32" cy="43" r="2.6" fill="currentColor"/></svg></div>
-        <b id="rotTitle">폰을 가로로 돌려 주세요</b>
-        <small>이 게임은 가로로만 해요. 안 돌아가면 폰의 '화면 회전 잠금'을 꺼 주세요.</small>
-      </div>
-    </div>
   </div>
   <div class="pad" id="pad" hidden>
     <div class="zone" id="zone" aria-label="이동 조이스틱"><div class="stick" id="stick"><div class="knob" id="knob"></div></div></div>
@@ -613,7 +603,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 48;
+  const VERSION = 49;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -2577,6 +2567,15 @@ body.modal { overflow: hidden; }
   let touchMode = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
   const pops = [];
 
+  // 눕혀 그릴 때 (세로로 든 폰): 게임 화면을 시계 방향으로 90도 돌려 그려요. 화면 오른쪽 끝이 게임의 위, 화면 위가 게임의 왼쪽
+  let sideways = false;
+  function crect(el) { // 게임 화면 안 좌표로 본 상자
+    const r = el.getBoundingClientRect();
+    if (!sideways) return r;
+    const W = window.innerWidth;
+    return { left: r.top, right: r.bottom, top: W - r.right, bottom: W - r.left, width: r.height, height: r.width };
+  }
+  const cpt = (e) => (sideways ? { x: e.clientY, y: window.innerWidth - e.clientX } : { x: e.clientX, y: e.clientY }); // 손가락 자리를 게임 화면 안 좌표로
   function fit() {
     const stage = $("stage"), g = $("game");
     const over = use3D(); // 3D: 위 줄을 주방 위에 띄우고 주방이 화면을 꽉 채워요 (가로로만 해요)
@@ -2584,10 +2583,11 @@ body.modal { overflow: hidden; }
     let w = stage.clientWidth, h = stage.clientHeight, insT = 0, insS = 0, insB = 0;
     const side = Math.min(150, Math.max(96, w * 0.13)); // 조이스틱·버튼 한 줄 폭
     if (over) {
-      const sb = stage.getBoundingClientRect(), hb = g.querySelector(".hud").getBoundingClientRect();
+      const sb = crect(stage), hb = crect(g.querySelector(".hud"));
       insT = Math.max(0, hb.bottom - sb.top) + 20; // 뒷줄 냄비 위 막대가 위 줄에 안 가리게
-      const sp = getComputedStyle($("safeProbe")), safe = Math.max(parseFloat(sp.paddingLeft) || 0, parseFloat(sp.paddingRight) || 0);
-      insB = Math.max(4, parseFloat(sp.paddingBottom) || 0);
+      const sp = getComputedStyle($("safeProbe")), px = (k) => parseFloat(sp["padding" + k]) || 0; // 폰 화면 가장자리(노치·홈 막대) 여백. 눕혀 그릴 땐 게임의 옆 = 폰의 위·아래, 게임의 아래 = 폰의 왼쪽
+      const safe = sideways ? Math.max(px("Top"), px("Bottom")) : Math.max(px("Left"), px("Right"));
+      insB = Math.max(4, sideways ? px("Left") : px("Bottom"));
       insS = safe + (touchMode && me ? Math.max(0, side - 34) : 2); // 아래 모서리는 조작 버튼과 조금 겹쳐도 돼요
     } else if (touchMode && me) w -= 2 * side; // 관전은 조작 버튼이 없어서 화면을 다 써요
     TS = Math.max(16, Math.floor(Math.min(w / COLS, h / ROWS)));
@@ -6519,7 +6519,7 @@ body.modal { overflow: hidden; }
     document.body.classList.toggle("ingame", name === "game");
     roundRow();
     if (name !== "game") { $("chatBar").hidden = true; bubbles.length = 0; hits.length = 0; }
-    if (name !== "game") { touchIn.chop = false; endStick(); $("pad").hidden = true; if (myCover) setMyCover(false); }
+    if (name !== "game") { touchIn.chop = false; endStick(); $("pad").hidden = true; if (myCover) setMyCover(false); sideways = false; document.body.classList.remove("side"); }
     if (name === "game") { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); requestAnimationFrame(layout); }
     if (name === "lobby") requestAnimationFrame(() => { try { Poster.paint(); } catch (e) {} }); // 다른 화면에 있는 동안 창 크기가 바뀌었을 수 있어요
   }
@@ -7150,7 +7150,7 @@ body.modal { overflow: hidden; }
     $("knob").style.transform = "translate(" + kx + "px, " + ky + "px)";
   }
   function stickRest() {
-    const z = zone.getBoundingClientRect();
+    const z = crect(zone);
     if (!z.width) return;
     placeStick(Math.max(86, z.width * 0.22), z.height - 92, 0, 0, false);
   }
@@ -7165,14 +7165,14 @@ body.modal { overflow: hidden; }
     if (stick.id !== null) return;
     stick.id = e.pointerId;
     try { zone.setPointerCapture(e.pointerId); } catch (err) {}
-    const z = zone.getBoundingClientRect();
-    stick.ox = e.clientX - z.left; stick.oy = e.clientY - z.top;
+    const z = crect(zone), q = cpt(e);
+    stick.ox = q.x - z.left; stick.oy = q.y - z.top;
     placeStick(stick.ox, stick.oy, 0, 0, true);
   });
   zone.addEventListener("pointermove", (e) => {
     if (e.pointerId !== stick.id) return;
-    const z = zone.getBoundingClientRect();
-    let dx = e.clientX - z.left - stick.ox, dy = e.clientY - z.top - stick.oy;
+    const z = crect(zone), q = cpt(e);
+    let dx = q.x - z.left - stick.ox, dy = q.y - z.top - stick.oy;
     const d = Math.hypot(dx, dy);
     if (d > STICK_R) { dx *= STICK_R / d; dy *= STICK_R / d; }
     placeStick(stick.ox, stick.oy, dx, dy, true);
@@ -7201,10 +7201,12 @@ body.modal { overflow: hidden; }
     g.classList.toggle("touch", touchMode);
     $("pad").hidden = padHidden();
     $("rotateTip").hidden = true;
-    // 가로로만 해요: 폰·태블릿을 세로로 들고 게임 중이면 가로로 돌려 달라고 해요 (아이폰은 웹에서 화면을 강제로 못 돌려요)
-    $("rotAsk").hidden = !(touchMode && portrait && !g.hidden);
+    // 가로로만 해요: 폰·태블릿을 세로로 들고 있으면 게임을 옆으로 눕혀 그려요 (폰만 돌리면 가로 화면. 화면 회전 잠금을 켜 둬도 돼요)
+    sideways = touchMode && portrait && !g.hidden;
+    document.body.classList.toggle("side", sideways);
+    if (sideways) { const bs = document.body.style; bs.setProperty("--sw", window.innerHeight + "px"); bs.setProperty("--sh", window.innerWidth + "px"); }
     if (!g.hidden) {
-      const hudB = document.querySelector("#game .hud").getBoundingClientRect().bottom;
+      const hudB = crect(document.querySelector("#game .hud")).bottom;
       zone.style.top = Math.round(hudB + 4) + "px";
       fit();
       stickRest();
