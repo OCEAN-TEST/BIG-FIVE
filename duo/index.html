@@ -729,11 +729,12 @@ body.modal { overflow: hidden; }
       tip: "가운데로 기차가 지나가요. 땡땡 소리와 함께 차단봉이 내려오면 철길에서 나와요. 차단봉 안쪽 철길에 갇힌 채 기차가 오면 치여서 쓰러지고, 5초 뒤 처음 자리에서 다시 나와요. 들고 있던 음식은 사라져요.",
       map: ["CtmprCC%CCSSCCC", "b.....:!:.....W", "g.....:!:.....W", "d..CC.:!:.CC..C", "o..CC.:!:.CC..F", "K.....:!:.....F", "K.....:!:.....T", "T.....:!:.....C", "CCCCCCC%CCCSCPC"] },
     { id: 12, name: "달리는 푸드트럭", time: 200, menu: ["corndog_k", "corndog_m", "fries"], stars: [16000, 37000, 68000], plates: 0, gap: [8, 11], extra: 12, duo: false,
-      // 트럭 두 대가 위아래 차선에서 나란히 왼쪽으로 달려요. 가운데 틈(row 줄)은 붙어 있을 땐 바닥끼리 맞닿아 건너고, 벌어지면 떨어져요 (달리는 반대쪽으로 날아가요)
-      truck: { row: 4, first: [8, 16], join: [5, 19], apart: [6, 13], quick: [2.5, 4], quickP: 0.15, warn: 0.7, speed: 10 },
-      ext: [4, 0], floor: ["#c48e5a", "#b98450"], spawn: [[3.5, 6.5], [11.5, 2.5]],
-      tip: "트럭 두 대가 위아래 차선에서 나란히 달려요. 아래 트럭엔 핫도그·감자·도마, 위 트럭엔 튀김기·소스·접시·내는 곳이 있어요. 트럭이 붙어 있을 땐 가운데 틈을 걸어서 건너고, 빵빵 소리가 나면 곧 벌어지니 틈에서 나와요. 벌어진 틈으로 떨어지면 뒤로 날아가서 5초 뒤에 돌아와요. 벌어져 있을 땐 재료를 던져서 넘겨요. 핫도그는 튀긴 다음 접시에 담고 케첩이나 머스타드를 뿌려요.",
-      map: ["CFFFCCWWCCPCkyC", "C.............C", "T.............C", "C.............C", "///////////////", "C.............C", "K.............C", "K.............T", "ChaCCCCCCCCCCCC"] }
+      // 트럭 두 대가 위아래 차선에서 나란히 왼쪽으로 달려요. 가운데 틈(row 줄)은 붙어 있을 땐 바닥끼리 맞닿아 건너고, 벌어지면 떨어져요 (달리는 반대쪽으로 날아가요).
+      // 트럭은 12칸 (오른쪽 세 칸 " "은 트럭 밖 빈 도로예요)
+      truck: { row: 4, first: [8, 16], join: [5, 19], apart: [6, 13], quick: [2.5, 4], quickP: 0.15, warn: 1.0, speed: 10 },
+      ext: [4, 0], floor: ["#c48e5a", "#b98450"], spawn: [[3.5, 6.5], [8.5, 2.5]],
+      tip: "트럭 두 대가 위아래 차선에서 나란히 달려요. 아래 트럭엔 핫도그·감자·도마, 위 트럭엔 튀김기·소스·접시·내는 곳이 있어요. 트럭이 붙어 있을 땐 가운데 틈을 걸어서 건너고, 빵빵 소리와 함께 트럭이 슬금슬금 벌어지기 시작하면 곧 휙 떨어지니 틈에서 나와요. 벌어진 틈으로 떨어지면 뒤로 날아가서 5초 뒤에 돌아와요. 벌어져 있을 땐 재료를 던져서 넘겨요. 핫도그는 튀긴 다음 접시에 담고 케첩이나 머스타드를 뿌려요.",
+      map: ["CFFFCWWCPkyC   ", "C..........C   ", "T..........C   ", "C..........C   ", "////////////   ", "C..........C   ", "C..........C   ", "C..........T   ", "ChaCCKKCCCCC   "] }
   ];
   // 맵 에디터(editor.html)의 "게임에서 시험하기": ?test 화면에서만 그 단계를 이 기기에 저장된 맵으로 바꿔 끼워요
   if (TEST_OPEN) {
@@ -821,6 +822,7 @@ body.modal { overflow: hidden; }
   }
   const stageOf = (id) => STAGES.find((s) => s.id === id) || STAGES[0];
   const truckRow = (st) => !!(st && st.truck && st.truck.row != null); // 트럭 틈이 가로 줄(트럭이 위아래로 나란히, 왼쪽으로 달려요)인지. 아니면 세로 칸(col)
+  const truckLen = (st) => { if (!truckRow(st)) return COLS; const r = st.map[st.truck.row]; let n = COLS; while (n > 1 && r[n - 1] === " ") n--; return n; }; // 가로 틈 트럭 길이 (오른쪽 빈 칸 " "은 트럭 밖)
   // 판마다 시작 자리 섞기 (방장이 판 시작할 때 섞어서 모두에게 보내요. 첫 판도 똑같이 섞어요)
   // 자리는 단계에 적힌 그대로예요 (1·2번 자리, 3·4명이면 그 바로 옆 칸). 누가 어느 자리에 서는지만 바뀌어요.
   // 1·2번 자리를 먼저 채워서, 둘 이상이면 양쪽에 한 명씩은 꼭 가요. 쓰러지면 이번 판 자기 자리에서 다시 나와요
@@ -835,7 +837,7 @@ body.modal { overflow: hidden; }
   const spotOf = (v, st, i) => (v && v.spots && v.spots[i]) || spawnPos(st, i); // 이번 판 시작 자리 (뽑은 게 없으면 적힌 자리)
 
   const CRATE_CH = { t: "tteok", m: "eomuk", p: "pa", r: "ramyeon", b: "bap", g: "gim", d: "danmuji", o: "ojingeo", h: "hotdog", a: "potato", k: "ketchup", y: "mustard" };
-  const TYPE_CH = { ".": "floor", C: "counter", "|": "counter", "#": "wall", K: "board", S: "stove", F: "fryer", W: "serve", T: "trash", P: "plates", H: "sink", R: "return", ">": "belt", "<": "belt", A: "belt", V: "belt", Z: "hole", "%": "railend" };
+  const TYPE_CH = { " ": "void", ".": "floor", C: "counter", "|": "counter", "#": "wall", K: "board", S: "stove", F: "fryer", W: "serve", T: "trash", P: "plates", H: "sink", R: "return", ">": "belt", "<": "belt", A: "belt", V: "belt", Z: "hole", "%": "railend" };
   const BELT_DIR = { ">": [1, 0], "<": [-1, 0], A: [0, -1], V: [0, 1] };
   // 바닥 장치: 걸어 다닐 수 있는 바닥인데 성질이 달라요
   const FLOOR_CH = { "~": { ice: true }, "}": { push: [1, 0] }, "{": { push: [-1, 0] }, "^": { push: [0, -1] }, "v": { push: [0, 1] }, "=": { road: true }, "@": { portal: 0 }, "$": { portal: 1 }, "!": { rail: true }, ":": { bar: true }, _: { pit: true }, "/": { gap: true } };
@@ -1935,7 +1937,7 @@ body.modal { overflow: hidden; }
   function landOn(f, i) {
     const t = tiles[i], it = f.it, s = W.slots[i];
     const back = () => dropBack(f, Math.floor(f.x), Math.floor(f.y));
-    if (t.type === "trash") return;
+    if (t.type === "trash" || t.type === "void") return; // 트럭 밖 빈 곳으로 날아가면 도로에 떨어져서 사라져요
     if (t.type === "counter" || t.type === "board" || t.type === "belt") {
       if (!s) { W.slots[i] = it; if (t.type === "belt") ride(it); return; }
       if (s.k === "plate") { if (plateCheck(s, it) === true) { plateAdd(s, it.k); return; } return back(); }
@@ -1965,6 +1967,7 @@ body.modal { overflow: hidden; }
         }
         if (f.done) break;
         const tx = Math.floor(nx), ty = Math.floor(ny);
+        if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) { f.done = true; break; } // 주방 밖으로 날아가면 사라져요 (트럭 틈 끝)
         if (solid(tx, ty)) { landOn(f, idx(tx, ty)); f.done = true; break; }
         const ni = idx(tx, ty), pt = tiles[ni];
         if (ni !== f.lt && W.slots[ni]) { hitFloor(f, ni); f.done = true; break; } // 바닥에 물건이 있으면 넘어가지 않고 그 앞에서 멈춰요
@@ -2307,17 +2310,20 @@ body.modal { overflow: hidden; }
   }
   const TRUCK_MOVE = 0.7; // 트럭이 벌어지고 붙는 시간. 쇠 발판은 없고, 트럭이 벌어지기 시작하는 순간 가운데에 있으면 바로 떨어져요
   // joined: 지금 건널 수 있나, open: 트럭 벌어진 정도 (0 붙음 ~ 1 벌어짐), warn: 곧 벌어져요
+  // vis: 그림으로 벌어진 정도. 곧 벌어질 땐 슬금슬금(0.1까지) 벌어지다가, 벌어질 땐 처음엔 천천히 끝에 휙. 다시 붙을 땐 부드럽게
   function truckNow(v, now) {
     const tk = v && stageOf(v.stage).truck;
     if (!tk) return null;
-    if (v.phase !== "play") return { joined: true, open: 0, warn: false };
+    if (v.phase !== "play") return { joined: true, open: 0, vis: 0, warn: false };
     const e = clockOf(v, now), seg = truckSegs(v).find((q) => e < q.t1) || truckSegs(v)[0];
-    const left = seg.t1 - e;
+    const left = seg.t1 - e, sm = (k) => k * k * (3 - 2 * k);
     if (seg.joined) {
-      if (left < TRUCK_MOVE) return { joined: false, open: 1 - left / TRUCK_MOVE, warn: false, left }; // 벌어지기 시작: 이미 못 건너요
-      return { joined: true, open: 0, warn: left < TRUCK_MOVE + tk.warn, left };
+      if (left < TRUCK_MOVE) { const p = 1 - left / TRUCK_MOVE; return { joined: false, open: p, vis: 0.1 + 0.9 * p * p * p, warn: false, left }; } // 벌어지기 시작: 이미 못 건너요
+      const w = left < TRUCK_MOVE + tk.warn;
+      return { joined: true, open: 0, vis: w ? 0.1 * sm(1 - (left - TRUCK_MOVE) / tk.warn) : 0, warn: w, left };
     }
-    return { joined: false, open: left < TRUCK_MOVE ? left / TRUCK_MOVE : 1, warn: false, left }; // 다 붙어야 건너요
+    const op = left < TRUCK_MOVE ? left / TRUCK_MOVE : 1;
+    return { joined: false, open: op, vis: sm(op), warn: false, left }; // 다 붙어야 건너요
   }
   // 움직이는 순간이동문: 판 번호로 정한 순서라 모든 화면이 같은 때 같은 자리로 옮겨요
   let warpKey = "", warpChain = null;
@@ -2627,7 +2633,7 @@ body.modal { overflow: hidden; }
     c.restore();
   }
   const PORTAL_COL = ["#a855f7", "#14b8a6"];
-  const NO_HL = { wall: 1, bar: 1, railend: 1, pit: 1 };
+  const NO_HL = { wall: 1, bar: 1, railend: 1, pit: 1, void: 1 };
   function drawFloorFx(t, px, py, s, now, st) {
     if (t.ice) {
       ctx.fillStyle = (t.x + t.y) % 2 ? "#cfe8f5" : "#d9eef8"; ctx.fillRect(px, py, s, s);
@@ -2720,6 +2726,7 @@ body.modal { overflow: hidden; }
     if (t.rail || t.type === "railend") { drawRail(ctx, px, py, s); if (t.type === "railend") { ctx.fillStyle = "rgba(20,14,10,.45)"; ctx.fillRect(px, py, s, s); } return; }
     if (t.bar) { drawBarTile(t, px, py, s, st, st.rail || { col: 7 }); return; }
     if (t.gap) { drawGapTile(t, px, py, s, now, v, st); return; }
+    if (t.type === "void") { ctx.fillStyle = "#5a534c"; ctx.fillRect(px, py, s, s); return; } // 트럭 밖: 도로
     if (t.pit) { // 낭떠러지: 가운데로 갈수록 깜깜
       const pl = (dx) => { const q = tiles[idx(t.x + dx, t.y)]; return !!(q && q.pit); }; // 옆도 낭떠러지면 그쪽 테두리 없이 이어져요
       const g = ctx.createLinearGradient(px, 0, px + s, 0);
@@ -3000,8 +3007,6 @@ body.modal { overflow: hidden; }
       const w = warpNow(view, now), on = Math.floor(now / 180) % 2 === 0;
       w.forEach((p, k) => { if (p.next && on) p.next.forEach(([x, y]) => { ctx.save(); ctx.setLineDash([5, 4]); ctx.lineWidth = Math.max(2.5, TS * 0.08); ctx.strokeStyle = PORTAL_COL[k]; ctx.beginPath(); ctx.arc((x + 0.5) * TS, (y + 0.5) * TS, TS * 0.36, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }); });
     }
-    // 트럭이 곧 벌어져요
-    if (st.truck) { const tn = truckNow(view, now); if (tn && tn.warn && Math.floor(now / 210) % 2 === 0) (truckRow(st) ? [[3.5, st.truck.row + 0.5], [11.5, st.truck.row + 0.5]] : [[st.truck.col + 0.5, 2.2], [st.truck.col + 0.5, 6.2]]).forEach(([x, y]) => pill(ctx, x * TS, y * TS, "!", "#ff3b30", TS * 0.3, false)); }
     // 기차와 땡땡 경고
     if (st.rail) {
       const rn = railNow(view, now);
@@ -4132,7 +4137,7 @@ body.modal { overflow: hidden; }
         } else if (t.rail || t.type === "railend") { // 자갈
           g.fillStyle = "#8d877d"; g.fillRect(x0, y0, u, u);
           for (let k = 0; k < 70; k++) { const r = ((t.i * 131 + k * 977) % 1000) / 1000, q = ((t.i * 71 + k * 613) % 1000) / 1000; g.fillStyle = k % 3 ? "rgba(255,255,255,.16)" : "rgba(0,0,0,.18)"; g.fillRect(x0 + r * u, y0 + q * u, 3, 3); }
-        } else if (t.gap) { // 트럭 사이 틈: 뚫어서 아래 도로가 보이게
+        } else if (t.gap || t.type === "void") { // 트럭 사이 틈·트럭 밖: 뚫어서 아래 도로가 보이게
           g.clearRect(x0, y0, u, u);
         } else if (t.pit) { // 낭떠러지
           const gr = g.createLinearGradient(x0, 0, x0 + u, 0);
@@ -4418,6 +4423,7 @@ body.modal { overflow: hidden; }
     }
     // ---- 가로 틈 도로 (사막을 달려요): 차선이 가로로 길게, 모두 오른쪽(+x)으로 흘러가요 ----
     const TR_Z0 = -5.8, TR_Z1 = 12.8, ROAD_YR = -1.2; // 도로 폭 (z)·높이 (바퀴가 커서 세로 틈 도로보다 낮아요)
+    const TRUCK_BACK = 1.1, TRUCK_FWD = 0.5; // 벌어지면 위 트럭은 이만큼 뒤로, 아래 트럭은 이만큼 앞으로 (비스듬히 벌어져요)
     function roadRowCanvas(row) { // 4칸마다 점선 하나 (가로로 반복). 위 끝엔 노란 실선, 트럭 사이 틈 아래에도 점선
       const key = "roadRow" + row;
       if (decalCache[key]) return decalCache[key];
@@ -4616,11 +4622,11 @@ body.modal { overflow: hidden; }
         g.fillStyle = "rgba(58,30,12,.42)"; g.fillRect(0, y + pw - 1, wpx, 2); // 줄 사이 틈
       }
     }
-    function plateRowCanvas(st, n) { // 트럭 사이 반 칸 바닥: 바닥과 같은 널빤지 + 맞닿는 끝에 노랑·검정 경고 줄
-      const u = 64, row = st.truck.row, c = document.createElement("canvas"); c.width = COLS * u; c.height = u / 2;
+    function plateRowCanvas(st, n, L) { // 트럭 사이 반 칸 바닥 (L칸): 바닥과 같은 널빤지 + 맞닿는 끝에 노랑·검정 경고 줄
+      const u = 64, row = st.truck.row, c = document.createElement("canvas"); c.width = L * u; c.height = u / 2;
       const g = c.getContext("2d"), fc = (PAL[st.id] || PAL[1]).floor || st.floor;
-      drawPlanks(g, COLS * u, row * 4 + (n ? 2 : 0), 2, fc);
-      g.fillStyle = "rgba(0,0,0,.08)"; for (let x = 0; x <= COLS; x++) g.fillRect(x * u - 1, 0, 2, u / 2);
+      drawPlanks(g, COLS * u, row * 4 + (n ? 2 : 0), 2, fc); // 바닥 그림과 같은 널빤지가 나오게 폭은 주방 전체로 (넘치는 건 잘려요)
+      g.fillStyle = "rgba(0,0,0,.08)"; for (let x = 0; x <= L; x++) g.fillRect(x * u - 1, 0, 2, u / 2);
       const ey = n ? 0 : u / 2 - 4;
       g.fillStyle = "#f2c21b"; g.fillRect(0, ey, c.width, 4);
       g.fillStyle = "#2b2b2b"; for (let x = 0; x < c.width; x += 16) g.fillRect(x, ey, 8, 4);
@@ -4634,41 +4640,18 @@ body.modal { overflow: hidden; }
       for (let y = 0; y < 128; y += 16) { g.fillStyle = "#c9c3b7"; g.fillRect(0, y + 12, 128, 4); g.fillStyle = "#f6f4ef"; g.fillRect(0, y + 2, 128, 3); }
       return (decalCache.rollDoor = c);
     }
-    function driverPic(k, size) { // 운전석 창 속 운전사 (게임 캐릭터): 앞(왼쪽)을 보며 운전해요. 머리·어깨만 가까이서
-      const c = buildChar(k, 0);
-      c.ring.visible = false;
-      poseChar(c, { x: 0, z: 0, yaw: -0.85, moving: false, phase: 0, reach: 0, dash: 0, chop: false, wash: false, hold: false, club: false }, 0);
-      const out = shot(c.root, size, [0.25, 1.1, 2.1], [0, 0.86, 0], 30);
-      c.disp.forEach((g) => g.dispose());
-      return out;
-    }
-    function cabWindow() { // 운전석 옆 창: 어두운 안 + 운전사 + 운전대 + 유리 반짝임
-      const c = document.createElement("canvas"); c.width = 256; c.height = 176;
-      const paint = (pic) => {
-        const g = c.getContext("2d");
-        const gr = g.createLinearGradient(0, 0, 0, 176); gr.addColorStop(0, "#33414e"); gr.addColorStop(1, "#1a222a");
-        g.fillStyle = gr; g.fillRect(0, 0, 256, 176);
-        if (pic) g.drawImage(pic, 30, -20, 220, 220);
-        g.strokeStyle = "#141414"; g.lineWidth = 13; g.lineCap = "round";
-        g.beginPath(); g.ellipse(46, 168, 52, 34, -0.35, Math.PI * 1.08, Math.PI * 1.92); g.stroke(); // 운전대
-        g.fillStyle = "rgba(255,255,255,.14)"; g.beginPath(); g.moveTo(156, 0); g.lineTo(204, 0); g.lineTo(118, 176); g.lineTo(70, 176); g.fill(); // 유리 반짝
-        g.fillStyle = "rgba(255,255,255,.08)"; g.beginPath(); g.moveTo(214, 0); g.lineTo(230, 0); g.lineTo(144, 176); g.lineTo(128, 176); g.fill();
-      };
-      paint(null);
-      return { c, paint };
-    }
     // 가로 틈 트럭 (오버쿡 트럭 판처럼 옆에서 봐요): 두 대가 위·아래 차선에서 나란히 왼쪽(-x)으로 달려요.
-    // 운전석: 키 큰 상자 + 비스듬한 앞유리 + 지붕 위 큰 회색 바람막이. 옆 창엔 운전사(게임 캐릭터), 큰 거울, 둥근 전조등, 은색 범퍼.
+    // 운전석: 키 큰 상자 + 비스듬한 앞유리 + 지붕 위 큰 회색 바람막이, 큰 옆 창, 큰 거울, 둥근 전조등, 은색 범퍼.
     // 짐칸: 나무 바닥, 크림색 띠를 두른 옆판, 큰 바퀴(흙먼지 색 휠)와 튀어나온 흙받이, 주황 띠 연료통, 뒤 끝엔 키 큰 흰 셔터문, 뒷바퀴 흙먼지.
     // 위 트럭은 먼 쪽에 초록 타일 벽(메뉴판·빨간 관·벽등)과 꺾인 굴뚝 연기, 아래 트럭은 가까운 쪽에 낮은 옆판 + 쇠 난간 (주방을 안 가리게)
     function buildTruckRow(tk, groups, wallCv) {
-      const st = stageOf(curStage), row = tk.row, X0 = -0.3, X1 = COLS + 0.3, CX = (X0 + X1) / 2, LEN = X1 - X0;
+      const st = stageOf(curStage), row = tk.row, L = truckLen(st), X0 = -0.3, X1 = L + 0.3, CX = (X0 + X1) / 2, LEN = X1 - X0; // L: 트럭 길이 (칸)
       const cols = truckColsOf(tk), CREAM = "#efe2c4", DARK = "#2f2d2a", GLASS = "#26323d", STEEL = "#c9ccce", FEND = "#3d3a35";
       const glowM = gc("bulbMat", () => new T.MeshBasicMaterial({ vertexColors: true, toneMapped: false }));
       const puffG = gc("puffG", () => new T.SphereGeometry(1, 10, 8));
-      const WR = 0.58, WY = ROAD_YR + WR, AX = [-1.95, 11.6, 13.05]; // 바퀴 반지름·가운데 높이. 축: 앞(운전석 밑)·짐칸 뒤 두 줄
+      const WR = 0.58, WY = ROAD_YR + WR, AX = [-1.95, X1 - 3.7, X1 - 2.25]; // 바퀴 반지름·가운데 높이. 축: 앞(운전석 밑)·짐칸 뒤 두 줄
       const sh = rotView ? -0.35 : 0; // 돌린 화면은 카메라가 운전석 쪽이라 운전석을 조금 앞으로 (주방 첫 줄을 안 가리게)
-      const wheels = [], puffSets = [], drivers = [];
+      const wheels = [], puffSets = [];
       // 바퀴 한 벌 (축이 z, 바깥 면이 +z): 둥근 검은 타이어 + 흙먼지 색 휠 + 너트 여섯 + 주황 캡 (도는 게 보여요). 한 덩어리로 그려요
       const WB = new Batch();
       WB.add(torG(0.41, 0.17, 0, 10, 32), mtx(0, 0, 0), "#24221f");
@@ -4712,7 +4695,7 @@ body.modal { overflow: hidden; }
         for (const sx of [1.85, 2.85]) B.add(cylG(0.255, 0.255, 0.08, 20), mtx(sx, -0.66, z1 - 0.27, 0, 0, Math.PI / 2), "#e8822f");
         B.add(rboxG(1.1, 0.34, 0.3, 0.04, 1), mtx(5.3, -0.66, z1 - 0.2), "#4a4743");
         for (let k = 0; k < 4; k++) B.add(boxG(0.9, 0.025, 0.02), mtx(5.3, -0.78 + k * 0.08, z1 - 0.045), "#2a2826");
-        for (const lx of [0.7, 4.1, 7.4, 10.2, X1 - 0.25]) LB.add(rboxG(0.13, 0.07, 0.03, 0.02, 1), mtx(lx, -0.38, z1 + 0.012), "#ffa41b");
+        for (const lx of [0.7, 4.1, X1 - 5.0, X1 - 0.25]) LB.add(rboxG(0.13, 0.07, 0.03, 0.02, 1), mtx(lx, -0.38, z1 + 0.012), "#ffa41b");
         // 뒤꽁무니: 범퍼·미등
         B.add(rboxG(0.18, 0.18, wd - 0.2, 0.05, 1), mtx(X1 + 0.03, -0.55, zc), DARK);
         for (const lz of [z0 + 0.4, z1 - 0.4]) LB.add(rboxG(0.03, 0.17, 0.36, 0.03, 1), mtx(X1 + 0.012, -0.25, lz), "#ff3b30");
@@ -4734,13 +4717,13 @@ body.modal { overflow: hidden; }
           B.add(boxG(LEN, HW + 0.035, 0.2), mtx(CX, (HW - 0.035) / 2, z0 + 0.1), colr);
           B.add(rboxG(LEN + 0.04, 0.07, 0.26, 0.03, 1), mtx(CX, HW + 0.02, z0 + 0.1), CREAM);
           B.add(rboxG(0.22, HW + 0.12, 0.3, 0.04, 1), mtx(X0 + 0.11, (HW + 0.12) / 2 - 0.035, z0 + 0.14), colr);
-          const wt = own(canvasTex(wallCv)); wt.repeat.set(1, HW / 3.2); wt.offset.set(0, 0.5 / 3.2);
+          const WC = COLS + 0.6, wt = own(canvasTex(wallCv)); wt.repeat.set(LEN / WC, HW / 3.2); wt.offset.set((WC - LEN) / 2 / WC, 0.5 / 3.2); // 뒷벽 그림 가운데(메뉴판)를 트럭 가운데에
           const fw = new T.Mesh(own(new T.PlaneGeometry(LEN, HW)), own(std({ map: wt, roughness: 0.62 })));
           fw.position.set(CX, HW / 2, z0 + 0.205); fw.receiveShadow = true; grp.add(fw);
           (wallCv.boards || []).forEach((bd) => snapLater({ k: "plate", items: [], dish: bd.d }, false, (ph) => { if (!ph || !fw.parent) return; bd.board(ph); wt.needsUpdate = true; }));
           MB.add(cylG(0.035, 0.035, LEN - 0.6, 10), mtx(CX, HW - 0.13, z0 + 0.25, 0, 0, Math.PI / 2), "#c0392b");
-          for (const lx of [3.2, 11.8]) { B.add(rboxG(0.55, 0.15, 0.14, 0.04, 1), mtx(lx, HW - 0.28, z0 + 0.28), "#d99a35"); LB.add(boxG(0.46, 0.03, 0.06), mtx(lx, HW - 0.37, z0 + 0.3), "#fff2c4"); }
-          B.add(rboxG(0.42, 0.5, 0.12, 0.03, 1), mtx(13.9, 1.08, z0 + 0.27), "#9ea3a6");
+          for (const lx of [X0 + LEN * 0.22, X0 + LEN * 0.78]) { B.add(rboxG(0.55, 0.15, 0.14, 0.04, 1), mtx(lx, HW - 0.28, z0 + 0.28), "#d99a35"); LB.add(boxG(0.46, 0.03, 0.06), mtx(lx, HW - 0.37, z0 + 0.3), "#fff2c4"); }
+          B.add(rboxG(0.42, 0.5, 0.12, 0.03, 1), mtx(X1 - 1.4, 1.08, z0 + 0.27), "#9ea3a6"); // 전기함
         } else { // 가까운 쪽: 낮은 옆판 (조리대보다 낮게) + 쇠 난간
           const HP = CH - 0.06, pz = z1 - 0.09;
           B.add(boxG(LEN, HP + 0.035, 0.18), mtx(CX, (HP - 0.035) / 2, pz), colr);
@@ -4777,12 +4760,6 @@ body.modal { overflow: hidden; }
             B.add(rboxG(0.1, 0.46, 0.26, 0.05, 1), mtx(c0 + 0.06, 1.04, zs + out * 0.42), DARK);
           } else B.add(rboxG(0.08, 0.3, 0.1, 0.03, 1), mtx(c0 + 0.08, 1.04, zs + out * 0.08), DARK);
         }
-        if (!rotView) { // 가까운 쪽 창엔 운전사가 보여요 (그림은 다음 틈에 그려 넣어요)
-          const win = cabWindow(), tex = own(canvasTex(win.c));
-          const wm = new T.Mesh(own(new T.PlaneGeometry(1.2, 0.82)), own(std({ map: tex, roughness: 0.3 })));
-          wm.position.set(c0 + 1.15, 0.99, cz1 + 0.04); grp.add(wm);
-          drivers.push({ k: n ? "rabbit" : "bear", win, tex });
-        }
         for (const hz of [cz0 + 0.5, cz1 - 0.5]) { // 앞: 둥근 전조등(은색 테)·깜빡이·그릴·은색 범퍼
           LB.add(cylG(0.14, 0.14, 0.03, 18), mtx(c0 - 0.012, 0.05, hz, 0, 0, Math.PI / 2), "#fff6d0");
           MB.add(torG(0.15, 0.03, 0, 6, 18), mtx(c0 - 0.012, 0.05, hz, 0, Math.PI / 2, 0), STEEL);
@@ -4802,12 +4779,10 @@ body.modal { overflow: hidden; }
         puff(grp, 0xb48a5c, 7, { x: AX[2] + 0.62, y: ROAD_YR + 0.14, z: z1 - 0.1, d: [2.6, 0.55, 0.35], wob: [0, 0.06, 0.08], s: [0.14, 0.46], op: 0.42, per: 700 }); // 뒷바퀴 흙먼지
         const a = B.mesh(VSKIN), m = MB.mesh(CLS_MAT.p), l = LB.mesh(glowM, false); own(a.geometry); own(m.geometry); own(l.geometry); grp.add(a, m, l);
         // 트럭 사이 반 칸 바닥 (붙으면 맞닿아요)
-        const pm = new T.Mesh(own(new T.PlaneGeometry(COLS, 0.5)), own(std({ map: own(canvasTex(plateRowCanvas(st, n))), roughness: 0.6 })));
-        pm.rotation.x = -Math.PI / 2; pm.position.set(COLS / 2, 0, row + (n ? 0.75 : 0.25)); pm.receiveShadow = true; grp.add(pm);
+        const pm = new T.Mesh(own(new T.PlaneGeometry(L, 0.5)), own(std({ map: own(canvasTex(plateRowCanvas(st, n, L))), roughness: 0.6 })));
+        pm.rotation.x = -Math.PI / 2; pm.position.set(L / 2, 0, row + (n ? 0.75 : 0.25)); pm.receiveShadow = true; grp.add(pm);
       });
-      const me3 = (truck3 = { wheels, spin: ["z", 1 / WR], plates: [], groups, col: row, row: true, speed: tk.speed, puffs: [], puffSets, awnings: [] });
-      // 운전사 그림은 3D로 찍어야 해서 이번 화면이 끝난 다음에 (그 사이 단계가 바뀌었으면 안 그려요)
-      if (drivers.length) setTimeout(() => { if (truck3 !== me3) return; drivers.forEach((d) => { try { d.win.paint(driverPic(d.k, 256)); d.tex.needsUpdate = true; } catch (e) {} }); }, 120);
+      truck3 = { wheels, spin: ["z", 1 / WR], plates: [], groups, col: row, row: true, speed: tk.speed, puffs: [], puffSets, awnings: [] };
     }
     // 움직이는 순간이동문: 쌍마다 문 두 개 + 곧 옮겨 갈 자리 점선 고리 두 개
     let warp3 = null;
@@ -5029,12 +5004,12 @@ body.modal { overflow: hidden; }
       const floor = new T.Mesh(own(new T.PlaneGeometry(COLS, ROWS)), own(std({ map: own(canvasTex(floorCv)), roughness: 0.5 })));
       floor.rotation.x = -Math.PI / 2; floor.position.set(COLS / 2, 0, ROWS / 2); floor.receiveShadow = true;
       if (tGroups) { // 트럭 바닥: 같은 그림을 반씩 잘라서 트럭마다 한 장 (가로 틈이면 위·아래로 잘라요)
-        const tr = truckRow(st), g0 = tr ? st.truck.row : st.truck.col, N = tr ? ROWS : COLS;
+        const tr = truckRow(st), g0 = tr ? st.truck.row : st.truck.col, N = tr ? ROWS : COLS, L = truckLen(st); // L: 가로 틈 트럭 길이 (그 오른쪽은 트럭 밖)
         [[0, g0], [g0 + 1, N]].forEach(([a0, a1], n) => {
           const tx = own(canvasTex(floorCv));
-          if (tr) { tx.repeat.set(1, (a1 - a0) / ROWS); tx.offset.set(0, 1 - a1 / ROWS); } else { tx.repeat.set((a1 - a0) / COLS, 1); tx.offset.set(a0 / COLS, 0); }
-          const f = new T.Mesh(own(tr ? new T.PlaneGeometry(COLS, a1 - a0) : new T.PlaneGeometry(a1 - a0, ROWS)), own(std({ map: tx, roughness: 0.5 })));
-          f.rotation.x = -Math.PI / 2; f.position.set(tr ? COLS / 2 : (a0 + a1) / 2, 0, tr ? (a0 + a1) / 2 : ROWS / 2); f.receiveShadow = true;
+          if (tr) { tx.repeat.set(L / COLS, (a1 - a0) / ROWS); tx.offset.set(0, 1 - a1 / ROWS); } else { tx.repeat.set((a1 - a0) / COLS, 1); tx.offset.set(a0 / COLS, 0); }
+          const f = new T.Mesh(own(tr ? new T.PlaneGeometry(L, a1 - a0) : new T.PlaneGeometry(a1 - a0, ROWS)), own(std({ map: tx, roughness: 0.5 })));
+          f.rotation.x = -Math.PI / 2; f.position.set(tr ? L / 2 : (a0 + a1) / 2, 0, tr ? (a0 + a1) / 2 : ROWS / 2); f.receiveShadow = true;
           tGroups[n].add(f); STAGE.add(tGroups[n]);
         });
         floor.visible = false;
@@ -5091,7 +5066,7 @@ body.modal { overflow: hidden; }
       const buildTile = (t) => {
         const cx = t.x + 0.5, cz = t.y + 0.5;
         if (t.gate) { buildGate(t); return; }
-        if (t.bar || t.rail || t.type === "railend" || t.pit || t.gap) return;
+        if (t.bar || t.rail || t.type === "railend" || t.pit || t.gap || t.type === "void") return;
         switch (t.type) {
           case "floor":
             if (t.push) buildWalk(t);
@@ -5277,10 +5252,10 @@ body.modal { overflow: hidden; }
     const FIT_OVER = [[-0.3, -0.5, ROWS + 0.3], [COLS + 0.3, -0.5, ROWS + 0.3], [-0.3, CH, -0.05], [COLS + 0.3, CH, -0.05], [0, CH + 0.62, 0.5], [COLS, CH + 0.62, 0.5]];
     let insT = 0, insS = 0, insB = 0;
     const FIT_ROT = [[-0.3, -0.5, -0.3], [-0.3, -0.5, ROWS + 0.3], [COLS + 0.3, CH + 0.7, -0.3], [COLS + 0.3, CH + 0.7, ROWS + 0.3], [-0.3, CH + 0.7, -0.3], [-0.3, CH + 0.7, ROWS + 0.3]];
-    // 가로 틈 트럭: 왼쪽 운전석, 오른쪽 뒤꽁무니, 아래 트럭 바퀴와 그 앞 도로 조금 (트럭이 벌어지면 아래 트럭이 조금 내려와요).
-    // 돌린 화면은 아래쪽이 운전석이라 앞유리 아래 끝까지만 (더 넣으면 세로 폰에서 주방이 작아져요)
-    const FIT_ROT_TROW = [[-3.25, 1.0, ROWS / 2]];
-    const FIT_TROW = [[-3.05, -0.6, ROWS - 0.1], [-2.9, 1.28, ROWS + 0.42], [COLS + 0.45, ROAD_YR, ROWS + 0.4], [0, ROAD_YR, ROWS + 0.7], [COLS, ROAD_YR, ROWS + 0.7]];
+    // 가로 틈 트럭 (L칸): 왼쪽 운전석 (벌어지면 아래 트럭이 앞·아래로), 오른쪽 뒤꽁무니 (벌어지면 위 트럭이 뒤로), 아래 트럭 바퀴와 그 앞 도로 조금.
+    // 돌린 화면은 아래쪽이 운전석이라 앞유리 아래 끝까지, 위쪽은 뒤로 물러난 위 트럭 끝까지 (세로 폰은 캔버스가 그만큼 길어져요)
+    const FIT_TROW = (L) => [[-3.25, -0.6, ROWS - 0.1], [-3.45 - TRUCK_FWD, -0.6, ROWS + 0.7], [-2.95, 1.28, ROWS + 0.42], [L + 0.5, ROAD_YR, ROWS + 0.4], [L + 0.95 + TRUCK_BACK, -0.6, ROWS / 2 - 0.4], [0, ROAD_YR, ROWS + 0.7], [L, ROAD_YR, ROWS + 0.7]];
+    const FIT_ROT_TROW = (L) => [[-3.25, 1.0, ROWS / 2], [L + 0.45 + TRUCK_BACK, CH + 0.7, 0.4], [L + 0.45 + TRUCK_BACK, CH + 0.7, 4.2]];
     let fitTrow = false;
     let rotView = false;
     const VUP = () => (rotView ? [1, 0] : [0, -1]);   // 화면 위쪽이 주방에서 어느 방향인지
@@ -5289,10 +5264,15 @@ body.modal { overflow: hidden; }
       cam.aspect = vw / vh;
       cam.fov = rotView ? 21 : 30; // 길게 보는 화면은 원근을 줄여서 먼 쪽도 덜 작아지게
       cam.updateProjectionMatrix();
-      const over = !rotView && insT > 0;
-      fitTrow = truckRow(stageOf(curStage));
-      const fitPts = (rotView ? FIT_ROT : over ? FIT_OVER : FIT).concat(fitTrow ? (rotView ? FIT_ROT_TROW : FIT_TROW) : []);
-      const tgt = new T.Vector3(COLS / 2, 0.4, ROWS / 2);
+      const over = !rotView && insT > 0, stF = stageOf(curStage);
+      fitTrow = truckRow(stF);
+      let fitPts = rotView ? FIT_ROT : over ? FIT_OVER : FIT, cx = COLS / 2;
+      if (fitTrow) { // 가로 트럭: 트럭 길이까지만 + 운전석·바퀴·벌어질 때 움직이는 자리. 카메라도 그 가운데를 봐요
+        const L = truckLen(stF);
+        fitPts = fitPts.map(([x, y, z]) => [Math.min(x, L + 0.3), y, z]).concat((rotView ? FIT_ROT_TROW : FIT_TROW)(L));
+        let a = 1e9, b = -1e9; fitPts.forEach((q) => { a = Math.min(a, q[0]); b = Math.max(b, q[0]); }); cx = (a + b) / 2;
+      }
+      const tgt = new T.Vector3(cx, 0.4, ROWS / 2);
       const dir = rotView ? new T.Vector3(-Math.cos(PITCH), Math.sin(PITCH), 0) : new T.Vector3(0, Math.sin(PITCH), Math.cos(PITCH));
       // 주방을 넣을 칸 (화면 좌표 -1~1). 위·옆 여백은 위 줄과 조작 버튼 자리
       const ax1 = 1 - (2 * (10 + insS)) / vw, ax0 = -ax1;
@@ -5361,11 +5341,13 @@ body.modal { overflow: hidden; }
       for (const k in knives) knives[k].visible = !busy.has(+k);
       // 트럭 움직임: 붙어 있을 땐 나란히, 벌어지면 옆으로 멀어지고 앞뒤로 조금씩 엇갈려요
       if (truck3) {
-        const tn = truckNow(view, now), op = tn ? tn.open : 0, ts = now / 1000, sway = Math.sin(ts * 0.9) * 0.035;
+        const tn = truckNow(view, now), op = tn ? tn.vis : 0, ts = now / 1000, sway = Math.sin(ts * 0.9) * 0.035;
         TCOL = truck3.col; TROW = !!truck3.row;
-        TOFF = TROW // 가로 틈: 위 트럭은 위로, 아래 트럭은 아래로 벌어지고 앞뒤(x)로 조금씩 엇갈려요
-          ? [{ dx: op * 0.38 * Math.sin(ts * 0.55), dz: -0.7 * op + sway }, { dx: op * 0.38 * Math.sin(ts * 0.43 + 2.1), dz: 0.5 * op + sway }]
-          : [{ dx: -0.5 * op + sway, dz: op * 0.38 * Math.sin(ts * 0.55) }, { dx: 0.5 * op + sway, dz: op * 0.38 * Math.sin(ts * 0.43 + 2.1) }];
+        if (TROW) { // 가로 틈: 붙어 있어도 둘이 같이 앞뒤로 살살 (달리는 느낌). 벌어지면 비스듬히: 위 트럭은 위·뒤로, 아래 트럭은 아래·앞으로
+          const surge = (k) => Math.sin(ts * 0.8) * 0.09 + Math.sin(ts * 0.37 + 1.3) * 0.05 + Math.sin(ts * 1.9 + k * 2.4) * 0.02;
+          const up = rotView ? 0.45 : 0.35, down = rotView ? 0.45 : 0.85; // 세로 폰은 옆으로 덜 벌어져요 (화면 밖으로 안 나가게)
+          TOFF = [{ dx: surge(0) + TRUCK_BACK * op, dz: -up * op + sway }, { dx: surge(1) - TRUCK_FWD * op, dz: down * op + sway }];
+        } else TOFF = [{ dx: -0.5 * op + sway, dz: op * 0.38 * Math.sin(ts * 0.55) }, { dx: 0.5 * op + sway, dz: op * 0.38 * Math.sin(ts * 0.43 + 2.1) }];
         truck3.groups.forEach((g, n) => g.position.set(TOFF[n].dx, Math.sin(ts * 11 + n * 1.7) * 0.006, TOFF[n].dz));
       } else TOFF = null;
 
@@ -5705,8 +5687,6 @@ body.modal { overflow: hidden; }
         });
       }
       // 트럭이 곧 벌어져요: 발판 위에 깜빡이는 !
-      const stT = stageOf(view.stage).truck;
-      if (stT) { const tn = truckNow(view, now); if (tn && tn.warn && Math.floor(now / 210) % 2 === 0) (stT.row != null ? [[3.5, stT.row + 0.5], [11.5, stT.row + 0.5]] : [[stT.col + 0.5, 2.5], [stT.col + 0.5, 6.5]]).forEach(([wx, z]) => { const [px, py] = S(wx, 0.9, z); pill(c, px, py, "!", "#ff3b30", Math.max(13, unit(wx, 0.9, z) * 0.26), false); }); }
       // 건널목 땡땡: 철길 양 끝에 깜빡이는 !
       const stR = stageOf(view.stage).rail;
       if (stR) {
@@ -6624,7 +6604,7 @@ body.modal { overflow: hidden; }
 
   // 대기실: 단계
   const MINI_COL = { counter: "#c98b4f", wall: "#6d4a30", crate: "#8f5d2c", board: "#f0d6a4", stove: "#2f3336", fryer: "#e5b347", serve: "#d7372b", trash: "#6f7a7c", plates: "#ffffff", sink: "#8fc3e0", return: "#5a3d26", belt: "#34373a", hole: "#2a1d14", railend: "#6a645b" };
-  const MINI_CH = { "/": "#3c3f45", _: "#140e20", "~": "#cfe8f5", "}": "#7d868c", "{": "#7d868c", "^": "#7d868c", v: "#7d868c", "=": "#45484d", "@": "#a855f7", "$": "#14b8a6", X: "#f2b31b", Y: "#f2b31b", "!": "#8a847a", ":": "#f2c21b" };
+  const MINI_CH = { " ": "#5a534c", "/": "#3c3f45", _: "#140e20", "~": "#cfe8f5", "}": "#7d868c", "{": "#7d868c", "^": "#7d868c", v: "#7d868c", "=": "#45484d", "@": "#a855f7", "$": "#14b8a6", X: "#f2b31b", Y: "#f2b31b", "!": "#8a847a", ":": "#f2c21b" };
   function drawMini(c, s, np) {
     const u = 10, mp = mapOf(s, np || 1);
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
