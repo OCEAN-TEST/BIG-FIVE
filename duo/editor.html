@@ -175,7 +175,8 @@ button.yel { background: var(--sign); }
       [".", "바닥", ""], ["C", "조리대", ""], ["#", "벽", ""], ["|", "칸막이 조리대", "칸막이"],
       ["K", "도마", "도마"], ["S", "화구+냄비", "화구"], ["F", "튀김기+바구니", "튀김기"], ["W", "내는 곳", "내는곳"],
       ["T", "쓰레기통", "쓰레기"], ["P", "접시", "접시"], ["H", "개수대", "개수대"], ["R", "반납구", "반납구"],
-      [">", "컨베이어 →", "벨트"], ["Z", "쥐구멍", "쥐구멍"] ] },
+      [">", "컨베이어 →", "벨트"], ["<", "컨베이어 ←", "벨트"], ["A", "컨베이어 ↑", "벨트"], ["V", "컨베이어 ↓", "벨트"],
+      ["Z", "쥐구멍", "쥐구멍"] ] },
     { g: "재료 상자", list: [
       ["t", "떡", "떡"], ["m", "어묵", "어묵"], ["p", "파", "파"], ["r", "라면 사리", "라면"], ["b", "밥", "밥"], ["g", "김", "김"],
       ["d", "단무지", "단무지"], ["o", "오징어", "오징어"], ["h", "핫도그", "핫도그"], ["a", "감자", "감자"], ["k", "케첩", "케첩"], ["y", "머스타드", "머스타드"] ] },
@@ -189,7 +190,7 @@ button.yel { background: var(--sign); }
   TILES.forEach((grp) => grp.list.forEach(([ch, name, tag]) => (INFO[ch] = { ch, name, tag })));
   const MARKS = { "@sp1": "리스폰 1P", "@sp2": "리스폰 2P", "@ext": "소화기" };
   const WALK = ".~}{^v";
-  const AREA_CH = "~}{^v=!:%_/XY|>";
+  const AREA_CH = "~}{^v=!:%_/XY|><AV";
   // 장치마다 단계에 따로 붙어야 하는 설정 (없으면 게임에서 안 움직여요)
   const NEEDS = { "=": ["road", "오토바이 길"], "!": ["rail", "철길"], ":": ["rail", "차단봉"], "%": ["rail", "철길 끝"], "/": ["truck", "트럭 틈"], X: ["gate", "움직이는 칸막이"], Y: ["gate", "움직이는 칸막이"] };
 
@@ -204,6 +205,7 @@ button.yel { background: var(--sign); }
   const ING_OF = { t: "tteok", m: "eomuk", p: "pa", r: "ramyeon", b: "bap", g: "gim", d: "danmuji", o: "ojingeo", h: "hotdog", a: "potato", k: "ketchup", y: "mustard" };
   const FLOOR_SET = ".~}{^v=@$!:_/X";
   const PUSH = { "}": [1, 0], "{": [-1, 0], "^": [0, -1], v: [0, 1] };
+  const BELT = { ">": [1, 0], "<": [-1, 0], A: [0, -1], V: [0, 1] };
   const PORTAL_COL = { "@": "#a855f7", $: "#14b8a6" };
   function rrect(c, x, y, w, h, r) {
     w = Math.max(0, w); h = Math.max(0, h);
@@ -435,12 +437,15 @@ button.yel { background: var(--sign); }
         c.restore();
         break;
       }
-      case ">":
+      case ">": case "<": case "A": case "V": { // 오른쪽 벨트를 그린 다음 가는 쪽으로 돌려요
+        const d = BELT[ch];
         c.fillStyle = "#34373a"; c.fillRect(px, py, s, s);
-        c.fillStyle = "#26282a"; c.fillRect(px, py + s * 0.08, s, s * 0.06); c.fillRect(px, py + s * 0.86, s, s * 0.06);
-        c.strokeStyle = "#7a7f84"; c.lineWidth = Math.max(2, s * 0.07);
-        for (const k of [0, 1]) { const x0 = px + k * s * 0.42 + s * 0.2; c.beginPath(); c.moveTo(x0, py + s * 0.3); c.lineTo(x0 + s * 0.16, py + s * 0.5); c.lineTo(x0, py + s * 0.7); c.stroke(); }
+        c.translate(px + s / 2, py + s / 2); c.rotate(Math.atan2(d[1], d[0])); c.translate(-s / 2, -s / 2);
+        c.fillStyle = "#26282a"; c.fillRect(0, s * 0.08, s, s * 0.06); c.fillRect(0, s * 0.86, s, s * 0.06);
+        c.strokeStyle = "#8a8f94"; c.lineWidth = Math.max(2, s * 0.08);
+        for (const k of [0, 1]) { const x0 = k * s * 0.42 + s * 0.2; c.beginPath(); c.moveTo(x0, s * 0.3); c.lineTo(x0 + s * 0.16, s * 0.5); c.lineTo(x0, s * 0.7); c.stroke(); }
         break;
+      }
       default: {
         counterBase(c, px, py, s);
         if (ch === "|") {
