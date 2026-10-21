@@ -310,7 +310,6 @@ body.modal { overflow: hidden; }
 .rotbox { display: flex; flex-direction: column; align-items: center; gap: 10px; color: #fff; max-width: 320px; }
 .rotbox b { font-family: var(--font-ui); font-weight: 400; font-size: 26px; color: var(--sign); }
 .rotbox small { font-size: 14px; line-height: 1.55; color: #e9dccb; }
-.rotbox .btn.ghost { color: #cdbca8; margin-top: 6px; }
 .rotphone { width: 92px; height: 92px; color: #fff; animation: rotphone 2.2s ease-in-out infinite; }
 .rotphone svg { width: 100%; height: 100%; }
 @keyframes rotphone { 0%, 25% { transform: rotate(0deg); } 55%, 100% { transform: rotate(-90deg); } }
@@ -338,7 +337,7 @@ body.modal { overflow: hidden; }
 #game:not(.portrait) .pbtns { grid-template-columns: auto; grid-template-areas: "dash" "work" "grab"; }
 #game:not(.portrait) .pbtn.work { margin-bottom: 0; }
 /* 가로 폰: 위 메뉴를 낮게 */
-#game.touch:not(.portrait) { gap: 6px; padding-top: max(6px, env(safe-area-inset-top, 0px)); padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)); }
+#game.touch { gap: 6px; padding-top: max(6px, env(safe-area-inset-top, 0px)); padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)); }
 #game.touch .meter { --m: .72; }
 #game.touch .hud { --t: .66; }
 #game.touch .orders { gap: 5px; }
@@ -353,10 +352,6 @@ body.modal { overflow: hidden; }
 }
 #game.touch .hud { gap: 8px; }
 #game.touch .toast { font-size: 16px; bottom: 8px; }
-#game.touch.portrait .hud { grid-template-columns: auto auto 1fr auto auto; grid-template-areas: "score time . chat gear" "orders orders orders orders orders"; }
-#game.touch.portrait .hudset { align-self: center; }
-#game.touch.portrait .hud { --t: .74; }
-#game.touch.portrait .stage { align-items: flex-start; }
 @media (prefers-reduced-motion: reduce) { .ticket, .ticket.hurry { animation: none; } }
 
 /* 일시정지: 표 계산 프로그램처럼 생긴 채팅 창으로 게임 화면을 가려요 */
@@ -535,8 +530,7 @@ body.modal { overflow: hidden; }
       <div class="rotbox">
         <div class="rotphone"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="20" y="6" width="24" height="44" rx="5" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="32" cy="43" r="2.6" fill="currentColor"/></svg></div>
         <b id="rotTitle">폰을 가로로 돌려 주세요</b>
-        <small>가로로 하면 주방이 크게 보이고 버튼도 편해요. 안 돌아가면 폰의 '화면 회전 잠금'을 꺼 주세요.</small>
-        <button class="btn ghost" id="rotKeep" type="button">그냥 세로로 할게요</button>
+        <small>이 게임은 가로로만 해요. 안 돌아가면 폰의 '화면 회전 잠금'을 꺼 주세요.</small>
       </div>
     </div>
   </div>
@@ -619,7 +613,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 47;
+  const VERSION = 48;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -2585,8 +2579,7 @@ body.modal { overflow: hidden; }
 
   function fit() {
     const stage = $("stage"), g = $("game");
-    const tall = touchMode && window.innerHeight > window.innerWidth;
-    const over = use3D() && !tall; // 3D 가로: 위 줄을 주방 위에 띄우고 주방이 화면을 꽉 채워요
+    const over = use3D(); // 3D: 위 줄을 주방 위에 띄우고 주방이 화면을 꽉 채워요 (가로로만 해요)
     g.classList.toggle("over", over);
     let w = stage.clientWidth, h = stage.clientHeight, insT = 0, insS = 0, insB = 0;
     const side = Math.min(150, Math.max(96, w * 0.13)); // 조이스틱·버튼 한 줄 폭
@@ -2596,16 +2589,13 @@ body.modal { overflow: hidden; }
       const sp = getComputedStyle($("safeProbe")), safe = Math.max(parseFloat(sp.paddingLeft) || 0, parseFloat(sp.paddingRight) || 0);
       insB = Math.max(4, parseFloat(sp.paddingBottom) || 0);
       insS = safe + (touchMode && me ? Math.max(0, side - 34) : 2); // 아래 모서리는 조작 버튼과 조금 겹쳐도 돼요
-    } else if (touchMode && me) { // 관전은 조작 버튼이 없어서 화면을 다 써요
-      if (tall) h = h - 240;
-      else w -= 2 * side;
-    }
+    } else if (touchMode && me) w -= 2 * side; // 관전은 조작 버튼이 없어서 화면을 다 써요
     TS = Math.max(16, Math.floor(Math.min(w / COLS, h / ROWS)));
     const dpr = window.devicePixelRatio || 1;
     if (use3D()) { // 3D: 남는 칸을 다 쓰고, 2D 캔버스는 그 위에 막대·글자만 그려요
       w = Math.max(240, Math.floor(w)); h = Math.max(160, Math.floor(h));
-      viewRot = tall;
-      const got = R3.resize(w, h, tall, tall, insT, insS, insB);
+      viewRot = false;
+      const got = R3.resize(w, h, false, false, insT, insS, insB);
       w = got.w; h = got.h;
       cv.style.width = w + "px"; cv.style.height = h + "px";
       cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
@@ -7209,11 +7199,10 @@ body.modal { overflow: hidden; }
     const g = $("game");
     const portrait = window.innerHeight > window.innerWidth;
     g.classList.toggle("touch", touchMode);
-    g.classList.toggle("portrait", portrait);
     $("pad").hidden = padHidden();
     $("rotateTip").hidden = true;
-    // 폰을 세로로 들고 게임 중이면 가로로 돌려 달라고 해요 (아이폰은 웹에서 화면을 강제로 못 돌려요)
-    $("rotAsk").hidden = !(isPhone() && portrait && !g.hidden && !keepPortrait());
+    // 가로로만 해요: 폰·태블릿을 세로로 들고 게임 중이면 가로로 돌려 달라고 해요 (아이폰은 웹에서 화면을 강제로 못 돌려요)
+    $("rotAsk").hidden = !(touchMode && portrait && !g.hidden);
     if (!g.hidden) {
       const hudB = document.querySelector("#game .hud").getBoundingClientRect().bottom;
       zone.style.top = Math.round(hudB + 4) + "px";
@@ -7225,8 +7214,6 @@ body.modal { overflow: hidden; }
   // ===== 폰은 가로로 =====
   // 안드로이드: 버튼을 누르는 순간 전체화면 + 가로 고정. 아이폰은 막혀 있어서 세로면 안내 화면을 띄워요
   const isPhone = () => touchMode && Math.min(screen.width, screen.height) <= 540;
-  const PORTRAIT_KEY = "bunsik.portrait";
-  const keepPortrait = () => { try { return sessionStorage.getItem(PORTRAIT_KEY) === "1"; } catch (e) { return false; } };
   function goLandscape() {
     if (!isPhone()) return;
     const el = document.documentElement;
@@ -7277,7 +7264,6 @@ body.modal { overflow: hidden; }
     check();
     document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
   })();
-  $("rotKeep").addEventListener("click", () => { try { sessionStorage.setItem(PORTRAIT_KEY, "1"); } catch (e) {} layout(); });
   ["hostBtn", "joinBtn", "watchBtn", "startBtn"].forEach((id) => $(id).addEventListener("click", goLandscape, true));
 
   $("hostBtn").addEventListener("click", () => host(0));
