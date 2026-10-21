@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&display=swap">
 <style>
-/* Layout: 위 간판 + 단계 고르기 → 왼쪽 15×9 주방 판(칠하기) / 오른쪽 도구 상자 → 아래 확인·요청 글 */
+/* Layout: 위 간판 + 단계 고르기 → 왼쪽 15×9 주방 판(게임과 같은 그림, 칠하기) / 오른쪽 그림 도구 상자 → 아래 설정·점검·요청 글 */
 :root {
   --wall: #2a201a;
   --wall-2: #33271f;
@@ -33,11 +33,11 @@ body {
   background-image: repeating-linear-gradient(0deg, var(--wall) 0 38px, var(--wall-2) 38px 40px);
   padding: 16px 16px 40px;
 }
-main { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+main { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
 header.sign { background: var(--sign); border: 5px solid var(--chili); border-radius: 12px; padding: 8px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 header.sign h1 { margin: 0; font-family: var(--font-sign); font-weight: 400; color: var(--chili); font-size: clamp(26px, 6vw, 38px); line-height: 1.1; }
-header.sign .grow { flex: 1; }
-.card { background: var(--paper); border-radius: 10px; padding: 12px 14px; box-shadow: 0 6px 0 rgba(0,0,0,.3); }
+.grow { flex: 1; }
+.card { background: var(--paper); border-radius: 10px; padding: 12px 14px; box-shadow: 0 6px 0 rgba(0,0,0,.3); min-width: 0; }
 .card h2 { margin: 0 0 8px; font-size: 18px; font-weight: 400; color: var(--chili); }
 select, input, textarea, button { font: inherit; color: inherit; }
 select, input[type=text], input[type=number], textarea { background: #fff; border: 2px solid #d9c9a6; border-radius: 8px; padding: 5px 8px; min-width: 0; }
@@ -46,36 +46,29 @@ button { cursor: pointer; border: 0; border-radius: 8px; padding: 7px 12px; back
 button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.2); }
 button.main { background: var(--chili); color: #fff; }
 button.yel { background: var(--sign); }
-button:disabled { opacity: .45; cursor: default; }
-.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
-@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 372px; gap: 14px; align-items: start; }
+@media (max-width: 960px) { .layout { grid-template-columns: minmax(0, 1fr); } }
 
 /* 주방 판 */
-.boardwrap { overflow-x: auto; }
-#board {
-  display: grid; grid-template-columns: repeat(15, 1fr); gap: 2px; width: 100%; min-width: 450px;
-  background: #3b2e25; padding: 2px; border-radius: 6px; touch-action: none; user-select: none; -webkit-user-select: none;
-}
-.cell { position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: clamp(11px, 1.6vw, 17px); line-height: 1; border-radius: 3px; overflow: hidden; }
-.cell .g { pointer-events: none; text-align: center; }
-.cell .xy { position: absolute; left: 2px; top: 1px; font-size: 8px; opacity: .45; pointer-events: none; }
-.cell.changed::after { content: ""; position: absolute; inset: 0; border: 2px dashed #e0119a; border-radius: 3px; pointer-events: none; }
-.cell .mk { position: absolute; inset: 12%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: .85em; pointer-events: none; box-shadow: 0 0 0 2px #fff; }
-.cell .mk.p1 { background: #2f6fd6; }
-.cell .mk.p2 { background: #e0119a; }
-.cell .mk.ex { background: #d7372b; inset: 22%; border-radius: 5px; }
-.cell .mk.pt { background: #7a3fc9; inset: 28%; }
-.legendrow { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 14px; color: var(--soft); }
-.coords { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 8px; font-size: 15px; }
+.boardhead { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-bottom: 8px; }
+.boardhead h2 { margin: 0; }
+.boardhead label { font-size: 15px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.boardwrap { overflow-x: auto; border-radius: 8px; }
+#board { display: block; width: 100%; min-width: 480px; height: auto; touch-action: none; cursor: crosshair; border-radius: 8px; background: #3b2e25; }
+.hoverbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; font-size: 16px; min-height: 40px; }
+.hoverbar canvas { width: 32px; height: 32px; border-radius: 5px; }
+.legendrow { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: 14px; color: var(--soft); }
+.legendrow i { font-style: normal; display: inline-block; width: 14px; height: 14px; vertical-align: -2px; border-radius: 3px; margin-right: 3px; }
 
 /* 도구 상자 */
 .tools { display: flex; flex-direction: column; gap: 10px; }
-.group h3 { margin: 0 0 4px; font-size: 14px; font-weight: 400; color: var(--soft); }
-.pal { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 5px; }
-.pal button { display: flex; align-items: center; gap: 5px; padding: 4px 5px; font-size: 13px; text-align: left; box-shadow: 0 2px 0 rgba(0,0,0,.18); }
-.pal button .sw { flex: none; width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.now { display: flex; align-items: center; gap: 8px; font-size: 16px; background: #fff; border-radius: 8px; padding: 6px 8px; }
+.now canvas { width: 40px; height: 40px; border-radius: 6px; }
+.group h3 { margin: 0 0 5px; font-size: 14px; font-weight: 400; color: var(--soft); }
+.pal { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 5px; }
+.pal button { display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 4px; font-size: 14px; line-height: 1.15; text-align: left; box-shadow: 0 2px 0 rgba(0,0,0,.18); background: var(--paper-2); }
+.pal button canvas { flex: none; width: 34px; height: 34px; border-radius: 5px; }
 .pal button[aria-pressed=true] { outline: 3px solid var(--chili); outline-offset: 1px; background: #fff; }
-.now { font-size: 15px; }
 .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .fields { display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; align-items: center; font-size: 15px; }
 .fields input[type=text], .fields input[type=number] { width: 100%; }
@@ -104,23 +97,25 @@ button:disabled { opacity: .45; cursor: default; }
 
   <div class="layout">
     <section class="card">
-      <h2>주방 판 (가로 15 × 세로 9)</h2>
-      <div class="boardwrap"><div id="board" role="grid" aria-label="주방 칸"></div></div>
-      <div class="coords">
-        <span id="hover">칸 위에 올려보세요</span>
+      <div class="boardhead">
+        <h2>주방 판</h2>
         <span class="grow"></span>
-        <button type="button" id="undoBtn">되돌리기 (Ctrl+Z)</button>
-        <button type="button" id="redoBtn">다시하기</button>
+        <label><input type="checkbox" id="tagChk" checked> 이름표</label>
+        <label><input type="checkbox" id="gridChk" checked> 칸 선</label>
+        <button type="button" id="undoBtn">↶ 되돌리기</button>
+        <button type="button" id="redoBtn">↷ 다시하기</button>
       </div>
+      <div class="boardwrap"><canvas id="board" aria-label="주방 판. 눌러서 칠해요"></canvas></div>
+      <div class="hoverbar" id="hover">칸 위에 올리면 무슨 칸인지 보여요</div>
       <div class="legendrow">
-        <span>눌러서 칠하고, 끌면 여러 칸을 한 번에 칠해요.</span>
-        <span>오른쪽 클릭 = 바닥으로 지우기</span>
-        <span>분홍 점선 = 원래 맵에서 바뀐 칸</span>
+        <span>누르고 끌면 여러 칸을 한 번에 칠해요 · 오른쪽 클릭은 바닥으로 지우기 · Ctrl+Z 되돌리기</span>
+        <span><i style="outline:2px dashed #e0119a;outline-offset:-2px"></i>원래 맵에서 바뀐 칸</span>
+        <span><i style="box-shadow:inset 0 0 0 3px #d7372b"></i>점검에 걸린 칸</span>
       </div>
     </section>
 
     <aside class="card tools">
-      <div class="now">지금 도구: <b id="toolName">-</b></div>
+      <div class="now"><canvas id="toolPic" width="80" height="80"></canvas><span>지금 칠하는 것<br><b id="toolName">-</b></span></div>
       <div id="palette"></div>
     </aside>
   </div>
@@ -168,34 +163,33 @@ button:disabled { opacity: .45; cursor: default; }
   "use strict";
   const COLS = 15, ROWS = 9;
   const $ = (id) => document.getElementById(id);
+  const FONT = '"Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
   const TEST_KEY = "oceantest-bunsik-v2-editor"; // 게임(index.html ?test)이 읽어가는 시험 맵
   const DRAFT_KEY = "bunsik.editor.drafts";
+  const BASE_FLOOR = ["#f4ecda", "#ece2cc"];
+  const APRON = ["#d7372b", "#2f8f5b"]; // 게임의 1P·2P 앞치마 색
 
-  // 칸 기호 → 이름·색·글자 (게임 index.html 의 "맵 기호" 설명과 같아요)
+  // 칸 기호 → [이름, 이름표] (게임 index.html 의 "맵 기호" 설명과 같아요)
   const TILES = [
     { g: "기본", list: [
-      [".", "바닥", "#efe6d2", ""], ["C", "조리대", "#b98a5a", "조"], ["#", "벽", "#4a3a30", "", "#fff"],
-      ["|", "칸막이 조리대", "#f2c230", "칸"], ["K", "도마", "#e9d3a5", "도"], ["S", "화구+냄비", "#555c63", "화", "#fff"],
-      ["F", "튀김기", "#d9a520", "튀"], ["W", "내는 곳", "#3f9d5a", "내", "#fff"], ["T", "쓰레기통", "#6b6b6b", "쓰", "#fff"],
-      ["P", "접시", "#f7f7f7", "접"], ["H", "개수대", "#7fc4e6", "개"], ["R", "반납구", "#5e8fb8", "반", "#fff"],
-      [">", "컨베이어(→)", "#333", "▶", "#ffcf33"], ["Z", "쥐구멍", "#2b211b", "쥐", "#fff"] ] },
+      [".", "바닥", ""], ["C", "조리대", ""], ["#", "벽", ""], ["|", "칸막이 조리대", "칸막이"],
+      ["K", "도마", "도마"], ["S", "화구+냄비", "화구"], ["F", "튀김기+바구니", "튀김기"], ["W", "내는 곳", "내는곳"],
+      ["T", "쓰레기통", "쓰레기"], ["P", "접시", "접시"], ["H", "개수대", "개수대"], ["R", "반납구", "반납구"],
+      [">", "컨베이어 →", "벨트"], ["Z", "쥐구멍", "쥐구멍"] ] },
     { g: "재료 상자", list: [
-      ["t", "떡", "#c0392b", "떡", "#fff"], ["m", "어묵", "#c0392b", "어", "#fff"], ["p", "파", "#c0392b", "파", "#fff"],
-      ["r", "라면 사리", "#c0392b", "면", "#fff"], ["b", "밥", "#c0392b", "밥", "#fff"], ["g", "김", "#c0392b", "김", "#fff"],
-      ["d", "단무지", "#c0392b", "단", "#fff"], ["o", "오징어", "#c0392b", "오", "#fff"], ["h", "핫도그", "#c0392b", "핫", "#fff"],
-      ["a", "감자", "#c0392b", "감", "#fff"], ["k", "케첩", "#c0392b", "케", "#fff"], ["y", "머스타드", "#c0392b", "머", "#fff"] ] },
+      ["t", "떡", "떡"], ["m", "어묵", "어묵"], ["p", "파", "파"], ["r", "라면 사리", "라면"], ["b", "밥", "밥"], ["g", "김", "김"],
+      ["d", "단무지", "단무지"], ["o", "오징어", "오징어"], ["h", "핫도그", "핫도그"], ["a", "감자", "감자"], ["k", "케첩", "케첩"], ["y", "머스타드", "머스타드"] ] },
     { g: "장치 바닥", list: [
-      ["~", "얼음", "#bfe6f5", "❄"], ["}", "무빙워크 →", "#9fb3c2", "→"], ["{", "무빙워크 ←", "#9fb3c2", "←"],
-      ["^", "무빙워크 ↑", "#9fb3c2", "↑"], ["v", "무빙워크 ↓", "#9fb3c2", "↓"], ["=", "오토바이 길", "#8a8a8a", "═", "#fff"],
-      ["@", "순간이동문 1", "#a77be0", "@", "#fff"], ["$", "순간이동문 2", "#3cb7b0", "$", "#fff"],
-      ["X", "움직이는 칸막이(세로)", "#e8d14a", "X"], ["Y", "움직이는 칸막이(가로)", "#e8d14a", "Y"],
-      ["!", "철길", "#7a6a5a", "‖", "#fff"], [":", "차단봉 칸", "#d9c48a", ":"], ["%", "철길 끝", "#5b4b3b", "%", "#fff"],
-      ["_", "낭떠러지", "#111", "", "#fff"], ["/", "트럭 사이 틈", "#3a3f44", "/", "#fff"] ] }
+      ["~", "얼음", "얼음"], ["}", "무빙워크 →", "→"], ["{", "무빙워크 ←", "←"], ["^", "무빙워크 ↑", "↑"], ["v", "무빙워크 ↓", "↓"],
+      ["=", "오토바이 길", "오토바이"], ["@", "순간이동문 보라", "문①"], ["$", "순간이동문 청록", "문②"],
+      ["X", "칸막이 (나중에 올라옴)", "칸막이B"], ["Y", "칸막이 (처음에 올라옴)", "칸막이A"],
+      ["!", "철길", "철길"], [":", "차단봉 칸", "차단봉"], ["%", "철길 끝", "철길끝"], ["_", "낭떠러지", "낭떠러지"], ["/", "트럭 사이 틈", "틈"] ] }
   ];
   const INFO = {};
-  TILES.forEach((grp) => grp.list.forEach(([ch, name, bg, txt, fg]) => (INFO[ch] = { ch, name, bg, txt, fg: fg || "#241a14" })));
-  const MARKS = [["@sp1", "리스폰 1 (1P)", "#2f6fd6", "1"], ["@sp2", "리스폰 2 (2P)", "#e0119a", "2"], ["@ext", "소화기", "#d7372b", "🧯"]];
+  TILES.forEach((grp) => grp.list.forEach(([ch, name, tag]) => (INFO[ch] = { ch, name, tag })));
+  const MARKS = { "@sp1": "리스폰 1P", "@sp2": "리스폰 2P", "@ext": "소화기" };
   const WALK = ".~}{^v";
+  const AREA_CH = "~}{^v=!:%_/XY|>";
   // 장치마다 단계에 따로 붙어야 하는 설정 (없으면 게임에서 안 움직여요)
   const NEEDS = { "=": ["road", "오토바이 길"], "!": ["rail", "철길"], ":": ["rail", "차단봉"], "%": ["rail", "철길 끝"], "/": ["truck", "트럭 틈"], X: ["gate", "움직이는 칸막이"], Y: ["gate", "움직이는 칸막이"] };
 
@@ -206,17 +200,320 @@ button:disabled { opacity: .45; cursor: default; }
     fries: { name: "감자튀김", crates: "a", st: "KFP" }
   };
 
+  // ===== 그림: 게임(index.html)의 2D 그림을 그대로 옮겨 왔어요 =====
+  const ING_OF = { t: "tteok", m: "eomuk", p: "pa", r: "ramyeon", b: "bap", g: "gim", d: "danmuji", o: "ojingeo", h: "hotdog", a: "potato", k: "ketchup", y: "mustard" };
+  const FLOOR_SET = ".~}{^v=@$!:_/X";
+  const PUSH = { "}": [1, 0], "{": [-1, 0], "^": [0, -1], v: [0, 1] };
+  const PORTAL_COL = { "@": "#a855f7", $: "#14b8a6" };
+  function rrect(c, x, y, w, h, r) {
+    w = Math.max(0, w); h = Math.max(0, h);
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    c.beginPath(); c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+  function dot(c, x, y, r, fill) { c.beginPath(); c.arc(x, y, Math.max(0, r), 0, Math.PI * 2); c.fillStyle = fill; c.fill(); }
+  function drawIcon(c, k, cx, cy, s) {
+    const u = s / 10;
+    c.save(); c.translate(cx, cy); c.lineJoin = "round"; c.lineCap = "round";
+    switch (k) {
+      case "tteok":
+        for (let i = -1; i <= 1; i++) { rrect(c, -4 * u, i * 2.5 * u - u, 8 * u, 2 * u, u); c.fillStyle = "#fbf7ee"; c.fill(); c.lineWidth = 0.5 * u; c.strokeStyle = "#bfb197"; c.stroke(); }
+        break;
+      case "eomuk":
+        c.strokeStyle = "#9c6a33"; c.lineWidth = 0.5 * u;
+        rrect(c, -4 * u, -3 * u, 8 * u, 6 * u, u); c.fillStyle = "#dca65e"; c.fill(); c.stroke();
+        c.beginPath(); for (let i = -1.6; i <= 1.7; i += 1.6) { c.moveTo(-3 * u, i * u); c.lineTo(3 * u, i * u); } c.stroke();
+        break;
+      case "pa":
+        c.lineWidth = 1.7 * u; c.strokeStyle = "#3f9b4a"; c.beginPath(); c.moveTo(-1.6 * u, 1.2 * u); c.lineTo(3.6 * u, -3.6 * u); c.stroke();
+        c.lineWidth = 1.1 * u; c.beginPath(); c.moveTo(0.8 * u, -1 * u); c.lineTo(4 * u, -1 * u); c.stroke();
+        c.lineWidth = 1.9 * u; c.strokeStyle = "#f3f1e2"; c.beginPath(); c.moveTo(-4 * u, 3.4 * u); c.lineTo(-1.6 * u, 1.2 * u); c.stroke();
+        break;
+      case "ramyeon":
+        rrect(c, -4 * u, -3.2 * u, 8 * u, 6.4 * u, 1.2 * u); c.fillStyle = "#f2c94c"; c.fill(); c.strokeStyle = "#c99a1f"; c.lineWidth = 0.5 * u; c.stroke();
+        c.beginPath(); for (let r = -1.6; r <= 1.7; r += 1.6) { for (let x = -3.2; x <= 3.21; x += 0.4) { const yy = r + Math.sin(x * 3) * 0.45; if (x === -3.2) c.moveTo(x * u, yy * u); else c.lineTo(x * u, yy * u); } } c.stroke();
+        break;
+      case "bap":
+        c.beginPath(); c.ellipse(0, 0.4 * u, 4.2 * u, 3.4 * u, 0, 0, Math.PI * 2); c.fillStyle = "#fdfcf6"; c.fill(); c.strokeStyle = "#cfc8b6"; c.lineWidth = 0.5 * u; c.stroke();
+        [[-1.8, -0.6], [0.6, -1.4], [1.8, 0.8], [-0.6, 1.4], [-2.4, 1]].forEach(([x, y]) => { c.beginPath(); c.ellipse(x * u, y * u, 0.5 * u, 0.25 * u, 0.6, 0, Math.PI * 2); c.fillStyle = "#e4dfcf"; c.fill(); });
+        break;
+      case "gim":
+        rrect(c, -3.8 * u, -3.8 * u, 7.6 * u, 7.6 * u, 0.5 * u); c.fillStyle = "#1e3a2b"; c.fill();
+        c.strokeStyle = "#2f5a43"; c.lineWidth = 0.4 * u; c.beginPath(); c.moveTo(-3 * u, -1 * u); c.lineTo(2 * u, -3 * u); c.moveTo(-3 * u, 2 * u); c.lineTo(3 * u, -1 * u); c.stroke();
+        break;
+      case "danmuji":
+        c.fillStyle = "#f7d84a"; c.strokeStyle = "#c9a71b"; c.lineWidth = 0.5 * u;
+        rrect(c, -4.6 * u, -1.3 * u, 9.2 * u, 2.6 * u, 1.1 * u); c.fill(); c.stroke();
+        break;
+      case "ojingeo":
+        c.beginPath(); c.moveTo(0, -4.4 * u); c.quadraticCurveTo(2.8 * u, -1.4 * u, 1.8 * u, 1 * u); c.lineTo(-1.8 * u, 1 * u); c.quadraticCurveTo(-2.8 * u, -1.4 * u, 0, -4.4 * u); c.closePath();
+        c.fillStyle = "#f3d3c4"; c.fill(); c.strokeStyle = "#cf9d88"; c.lineWidth = 0.5 * u; c.stroke();
+        c.strokeStyle = "#e6b5a2"; c.lineWidth = 0.7 * u; c.beginPath();
+        for (let k = -2; k <= 2; k++) { c.moveTo(k * 0.7 * u, 1 * u); c.quadraticCurveTo(k * 1.1 * u, 3 * u, k * 0.9 * u + (k >= 0 ? 0.4 : -0.4) * u, 4.2 * u); }
+        c.stroke();
+        dot(c, -0.7 * u, -0.6 * u, 0.35 * u, "#5a3d33"); dot(c, 0.7 * u, -0.6 * u, 0.35 * u, "#5a3d33");
+        break;
+      case "hotdog":
+        c.strokeStyle = "#b98a55"; c.lineWidth = 0.7 * u; c.beginPath(); c.moveTo(2.6 * u, 2.6 * u); c.lineTo(4.4 * u, 4.4 * u); c.stroke();
+        c.save(); c.rotate(Math.PI / 4); rrect(c, -4.2 * u, -1.5 * u, 6.8 * u, 3 * u, 1.5 * u); c.fillStyle = "#f1dca4"; c.fill(); c.strokeStyle = "#c9a866"; c.lineWidth = 0.5 * u; c.stroke();
+        [[-2.4, -0.4], [-0.6, 0.5], [1.2, -0.5]].forEach(([x, y]) => dot(c, x * u, y * u, 0.3 * u, "rgba(201,168,102,.6)")); c.restore();
+        break;
+      case "potato":
+        c.beginPath(); c.ellipse(0, 0, 4.3 * u, 3.2 * u, -0.3, 0, Math.PI * 2); c.fillStyle = "#c9955a"; c.fill(); c.strokeStyle = "#8f6332"; c.lineWidth = 0.5 * u; c.stroke();
+        [[-2, -0.8], [0.6, -1.4], [1.9, 0.9], [-0.7, 1.4]].forEach(([x, y]) => dot(c, x * u, y * u, 0.32 * u, "#7a522a"));
+        break;
+      case "ketchup": case "mustard": {
+        const red = k === "ketchup", body = red ? "#d4261c" : "#f2c21b", dark = red ? "#8f1611" : "#b98a0c";
+        c.beginPath(); c.moveTo(-0.5 * u, -4.8 * u); c.lineTo(0.5 * u, -4.8 * u); c.lineTo(1.1 * u, -3.2 * u); c.lineTo(-1.1 * u, -3.2 * u); c.closePath(); c.fillStyle = red ? "#f5f3ec" : "#e0a90e"; c.fill();
+        rrect(c, -1.7 * u, -3.4 * u, 3.4 * u, 1.1 * u, 0.4 * u); c.fillStyle = red ? "#f5f3ec" : "#e0a90e"; c.fill();
+        rrect(c, -2.6 * u, -2.5 * u, 5.2 * u, 7 * u, 1.6 * u); c.fillStyle = body; c.fill(); c.strokeStyle = dark; c.lineWidth = 0.5 * u; c.stroke();
+        rrect(c, -2.6 * u, 0 * u, 5.2 * u, 2 * u, 0.2 * u); c.fillStyle = "#fff8e6"; c.fill();
+        c.strokeStyle = body; c.lineWidth = 0.6 * u; c.beginPath(); c.moveTo(-1.6 * u, 1 * u); for (let j = 0; j < 4; j++) c.lineTo((-1.6 + (j + 1) * 0.8) * u, (j % 2 ? 1.5 : 0.5) * u); c.stroke();
+        c.fillStyle = "rgba(255,255,255,.35)"; rrect(c, -2 * u, -2 * u, 0.9 * u, 1.6 * u, 0.4 * u); c.fill();
+        break;
+      }
+      case "ext":
+        c.fillStyle = "#3d4246"; c.fillRect(-2.6 * u, -4.7 * u, 3.4 * u, 0.7 * u);
+        rrect(c, -1.1 * u, -4.2 * u, 2.2 * u, 1.8 * u, 0.4 * u); c.fillStyle = "#2b2e31"; c.fill();
+        c.strokeStyle = "#2b2e31"; c.lineWidth = 0.75 * u; c.beginPath(); c.moveTo(0.9 * u, -3.6 * u); c.quadraticCurveTo(4.2 * u, -3.8 * u, 3.6 * u, 0.4 * u); c.stroke();
+        c.fillStyle = "#2b2e31"; c.beginPath(); c.moveTo(3.0 * u, 0.2 * u); c.lineTo(4.2 * u, 0.2 * u); c.lineTo(3.9 * u, 1.9 * u); c.lineTo(3.3 * u, 1.9 * u); c.closePath(); c.fill();
+        rrect(c, -2.3 * u, -2.7 * u, 4.6 * u, 7.2 * u, 1.7 * u); c.fillStyle = "#d7372b"; c.fill(); c.strokeStyle = "#8f1f17"; c.lineWidth = 0.5 * u; c.stroke();
+        c.fillStyle = "#f5f3ec"; c.fillRect(-2.3 * u, 0.1 * u, 4.6 * u, 1.7 * u);
+        c.fillStyle = "#d7372b"; c.fillRect(-0.3 * u, 0.4 * u, 0.6 * u, 1.1 * u); c.fillRect(-0.55 * u, 0.65 * u, 1.1 * u, 0.6 * u);
+        c.fillStyle = "rgba(255,255,255,.35)"; rrect(c, -1.7 * u, -2.2 * u, 0.9 * u, 2 * u, 0.45 * u); c.fill();
+        break;
+      case "plate":
+        dot(c, 0, 0, 4.8 * u, "#ffffff"); c.strokeStyle = "#cfc7b6"; c.lineWidth = 0.6 * u; c.stroke();
+        c.beginPath(); c.arc(0, 0, 3.4 * u, 0, Math.PI * 2); c.strokeStyle = "#ece6da"; c.lineWidth = 0.4 * u; c.stroke();
+        break;
+    }
+    c.restore();
+  }
+  // 냄비(화구 위)·튀김 바구니(튀김기 위): 게임 시작할 때 올라가 있는 모습
+  function drawPot(c, cx, cy, s) {
+    const u = s / 10;
+    c.save(); c.translate(cx, cy);
+    c.fillStyle = "#a9afb2"; rrect(c, 4.2 * u, -0.7 * u, 1.4 * u, 1.4 * u, 0.3 * u); c.fill();
+    c.fillStyle = "#2b2522"; rrect(c, 5.2 * u, -0.85 * u, 4.4 * u, 1.7 * u, 0.85 * u); c.fill();
+    dot(c, 0, 0, 4.7 * u, "#e3b04b"); c.strokeStyle = "#a87b22"; c.lineWidth = 0.8 * u; c.stroke();
+    c.beginPath(); c.arc(0, 0, 4.2 * u, Math.PI * 1.1, Math.PI * 1.45); c.strokeStyle = "rgba(255,255,255,.8)"; c.lineWidth = 0.5 * u; c.stroke();
+    dot(c, 0, 0, 3.7 * u, "#b98a33");
+    c.restore();
+  }
+  function drawBasket(c, cx, cy, s) {
+    const u = s / 10;
+    c.save(); c.translate(cx, cy);
+    c.strokeStyle = "#8a6d3b"; c.lineWidth = 0.9 * u; c.beginPath(); c.moveTo(0, -4.2 * u); c.lineTo(0, -6.2 * u); c.stroke();
+    rrect(c, -4.3 * u, -4.3 * u, 8.6 * u, 8.6 * u, 1.3 * u); c.fillStyle = "#d9c08a"; c.fill(); c.strokeStyle = "#9c7f45"; c.lineWidth = 0.5 * u; c.stroke();
+    rrect(c, -3.4 * u, -3.4 * u, 6.8 * u, 6.8 * u, u); c.fillStyle = "#cdb27a"; c.fill();
+    c.beginPath(); for (let k = -2; k <= 2; k++) { c.moveTo(k * 1.4 * u, -3.4 * u); c.lineTo(k * 1.4 * u, 3.4 * u); c.moveTo(-3.4 * u, k * 1.4 * u); c.lineTo(3.4 * u, k * 1.4 * u); } c.strokeStyle = "rgba(110,80,30,.3)"; c.lineWidth = 0.3 * u; c.stroke();
+    c.restore();
+  }
+  function counterBase(c, px, py, s) {
+    const e = Math.max(1, s / 32);
+    c.fillStyle = "#c98b4f"; c.fillRect(px, py, s, s);
+    c.fillStyle = "#d89c5f"; c.fillRect(px + e, py + e, s - 2 * e, s - 3 * e);
+    c.fillStyle = "rgba(0,0,0,.12)"; c.fillRect(px, py + s - 2 * e, s, 2 * e);
+  }
+  function hazard(c, x, y, w, h, a, s) {
+    c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip();
+    c.fillStyle = "rgba(242,179,27," + a + ")"; c.fillRect(x, y, w, h);
+    c.strokeStyle = "rgba(43,43,43," + a + ")"; c.lineWidth = Math.max(2, s * 0.09);
+    for (let k = -h; k < w + h; k += s * 0.26) { c.beginPath(); c.moveTo(x + k, y + h); c.lineTo(x + k + h, y); c.stroke(); }
+    c.restore();
+  }
+  function drawRail(c, px, py, s) {
+    c.fillStyle = "#8a847a"; c.fillRect(px, py, s, s);
+    c.fillStyle = "#5a4636"; for (let k = 0; k < 2; k++) c.fillRect(px + s * 0.08, py + s * (0.14 + k * 0.5), s * 0.84, s * 0.2);
+    c.fillStyle = "#c3cacf"; c.fillRect(px + s * 0.26, py, s * 0.07, s); c.fillRect(px + s * 0.67, py, s * 0.07, s);
+  }
+  // 칸 하나 그리기. at(x, y) = 그 자리 기호 (판 밖은 "#")
+  function drawTile(c, at, x, y, px, py, s, floor) {
+    const ch = at(x, y), fl = floor[(x + y) % 2];
+    const open = (dx, dy) => FLOOR_SET.includes(at(x + dx, y + dy));
+    const outDir = () => [[0, 1], [0, -1], [1, 0], [-1, 0]].find(([dx, dy]) => open(dx, dy)) || [0, 1];
+    c.save(); c.beginPath(); c.rect(px, py, s, s); c.clip();
+    c.lineCap = "round"; c.lineJoin = "round";
+    switch (ch) {
+      case ".":
+        c.fillStyle = fl; c.fillRect(px, py, s, s); break;
+      case "~": {
+        c.fillStyle = (x + y) % 2 ? "#cfe8f5" : "#d9eef8"; c.fillRect(px, py, s, s);
+        c.strokeStyle = "rgba(255,255,255,.95)"; c.lineWidth = Math.max(1.5, s * 0.05);
+        const k = (x * 7 + y * 3) % 4;
+        c.beginPath(); c.moveTo(px + s * (0.15 + k * 0.05), py + s * 0.7); c.lineTo(px + s * (0.45 + k * 0.05), py + s * 0.35);
+        c.moveTo(px + s * 0.55, py + s * (0.85 - k * 0.04)); c.lineTo(px + s * 0.8, py + s * (0.55 - k * 0.04)); c.stroke();
+        break;
+      }
+      case "}": case "{": case "^": case "v": {
+        const p = PUSH[ch];
+        c.fillStyle = "#7d868c"; c.fillRect(px, py, s, s);
+        c.fillStyle = "#666f75";
+        if (p[0]) { c.fillRect(px, py, s, s * 0.1); c.fillRect(px, py + s * 0.9, s, s * 0.1); } else { c.fillRect(px, py, s * 0.1, s); c.fillRect(px + s * 0.9, py, s * 0.1, s); }
+        c.save(); c.translate(px + s / 2, py + s / 2); c.rotate(Math.atan2(p[1], p[0]));
+        c.strokeStyle = "#e8edf0"; c.lineWidth = Math.max(2, s * 0.08);
+        for (const x0 of [-s * 0.2, s * 0.12]) { c.beginPath(); c.moveTo(x0 - s * 0.1, -s * 0.2); c.lineTo(x0 + s * 0.08, 0); c.lineTo(x0 - s * 0.1, s * 0.2); c.stroke(); }
+        c.restore();
+        break;
+      }
+      case "=":
+        c.fillStyle = "#45484d"; c.fillRect(px, py, s, s);
+        c.fillStyle = "#f2c21b"; c.fillRect(px, py, s, s * 0.06); c.fillRect(px, py + s * 0.94, s, s * 0.06);
+        c.fillStyle = "#f2f2f2"; c.fillRect(px + s * 0.15, py + s * 0.47, s * 0.4, s * 0.06);
+        break;
+      case "@": case "$": {
+        c.fillStyle = fl; c.fillRect(px, py, s, s);
+        c.save(); c.translate(px + s / 2, py + s / 2);
+        const gr = c.createRadialGradient(0, 0, s * 0.05, 0, 0, s * 0.46); gr.addColorStop(0, "rgba(255,255,255,.9)"); gr.addColorStop(0.55, PORTAL_COL[ch]); gr.addColorStop(1, "rgba(0,0,0,0)");
+        c.fillStyle = gr; c.beginPath(); c.arc(0, 0, s * 0.46, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = "#fff"; c.lineWidth = Math.max(2, s * 0.06);
+        for (let k = 0; k < 3; k++) { c.beginPath(); c.arc(0, 0, s * 0.33, (k * Math.PI * 2) / 3, (k * Math.PI * 2) / 3 + 1.1); c.stroke(); }
+        c.restore();
+        break;
+      }
+      case "X":
+        c.fillStyle = fl; c.fillRect(px, py, s, s);
+        hazard(c, px, py, s, s, 0.35, s);
+        break;
+      case "Y":
+        counterBase(c, px, py, s);
+        hazard(c, px + 2, py + 2, s - 4, s * 0.22, 1, s);
+        c.fillStyle = "#c9cfd3"; c.fillRect(px + 2, py + s * 0.24, s - 4, s * 0.68);
+        break;
+      case "!":
+        drawRail(c, px, py, s); break;
+      case "%":
+        drawRail(c, px, py, s); c.fillStyle = "rgba(20,14,10,.45)"; c.fillRect(px, py, s, s); break;
+      case ":": {
+        c.fillStyle = fl; c.fillRect(px, py, s, s);
+        let rc = -1; for (let xx = 0; xx < COLS; xx++) if (at(xx, y) === "!") rc = xx;
+        if (rc < 0) rc = 7;
+        c.fillStyle = "#f2c21b"; c.fillRect(px + (x < rc ? 0 : s * 0.9), py, s * 0.1, s);
+        const w = s * 0.2, x0 = px + s / 2 - w / 2; // 내려왔을 때 막대 (흐리게)
+        c.globalAlpha = 0.5;
+        for (let k = 0; k < 4; k++) { c.fillStyle = k % 2 ? "#ffffff" : "#e0352b"; c.fillRect(x0, py + (k * s) / 4, w, s / 4 + 0.5); }
+        c.globalAlpha = 1;
+        break;
+      }
+      case "_": {
+        const pl = (dx) => at(x + dx, y) === "_";
+        const gr = c.createLinearGradient(px, 0, px + s, 0);
+        gr.addColorStop(0, pl(-1) ? "#0d0915" : "#3a2c55"); gr.addColorStop(0.25, "#0d0915"); gr.addColorStop(0.75, "#0d0915"); gr.addColorStop(1, pl(1) ? "#0d0915" : "#3a2c55");
+        c.fillStyle = gr; c.fillRect(px, py, s, s);
+        break;
+      }
+      case "/":
+        c.fillStyle = "#3c3f45"; c.fillRect(px, py, s, s);
+        c.fillStyle = "#f4f4f0"; c.fillRect(px + s * 0.44, py + s * 0.1, s * 0.12, s * 0.35); c.fillRect(px + s * 0.44, py + s * 0.6, s * 0.12, s * 0.35);
+        c.fillStyle = "#f2c21b"; c.fillRect(px, py, s * 0.07, s); c.fillRect(px + s * 0.93, py, s * 0.07, s);
+        break;
+      case "#":
+        c.fillStyle = "#6d4a30"; c.fillRect(px, py, s, s);
+        c.fillStyle = "#82593a"; c.fillRect(px + 2, py + 2, s - 4, s * 0.3);
+        c.fillStyle = "rgba(0,0,0,.18)"; for (let k = 1; k < 3; k++) c.fillRect(px + (k * s) / 3, py + s * 0.34, 2, s * 0.62);
+        break;
+      case "S":
+        c.fillStyle = "#2f3336"; c.fillRect(px, py, s, s);
+        c.fillStyle = "#3d4246"; c.fillRect(px + 3, py + 3, s - 6, s - 6);
+        c.beginPath(); c.arc(px + s / 2, py + s / 2, s * 0.33, 0, Math.PI * 2); c.strokeStyle = "#5b6166"; c.lineWidth = 3; c.stroke();
+        drawPot(c, px + s * 0.42, py + s / 2, s * 0.6);
+        break;
+      case "F":
+        c.fillStyle = "#2f3336"; c.fillRect(px, py, s, s);
+        rrect(c, px + s * 0.1, py + s * 0.1, s * 0.8, s * 0.8, 5); c.fillStyle = "#c9932f"; c.fill();
+        rrect(c, px + s * 0.16, py + s * 0.16, s * 0.68, s * 0.68, 4); c.fillStyle = "#e5b347"; c.fill();
+        drawBasket(c, px + s / 2, py + s * 0.56, s * 0.62);
+        break;
+      case "W": {
+        c.fillStyle = "#d7372b"; c.fillRect(px, py, s, s);
+        c.fillStyle = "#ffcf33"; for (let i = 0; i < 4; i++) c.fillRect(px + (i * s) / 4, py, s / 8, s * 0.18);
+        const d = outDir();
+        c.save(); c.translate(px + s / 2, py + s * 0.55); c.rotate(Math.atan2(-d[1], -d[0]) + Math.PI / 2);
+        c.strokeStyle = "#fff"; c.lineWidth = Math.max(2.5, s * 0.09);
+        for (const oy of [-0.12, 0.12]) { c.beginPath(); c.moveTo(-s * 0.2, (oy + 0.1) * s); c.lineTo(0, (oy - 0.08) * s); c.lineTo(s * 0.2, (oy + 0.1) * s); c.stroke(); }
+        c.restore();
+        break;
+      }
+      case ">":
+        c.fillStyle = "#34373a"; c.fillRect(px, py, s, s);
+        c.fillStyle = "#26282a"; c.fillRect(px, py + s * 0.08, s, s * 0.06); c.fillRect(px, py + s * 0.86, s, s * 0.06);
+        c.strokeStyle = "#7a7f84"; c.lineWidth = Math.max(2, s * 0.07);
+        for (const k of [0, 1]) { const x0 = px + k * s * 0.42 + s * 0.2; c.beginPath(); c.moveTo(x0, py + s * 0.3); c.lineTo(x0 + s * 0.16, py + s * 0.5); c.lineTo(x0, py + s * 0.7); c.stroke(); }
+        break;
+      default: {
+        counterBase(c, px, py, s);
+        if (ch === "|") {
+          c.fillStyle = "#ffcf33"; c.fillRect(px + 1, py + 1, s - 2, s - 4);
+          c.fillStyle = "#f5bf1d"; c.fillRect(px + 1, py + s * 0.5, s - 2, 2);
+        } else if (ING_OF[ch]) {
+          rrect(c, px + s * 0.06, py + s * 0.06, s * 0.88, s * 0.88, 5); c.fillStyle = "#8f5d2c"; c.fill();
+          c.fillStyle = "#a8743a"; for (let i = 0; i < 3; i++) c.fillRect(px + s * 0.1, py + s * (0.1 + i * 0.27), s * 0.8, s * 0.22);
+          rrect(c, px + s * 0.12, py + s * 0.12, s * 0.76, s * 0.76, s * 0.14); c.fillStyle = "#cfe2ee"; c.fill(); c.lineWidth = Math.max(1.5, s * 0.045); c.strokeStyle = "#6b4520"; c.stroke();
+          drawIcon(c, ING_OF[ch], px + s / 2, py + s / 2, s * 0.66);
+        } else if (ch === "K") {
+          rrect(c, px + s * 0.12, py + s * 0.14, s * 0.76, s * 0.7, 5); c.fillStyle = "#f0d6a4"; c.fill(); c.strokeStyle = "#c9a56a"; c.lineWidth = 2; c.stroke();
+          c.fillStyle = "#9aa3a8"; c.fillRect(px + s * 0.66, py + s * 0.18, s * 0.06, s * 0.3);
+        } else if (ch === "P") {
+          for (let k = 2; k >= 0; k--) drawIcon(c, "plate", px + s / 2, py + s / 2 - k * s * 0.05, s * 0.7);
+        } else if (ch === "T") {
+          rrect(c, px + s * 0.2, py + s * 0.22, s * 0.6, s * 0.64, 6); c.fillStyle = "#6f7a7c"; c.fill();
+          c.fillStyle = "#59636a"; c.fillRect(px + s * 0.14, py + s * 0.16, s * 0.72, s * 0.1);
+        } else if (ch === "H") {
+          rrect(c, px + s * 0.1, py + s * 0.12, s * 0.8, s * 0.74, 6); c.fillStyle = "#b8c2c8"; c.fill();
+          rrect(c, px + s * 0.17, py + s * 0.24, s * 0.66, s * 0.54, 5); c.fillStyle = "#8fc3e0"; c.fill();
+          c.fillStyle = "#7d8a90"; c.fillRect(px + s * 0.46, py + s * 0.06, s * 0.08, s * 0.16);
+        } else if (ch === "R") {
+          rrect(c, px + s * 0.1, py + s * 0.12, s * 0.8, s * 0.74, 6); c.fillStyle = "#5a3d26"; c.fill();
+        } else if (ch === "Z") {
+          const d = outDir(), a = Math.atan2(d[1], d[0]), cx = px + s / 2 + d[0] * s * 0.46, cy = py + s / 2 + d[1] * s * 0.46;
+          c.beginPath(); c.arc(cx, cy, s * 0.25, a + Math.PI / 2, a + Math.PI * 1.5); c.closePath();
+          c.fillStyle = "#1a120c"; c.fill(); c.lineWidth = Math.max(2, s * 0.05); c.strokeStyle = "#5a3d26"; c.stroke();
+        } else if (ch !== "C") { // 모르는 기호
+          c.fillStyle = "#f0f"; c.fillRect(px, py, s, s);
+        }
+      }
+    }
+    c.restore();
+  }
+  function nameTag(c, text, px, py, s) {
+    c.font = Math.round(s * 0.2) + "px " + FONT;
+    const w = c.measureText(text).width + s * 0.14, h = s * 0.25;
+    rrect(c, px + s / 2 - w / 2, py + s - h - s * 0.03, w, h, h / 2); c.fillStyle = "rgba(36,26,20,.8)"; c.fill();
+    c.fillStyle = "#fff"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(text, px + s / 2, py + s - h / 2 - s * 0.02);
+  }
+  function spawnMark(c, i, cx, cy, s) {
+    dot(c, cx + s * 0.03, cy + s * 0.05, s * 0.32, "rgba(0,0,0,.25)");
+    dot(c, cx, cy, s * 0.32, "#fff");
+    dot(c, cx, cy, s * 0.26, APRON[i]);
+    c.font = Math.round(s * 0.26) + "px " + FONT; c.fillStyle = "#fff"; c.textAlign = "center"; c.textBaseline = "middle";
+    c.fillText((i + 1) + "P", cx, cy + 1);
+  }
+  // 도구 상자·안내용 작은 그림
+  function thumb(c, key) {
+    const s = c.canvas.width;
+    c.clearRect(0, 0, s, s);
+    if (MARKS[key]) {
+      const under = key === "@ext" ? "C" : ".";
+      drawTile(c, (x, y) => (x === 0 && y === 0 ? under : "."), 0, 0, 0, 0, s, BASE_FLOOR);
+      if (key === "@ext") drawIcon(c, "ext", s / 2, s / 2, s * 0.7); else spawnMark(c, key === "@sp1" ? 0 : 1, s / 2, s / 2, s);
+    } else drawTile(c, (x, y) => (x === 0 && y === 0 ? key : "."), 0, 0, 0, 0, s, BASE_FLOOR);
+  }
+
   let ORIG = [];      // 게임 파일에 적힌 그대로의 단계들
   let drafts = {};    // id → 고친 단계 (이 기기에 저장)
   let cur = null;     // 지금 고치는 단계
   let base = null;    // 비교 기준 (원래 단계, 새 단계면 null)
   let tool = "C";
   let undo = [], redo = [];
+  let probs = new Map(); // "x,y" → "bad" | "warn"
 
   const clone = (o) => JSON.parse(JSON.stringify(o));
   const toast = (m) => { const t = $("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("on"), 1800); };
   const loadDrafts = () => { try { drafts = JSON.parse(localStorage.getItem(DRAFT_KEY)) || {}; } catch (e) { drafts = {}; } };
   const saveDrafts = () => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts)); } catch (e) {} };
+  const pref = (k, d) => { try { const v = localStorage.getItem("bunsik.editor." + k); return v == null ? d : v === "1"; } catch (e) { return d; } };
+  const setPref = (k, v) => { try { localStorage.setItem("bunsik.editor." + k, v ? "1" : "0"); } catch (e) {} };
 
   // ===== 게임 파일에서 단계 읽어오기 =====
   async function loadStages() {
@@ -227,60 +524,95 @@ button:disabled { opacity: .45; cursor: default; }
   }
 
   // ===== 판 그리기 =====
-  const board = $("board");
-  const cells = [];
-  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-    const c = document.createElement("div");
-    c.className = "cell"; c.dataset.x = x; c.dataset.y = y; c.setAttribute("role", "gridcell");
-    board.appendChild(c); cells.push(c);
-  }
-  const cellAt = (x, y) => cells[y * COLS + x];
+  const TS = 64, RU = 26; // 칸 크기, 위·왼쪽 번호 줄
+  const cv = $("board"), g = cv.getContext("2d");
+  cv.width = RU + COLS * TS; cv.height = RU + ROWS * TS;
+  let hover = null, rq = 0;
+  let showTags = pref("tags", true), showGrid = pref("grid", true);
+  $("tagChk").checked = showTags; $("gridChk").checked = showGrid;
+  $("tagChk").addEventListener("change", (e) => { showTags = e.target.checked; setPref("tags", showTags); draw(); });
+  $("gridChk").addEventListener("change", (e) => { showGrid = e.target.checked; setPref("grid", showGrid); draw(); });
   const chAt = (x, y) => cur.map[y][x];
   const fl = (p) => [Math.floor(p[0]), Math.floor(p[1])];
-
-  function drawCell(x, y) {
-    const c = cellAt(x, y), ch = chAt(x, y), inf = INFO[ch] || { bg: "#f0f", txt: ch, fg: "#000", name: "?" };
-    let bg = inf.bg;
-    if (ch === ".") bg = (x + y) % 2 ? cur.floor[1] : cur.floor[0];
-    c.style.background = bg; c.style.color = inf.fg;
-    c.title = "(" + x + "," + y + ") " + inf.name;
-    let html = '<span class="xy">' + x + "," + y + '</span><span class="g">' + inf.txt + "</span>";
-    const sp = cur.spawn || [];
-    if (sp[0] && fl(sp[0])[0] === x && fl(sp[0])[1] === y) html += '<span class="mk p1">1</span>';
-    if (sp[1] && fl(sp[1])[0] === x && fl(sp[1])[1] === y) html += '<span class="mk p2">2</span>';
-    if (cur.ext && cur.ext[0] === x && cur.ext[1] === y) html += '<span class="mk ex">🧯</span>';
-    if (cur.warp) {
-      const w = cur.warp, spots = [w.pit, ...w.pairs.flatMap((p) => [...p.L, ...p.R])];
-      if (spots.some((s) => s[0] === x && s[1] === y)) html += '<span class="mk pt" title="순간이동문 자리 후보">✦</span>';
+  const at = (x, y) => (x < 0 || y < 0 || x >= COLS || y >= ROWS ? "#" : cur.map[y][x]);
+  const draw = () => { if (!rq) rq = requestAnimationFrame(render); };
+  function render() {
+    rq = 0;
+    if (!cur) return;
+    g.fillStyle = "#3b2e25"; g.fillRect(0, 0, cv.width, cv.height);
+    g.font = "16px " + FONT; g.fillStyle = "#f3e9cf"; g.textAlign = "center"; g.textBaseline = "middle";
+    for (let x = 0; x < COLS; x++) g.fillText(x, RU + x * TS + TS / 2, RU / 2 + 1);
+    for (let y = 0; y < ROWS; y++) g.fillText(y, RU / 2, RU + y * TS + TS / 2);
+    const PX = (x) => RU + x * TS, PY = (y) => RU + y * TS;
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) drawTile(g, at, x, y, PX(x), PY(y), TS, cur.floor);
+    if (showGrid) {
+      g.strokeStyle = "rgba(40,28,20,.22)"; g.lineWidth = 1; g.beginPath();
+      for (let x = 1; x < COLS; x++) { g.moveTo(PX(x) + 0.5, RU); g.lineTo(PX(x) + 0.5, cv.height); }
+      for (let y = 1; y < ROWS; y++) { g.moveTo(RU, PY(y) + 0.5); g.lineTo(cv.width, PY(y) + 0.5); }
+      g.stroke();
     }
-    c.innerHTML = html;
-    c.classList.toggle("changed", !!base && base.map[y] && base.map[y][x] !== ch);
+    if (cur.warp) { // 순간이동문이 옮겨 다니는 자리 후보
+      const w = cur.warp, spots = [w.pit, ...w.pairs.flatMap((p) => [...p.L, ...p.R])];
+      g.setLineDash([5, 4]); g.strokeStyle = "#a855f7"; g.lineWidth = 3;
+      spots.forEach(([x, y]) => { g.beginPath(); g.arc(PX(x) + TS / 2, PY(y) + TS / 2, TS * 0.36, 0, Math.PI * 2); g.stroke(); });
+      g.setLineDash([]);
+    }
+    if (cur.ext) drawIcon(g, "ext", PX(cur.ext[0]) + TS / 2, PY(cur.ext[1]) + TS * 0.45, TS * 0.62);
+    if (showTags) for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      const ch = chAt(x, y), inf = INFO[ch];
+      if (!inf || !inf.tag) continue;
+      if (AREA_CH.includes(ch) && (at(x - 1, y) === ch || at(x, y - 1) === ch)) continue; // 넓게 깔리는 장치는 덩어리마다 한 번만
+      nameTag(g, inf.tag, PX(x), PY(y), TS);
+    }
+    if (base) {
+      g.setLineDash([7, 5]); g.strokeStyle = "#e0119a"; g.lineWidth = 3;
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (base.map[y] && base.map[y][x] !== chAt(x, y)) g.strokeRect(PX(x) + 3, PY(y) + 3, TS - 6, TS - 6);
+      g.setLineDash([]);
+    }
+    probs.forEach((lv, k) => {
+      const [x, y] = k.split(",").map(Number);
+      g.strokeStyle = lv === "bad" ? "#d7372b" : "#f29a1f"; g.lineWidth = 4; g.strokeRect(PX(x) + 2, PY(y) + 2, TS - 4, TS - 4);
+      g.font = Math.round(TS * 0.3) + "px " + FONT; dot(g, PX(x) + TS - 13, PY(y) + 13, 10, g.strokeStyle); g.fillStyle = "#fff"; g.fillText("!", PX(x) + TS - 13, PY(y) + 14);
+    });
+    (cur.spawn || []).slice(0, 2).forEach((p, i) => { const [x, y] = fl(p); spawnMark(g, i, PX(x) + TS / 2, PY(y) + TS / 2, TS); });
+    if (hover) { // 지금 도구를 칠하면 어떻게 보일지 미리 보기
+      const [hx, hy] = hover;
+      g.save(); g.globalAlpha = 0.65;
+      if (MARKS[tool]) {
+        if (tool === "@ext") drawIcon(g, "ext", PX(hx) + TS / 2, PY(hy) + TS * 0.45, TS * 0.62);
+        else spawnMark(g, tool === "@sp1" ? 0 : 1, PX(hx) + TS / 2, PY(hy) + TS / 2, TS);
+      } else drawTile(g, (x, y) => (x === hx && y === hy ? tool : at(x, y)), hx, hy, PX(hx), PY(hy), TS, cur.floor);
+      g.restore();
+      g.strokeStyle = "#fff"; g.lineWidth = 3; g.strokeRect(PX(hx) + 1.5, PY(hy) + 1.5, TS - 3, TS - 3);
+    }
   }
-  function drawAll() { for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) drawCell(x, y); refresh(); }
 
   // ===== 도구 상자 =====
   function buildPalette() {
     const box = $("palette");
     const mk = (title, items) => {
-      const g = document.createElement("div"); g.className = "group";
-      g.innerHTML = "<h3>" + title + "</h3>";
+      const grp = document.createElement("div"); grp.className = "group";
+      const h = document.createElement("h3"); h.textContent = title; grp.appendChild(h);
       const p = document.createElement("div"); p.className = "pal";
-      items.forEach(([key, name, bg, txt, fg]) => {
-        const b = document.createElement("button"); b.type = "button"; b.dataset.tool = key;
-        b.innerHTML = '<span class="sw" style="background:' + bg + ";color:" + (fg || "#241a14") + '">' + (txt || "") + "</span>" + name + (key.length === 1 && key !== "." ? " <small style='opacity:.5'>" + key + "</small>" : "");
+      items.forEach(([key, name]) => {
+        const b = document.createElement("button"); b.type = "button"; b.dataset.tool = key; b.title = name + (MARKS[key] ? "" : "  (기호 " + key + ")");
+        const c = document.createElement("canvas"); c.width = c.height = 68; thumb(c.getContext("2d"), key);
+        const t = document.createElement("span"); t.textContent = name;
+        b.append(c, t);
         b.addEventListener("click", () => setTool(key));
         p.appendChild(b);
       });
-      g.appendChild(p); box.appendChild(g);
+      grp.appendChild(p); box.appendChild(grp);
     };
-    mk("자리 표시", MARKS.map(([k, n, bg, t]) => [k, n, bg, t, "#fff"]));
+    mk("자리 표시 (칸은 그대로 두고 위에 놓아요)", Object.entries(MARKS));
     TILES.forEach((grp) => mk(grp.g, grp.list));
   }
   function setTool(k) {
     tool = k;
     document.querySelectorAll("[data-tool]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tool === k)));
-    const m = MARKS.find((v) => v[0] === k);
-    $("toolName").textContent = m ? m[1] : INFO[k].name + " (" + k + ")";
+    $("toolName").textContent = MARKS[k] || INFO[k].name;
+    thumb($("toolPic").getContext("2d"), k);
+    draw();
   }
 
   // ===== 칠하기 =====
@@ -288,52 +620,60 @@ button:disabled { opacity: .45; cursor: default; }
   function setCh(x, y, ch) {
     if (chAt(x, y) === ch) return false;
     const r = cur.map[y]; cur.map[y] = r.slice(0, x) + ch + r.slice(x + 1);
-    drawCell(x, y); return true;
+    draw(); return true;
   }
   function apply(x, y, erase) {
     if (erase) return setCh(x, y, ".");
-    if (tool === "@sp1" || tool === "@sp2") {
-      const i = tool === "@sp1" ? 0 : 1, old = cur.spawn[i] && fl(cur.spawn[i]);
-      cur.spawn[i] = [x + 0.5, y + 0.5];
-      if (old) drawCell(old[0], old[1]);
-      drawCell(x, y); return true;
-    }
-    if (tool === "@ext") {
-      const old = cur.ext; cur.ext = [x, y];
-      if (old) drawCell(old[0], old[1]);
-      drawCell(x, y); return true;
-    }
+    if (tool === "@sp1" || tool === "@sp2") { cur.spawn[tool === "@sp1" ? 0 : 1] = [x + 0.5, y + 0.5]; draw(); return true; }
+    if (tool === "@ext") { cur.ext = [x, y]; draw(); return true; }
     return setCh(x, y, tool);
   }
+  function cellOf(e) {
+    const r = cv.getBoundingClientRect(), k = cv.width / r.width;
+    const x = Math.floor(((e.clientX - r.left) * k - RU) / TS), y = Math.floor(((e.clientY - r.top) * k - RU) / TS);
+    return x >= 0 && y >= 0 && x < COLS && y < ROWS ? [x, y] : null;
+  }
+  const hoverPic = document.createElement("canvas"); hoverPic.width = hoverPic.height = 64;
+  function showHover(c) {
+    const box = $("hover");
+    if (!c) { box.textContent = "칸 위에 올리면 무슨 칸인지 보여요"; return; }
+    const [x, y] = c, ch = chAt(x, y), inf = INFO[ch];
+    thumb(hoverPic.getContext("2d"), ch);
+    const extra = [];
+    (cur.spawn || []).slice(0, 2).forEach((p, i) => { if (fl(p)[0] === x && fl(p)[1] === y) extra.push("리스폰 " + (i + 1)); });
+    if (cur.ext && cur.ext[0] === x && cur.ext[1] === y) extra.push("소화기");
+    box.replaceChildren(hoverPic, document.createTextNode("(" + x + ", " + y + ")  " + (inf ? inf.name : ch) + (extra.length ? "  + " + extra.join(", ") : "")));
+  }
   let painting = false, erasing = false, lastKey = "", dirty = false;
-  const cellFromEvent = (e) => { const el = document.elementFromPoint(e.clientX, e.clientY); return el && el.closest && el.closest(".cell"); };
-  board.addEventListener("contextmenu", (e) => e.preventDefault());
-  board.addEventListener("pointerdown", (e) => {
-    const c = cellFromEvent(e); if (!c) return;
+  cv.addEventListener("contextmenu", (e) => e.preventDefault());
+  cv.addEventListener("pointerdown", (e) => {
+    const c = cellOf(e); if (!c) return;
     e.preventDefault();
     snapshot();
     painting = true; erasing = e.button === 2; lastKey = ""; dirty = false;
-    board.setPointerCapture(e.pointerId);
+    cv.setPointerCapture(e.pointerId);
     paintAt(c);
   });
-  board.addEventListener("pointermove", (e) => {
-    const c = cellFromEvent(e);
-    if (c) { const x = +c.dataset.x, y = +c.dataset.y, inf = INFO[chAt(x, y)]; $("hover").textContent = "(" + x + "," + y + ") " + (inf ? inf.name : chAt(x, y)); }
-    if (painting && c && !tool.startsWith("@")) paintAt(c);
+  cv.addEventListener("pointermove", (e) => {
+    const c = cellOf(e);
+    if ((c && c.join()) !== (hover && hover.join())) { hover = c; showHover(c); draw(); }
+    if (painting && c && !MARKS[tool]) paintAt(c);
   });
-  const endPaint = () => {
+  cv.addEventListener("pointerleave", () => { if (!painting) { hover = null; showHover(null); draw(); } });
+  const endPaint = (e) => {
     if (!painting) return;
     painting = false;
+    if (e.pointerType !== "mouse") { hover = null; draw(); }
     if (!dirty) undo.pop(); else commit();
   };
-  board.addEventListener("pointerup", endPaint);
-  board.addEventListener("pointercancel", endPaint);
+  cv.addEventListener("pointerup", endPaint);
+  cv.addEventListener("pointercancel", endPaint);
   function paintAt(c) {
-    const k = c.dataset.x + "," + c.dataset.y;
+    const k = c.join();
     if (k === lastKey) return; lastKey = k;
-    if (apply(+c.dataset.x, +c.dataset.y, erasing)) dirty = true;
+    if (apply(c[0], c[1], erasing)) dirty = true;
   }
-  function restore(s) { cur = JSON.parse(s); fillFields(); drawAll(); commit(true); }
+  function restore(s) { cur = JSON.parse(s); fillFields(); draw(); commit(); }
   function doUndo() { if (!undo.length) return; redo.push(JSON.stringify(cur)); restore(undo.pop()); }
   function doRedo() { if (!redo.length) return; undo.push(JSON.stringify(cur)); restore(redo.pop()); }
   $("undoBtn").addEventListener("click", doUndo);
@@ -348,7 +688,8 @@ button:disabled { opacity: .45; cursor: default; }
   const menuBox = $("fMenu");
   Object.keys(DISH).forEach((k) => {
     const l = document.createElement("label");
-    l.innerHTML = '<input type="checkbox" value="' + k + '"> ' + DISH[k].name;
+    const i = document.createElement("input"); i.type = "checkbox"; i.value = k;
+    l.append(i, " " + DISH[k].name);
     menuBox.appendChild(l);
   });
   function fillFields() {
@@ -372,43 +713,43 @@ button:disabled { opacity: .45; cursor: default; }
   }
   document.querySelectorAll(".fields input, .fields textarea").forEach((el) => {
     el.addEventListener("focus", () => (el._snap = JSON.stringify(cur)));
-    el.addEventListener("change", () => { if (el._snap) { undo.push(el._snap); redo = []; el._snap = JSON.stringify(cur); } readFields(); if (el.type === "color") drawAll(); commit(); });
+    el.addEventListener("change", () => { if (el._snap) { undo.push(el._snap); redo = []; el._snap = JSON.stringify(cur); } readFields(); draw(); commit(); });
   });
   $("extra").addEventListener("input", () => refresh());
 
-  // ===== 점검 =====
+  // ===== 점검 ===== (걸린 칸은 판에 빨강·주황 테두리로 보여요)
   function check() {
     const out = [], m = cur.map, all = m.join("");
     const has = (c) => all.includes(c);
-    const add = (lv, t) => out.push([lv, t]);
+    const add = (lv, t, cells) => out.push([lv, t, cells || []]);
+    const where = (c) => { const r = []; for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (m[y][x] === c) r.push([x, y]); return r; };
     if (!cur.name) add("warn", "이름이 비어 있어요");
     if (!cur.menu.length) add("bad", "메뉴를 하나 이상 골라요");
-    if (!has("W")) add("bad", "내는 곳(W)이 없어요");
-    if (!has("T")) add("warn", "쓰레기통(T)이 없어요");
+    if (!has("W")) add("bad", "내는 곳이 없어요");
+    if (!has("T")) add("warn", "쓰레기통이 없어요");
     const needCr = new Set(), needSt = new Set();
     cur.menu.forEach((d) => { [...DISH[d].crates].forEach((c) => needCr.add(c)); [...DISH[d].st].forEach((c) => needSt.add(c)); });
-    needCr.forEach((c) => { if (!has(c)) add("bad", INFO[c].name + " 상자(" + c + ")가 없어요 — 메뉴에 필요해요"); });
-    needSt.forEach((c) => { if (!has(c)) add("bad", INFO[c].name + "(" + c + ")가 없어요 — 메뉴에 필요해요"); });
+    needCr.forEach((c) => { if (!has(c)) add("bad", INFO[c].name + " 상자가 없어요 — 메뉴에 필요해요"); });
+    needSt.forEach((c) => { if (!has(c)) add("bad", INFO[c].name + "가 없어요 — 메뉴에 필요해요"); });
     const usedCr = "tmprbgdohaky".split("").filter(has).filter((c) => !needCr.has(c));
-    if (usedCr.length) add("warn", "메뉴에 안 쓰는 상자: " + usedCr.map((c) => INFO[c].name).join(", "));
-    if (cur.plates > 0 && !has("H")) add("warn", "접시가 " + cur.plates + "개뿐인데 개수대(H)가 없어요");
-    if (cur.plates > 0 && !has("R")) add("warn", "접시가 " + cur.plates + "개뿐인데 반납구(R)가 없어요");
-    ["@", "$"].forEach((c) => { const n = all.split(c).length - 1; if (n && n !== 2) add("bad", "순간이동문 " + c + " 은 꼭 2칸이어야 해요 (지금 " + n + "칸)"); });
+    if (usedCr.length) add("warn", "메뉴에 안 쓰는 상자: " + usedCr.map((c) => INFO[c].name).join(", "), usedCr.flatMap(where));
+    if (cur.plates > 0 && !has("H")) add("warn", "접시가 " + cur.plates + "개뿐인데 개수대가 없어요");
+    if (cur.plates > 0 && !has("R")) add("warn", "접시가 " + cur.plates + "개뿐인데 반납구가 없어요");
+    ["@", "$"].forEach((c) => { const n = where(c).length; if (n && n !== 2) add("bad", "순간이동문은 같은 색끼리 꼭 2칸이어야 해요 (" + (c === "@" ? "보라" : "청록") + " 문이 지금 " + n + "칸)", where(c)); });
     const asked = new Set();
-    Object.keys(NEEDS).forEach((c) => { const [k, nm] = NEEDS[c]; if (has(c) && !cur[k] && !asked.has(k)) { asked.add(k); add("warn", nm + " 박자 설정(" + k + ")이 이 단계엔 없어요 — 요청 글에 같이 적혀서 Claude가 붙여줘요"); } });
-    if (has("_") && !cur.warp) add("warn", "낭떠러지가 있어요 (떨어지면 5초 뒤 다시 나와요)");
+    Object.keys(NEEDS).forEach((c) => { const [k, nm] = NEEDS[c]; if (has(c) && !cur[k] && !asked.has(k)) { asked.add(k); add("warn", nm + " 박자 설정이 이 단계엔 없어요 — 요청 글에 같이 적혀서 Claude가 붙여줘요"); } });
     // 리스폰
     const sp = cur.spawn || [];
     [0, 1].forEach((i) => {
       if (!sp[i]) return add("bad", "리스폰 " + (i + 1) + " 자리가 없어요");
       const [x, y] = fl(sp[i]);
-      if (!WALK.includes(m[y][x])) add("bad", "리스폰 " + (i + 1) + " (" + x + "," + y + ") 이 걸을 수 있는 바닥이 아니에요");
+      if (!WALK.includes(m[y][x])) add("bad", "리스폰 " + (i + 1) + " 이 걸을 수 있는 바닥이 아닌 곳(" + (INFO[m[y][x]] || {}).name + ")에 있어요", [[x, y]]);
     });
-    if (sp[0] && sp[1] && fl(sp[0]).join() === fl(sp[1]).join()) add("bad", "리스폰 1·2 가 같은 칸이에요");
+    if (sp[0] && sp[1] && fl(sp[0]).join() === fl(sp[1]).join()) add("bad", "리스폰 1·2 가 같은 칸이에요", [fl(sp[0])]);
     if (!cur.ext) add("warn", "소화기 자리가 없어요");
-    else if (!"C|".includes(m[cur.ext[1]][cur.ext[0]])) add("warn", "소화기는 조리대(C) 위에 둬요 — 지금 " + (INFO[m[cur.ext[1]][cur.ext[0]]] || {}).name);
+    else if (!"C|".includes(m[cur.ext[1]][cur.ext[0]])) add("warn", "소화기는 빈 조리대 위에 둬요 — 지금 " + (INFO[m[cur.ext[1]][cur.ext[0]]] || {}).name + " 위예요", [cur.ext]);
     // 닿는지: 리스폰에서 걸어갈 수 있는 바닥 옆에 장비가 있는지
-    const walkable = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS && ".~}{^v=@$X!:_/".includes(m[y][x]) && m[y][x] !== "_";
+    const walkable = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS && ".~}{^v=@$X!:/".includes(m[y][x]);
     const reach = new Set();
     sp.slice(0, 2).forEach((p) => {
       if (!p) return;
@@ -422,14 +763,11 @@ button:disabled { opacity: .45; cursor: default; }
     });
     const touch = (x, y) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => reach.has(x + dx + "," + (y + dy)));
     const lost = [];
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-      const c = m[y][x];
-      if ("KSFWTPHRtmprbgdohaky".includes(c) && !touch(x, y)) lost.push(INFO[c].name + "(" + x + "," + y + ")");
-    }
-    if (lost.length) add("warn", "아무도 손이 안 닿는 칸: " + lost.join(", ") + " (던져 넘기거나 장치로만 닿는다면 괜찮아요)");
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if ("KSFWTPHRtmprbgdohaky".includes(m[y][x]) && !touch(x, y)) lost.push([x, y]);
+    if (lost.length) add("warn", "아무도 손이 안 닿는 칸 " + lost.length + "개: " + lost.map(([x, y]) => INFO[m[y][x]].name).join(", ") + " (던져 넘기거나 장치로만 닿는다면 괜찮아요)", lost);
     const edge = [];
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if ((x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) && WALK.includes(m[y][x])) edge.push(x + "," + y);
-    if (edge.length) add("warn", "가장자리에 바닥이 뚫려 있어요: " + edge.join(" ") + " (밖으로 나가진 않지만 의도한 건지 확인)");
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if ((x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) && WALK.includes(m[y][x])) edge.push([x, y]);
+    if (edge.length) add("warn", "가장자리에 바닥이 뚫린 칸 " + edge.length + "개 (밖으로 나가진 않지만 의도한 건지 확인)", edge);
     if (!out.some((o) => o[0] === "bad")) add("good", "큰 문제 없어요");
     return out;
   }
@@ -442,17 +780,15 @@ button:disabled { opacity: .45; cursor: default; }
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (base.map[y][x] !== cur.map[y][x]) d.push("(" + x + "," + y + ")" + base.map[y][x] + "→" + cur.map[y][x]);
     return d;
   }
-  function request() {
+  function request(chk) {
     const L = [];
     const extra = $("extra").value.trim();
     if (!base) {
       L.push("[분식집 맵 에디터] 새 단계 " + cur.id + " 추가해줘 (duo/index.html STAGES 끝에)");
-      const o = Object.assign({}, cur); delete o._new;
-      L.push(lit(o));
+      L.push(lit(cur));
     } else {
       const ch = [];
-      const keys = ["name", "time", "plates", "duo", "menu", "tip", "floor", "spawn", "ext"];
-      keys.forEach((k) => { if (JSON.stringify(base[k]) !== JSON.stringify(cur[k])) ch.push(k + ": " + lit(cur[k])); });
+      ["name", "time", "plates", "duo", "menu", "tip", "floor", "spawn", "ext"].forEach((k) => { if (JSON.stringify(base[k]) !== JSON.stringify(cur[k])) ch.push(k + ": " + lit(cur[k])); });
       const cd = cellDiff();
       if (!cd.length && !ch.length) return extra ? "[분식집 맵 에디터] " + cur.id + "단계 \"" + cur.name + "\"\n" + extra : "(아직 바뀐 게 없어요)";
       L.push("[분식집 맵 에디터] " + cur.id + "단계 \"" + base.name + "\" 수정해줘 (duo/index.html STAGES)");
@@ -465,21 +801,23 @@ button:disabled { opacity: .45; cursor: default; }
     const need = [];
     Object.keys(NEEDS).forEach((c) => { const k = NEEDS[c][0]; if (cur.map.join("").includes(c) && !cur[k] && !need.includes(k)) need.push(k); });
     if (need.length) L.push("※ 장치 설정 필요: " + need.join(", ") + " (값은 비슷한 단계 참고해서 정해줘)");
-    const bad = check().filter((c) => c[0] === "bad").map((c) => c[1]);
+    const bad = chk.filter((c) => c[0] === "bad").map((c) => c[1]);
     if (bad.length) L.push("※ 에디터 점검 경고: " + bad.join(" / "));
     if (extra) L.push("덧붙임: " + extra);
     return L.join("\n");
   }
 
   function refresh() {
-    const ul = $("checks"); ul.innerHTML = "";
-    check().forEach(([lv, t]) => { const li = document.createElement("li"); li.className = lv; li.textContent = t; ul.appendChild(li); });
-    $("out").value = request();
+    const chk = check(), ul = $("checks");
+    ul.innerHTML = ""; probs = new Map();
+    chk.forEach(([lv, t, cells]) => {
+      const li = document.createElement("li"); li.className = lv; li.textContent = t; ul.appendChild(li);
+      cells.forEach(([x, y]) => { const k = x + "," + y; if (probs.get(k) !== "bad") probs.set(k, lv); });
+    });
+    $("out").value = request(chk);
+    draw();
   }
-  function commit(noSnap) {
-    drafts[cur.id] = cur; saveDrafts();
-    refresh();
-  }
+  function commit() { drafts[cur.id] = cur; saveDrafts(); refresh(); }
 
   // ===== 단계 고르기 =====
   function fillSelect() {
@@ -499,7 +837,7 @@ button:disabled { opacity: .45; cursor: default; }
     cur = clone(drafts[id] || base);
     if (!cur.spawn) cur.spawn = [[3.5, 4.5], [11.5, 4.5]];
     undo = []; redo = [];
-    fillFields(); drawAll(); fillSelect();
+    fillFields(); fillSelect(); refresh();
     try { localStorage.setItem(DRAFT_KEY + ".last", id); } catch (e) {}
   }
   $("stageSel").addEventListener("change", (e) => openStage(+e.target.value));
@@ -507,7 +845,7 @@ button:disabled { opacity: .45; cursor: default; }
     const id = Math.max(...ORIG.map((s) => s.id), ...Object.keys(drafts).map(Number)) + 1;
     const wallRow = "C".repeat(COLS), mid = "C" + ".".repeat(COLS - 2) + "C";
     drafts[id] = { id, name: "새 주방", time: 180, menu: ["gimbap"], stars: [15000, 34000, 62000], plates: 0, gap: [8, 11], extra: 10, duo: false,
-      ext: [7, 0], floor: ["#f4ecda", "#ece2cc"], spawn: [[3.5, 4.5], [11.5, 4.5]], tip: "",
+      ext: [7, 0], floor: BASE_FLOOR.slice(), spawn: [[3.5, 4.5], [11.5, 4.5]], tip: "",
       map: [wallRow, ...Array(ROWS - 2).fill(mid), wallRow] };
     saveDrafts(); openStage(id); toast(id + "단계를 새로 만들었어요");
   });
@@ -542,19 +880,26 @@ button:disabled { opacity: .45; cursor: default; }
       snapshot(); cur.map = map;
       const sp = t.match(/spawn:\s*(\[\[[^\n]*?\]\])/); if (sp) cur.spawn = JSON.parse(sp[1]);
       const ex = t.match(/ext:\s*(\[\s*\d+\s*,\s*\d+\s*\])/); if (ex) cur.ext = JSON.parse(ex[1]);
-      drawAll(); commit(); toast("불러왔어요");
+      commit(); toast("불러왔어요");
     } catch (e) { toast("맵 모양이 15×9 가 아니에요"); }
   });
 
   // ===== 시작 =====
-  buildPalette(); setTool("C"); loadDrafts();
-  loadStages().then((st) => {
-    ORIG = st;
-    let last = 1; try { last = +localStorage.getItem(DRAFT_KEY + ".last") || 1; } catch (e) {}
-    openStage(ORIG.some((s) => s.id === last) || drafts[last] ? last : ORIG[0].id);
-  }).catch((e) => {
-    document.querySelector("main").insertAdjacentHTML("afterbegin", '<div class="card" style="color:#d7372b">게임 파일(index.html)을 못 읽었어요. 에디터는 게임과 같은 주소(…/duo/editor.html)에서 열어야 해요. (' + e.message + ")</div>");
-  });
+  loadDrafts();
+  const start = () => {
+    buildPalette(); setTool("C");
+    loadStages().then((st) => {
+      ORIG = st;
+      let last = 1; try { last = +localStorage.getItem(DRAFT_KEY + ".last") || 1; } catch (e) {}
+      openStage(ORIG.some((s) => s.id === last) || drafts[last] ? last : ORIG[0].id);
+    }).catch((e) => {
+      const d = document.createElement("div"); d.className = "card"; d.style.color = "#d7372b";
+      d.textContent = "게임 파일(index.html)을 못 읽었어요. 에디터는 게임과 같은 주소(…/duo/editor.html)에서 열어야 해요. (" + e.message + ")";
+      document.querySelector("main").prepend(d);
+    });
+  };
+  // 이름표·번호가 게임 글꼴로 그려지게 글꼴을 기다려요 (오래 걸리면 그냥 시작)
+  Promise.race([document.fonts ? document.fonts.load("16px Jua") : Promise.resolve(), new Promise((r) => setTimeout(r, 1500))]).then(start, start);
 })();
 </script>
 </body>
