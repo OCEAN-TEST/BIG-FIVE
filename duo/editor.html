@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>분식집 맵 에디터</title>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&display=swap">
+<style>
+/* Layout: 위 간판 + 단계 고르기 → 왼쪽 15×9 주방 판(칠하기) / 오른쪽 도구 상자 → 아래 확인·요청 글 */
+:root {
+  --wall: #2a201a;
+  --wall-2: #33271f;
+  --sign: #ffcf33;
+  --chili: #d7372b;
+  --paper: #fff8e6;
+  --paper-2: #f3e9cf;
+  --ink: #241a14;
+  --soft: #74604f;
+  --ok: #2f8a4c;
+  --warn: #c9821a;
+  --font-sign: "Black Han Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-ui: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  min-height: 100vh; background: var(--wall); color: var(--ink); font-family: var(--font-ui);
+  background-image: repeating-linear-gradient(0deg, var(--wall) 0 38px, var(--wall-2) 38px 40px);
+  padding: 16px 16px 40px;
+}
+main { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+header.sign { background: var(--sign); border: 5px solid var(--chili); border-radius: 12px; padding: 8px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+header.sign h1 { margin: 0; font-family: var(--font-sign); font-weight: 400; color: var(--chili); font-size: clamp(26px, 6vw, 38px); line-height: 1.1; }
+header.sign .grow { flex: 1; }
+.card { background: var(--paper); border-radius: 10px; padding: 12px 14px; box-shadow: 0 6px 0 rgba(0,0,0,.3); }
+.card h2 { margin: 0 0 8px; font-size: 18px; font-weight: 400; color: var(--chili); }
+select, input, textarea, button { font: inherit; color: inherit; }
+select, input[type=text], input[type=number], textarea { background: #fff; border: 2px solid #d9c9a6; border-radius: 8px; padding: 5px 8px; min-width: 0; }
+textarea { width: 100%; resize: vertical; }
+button { cursor: pointer; border: 0; border-radius: 8px; padding: 7px 12px; background: var(--paper-2); box-shadow: 0 3px 0 rgba(0,0,0,.2); }
+button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.2); }
+button.main { background: var(--chili); color: #fff; }
+button.yel { background: var(--sign); }
+button:disabled { opacity: .45; cursor: default; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* 주방 판 */
+.boardwrap { overflow-x: auto; }
+#board {
+  display: grid; grid-template-columns: repeat(15, 1fr); gap: 2px; width: 100%; min-width: 450px;
+  background: #3b2e25; padding: 2px; border-radius: 6px; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.cell { position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: clamp(11px, 1.6vw, 17px); line-height: 1; border-radius: 3px; overflow: hidden; }
+.cell .g { pointer-events: none; text-align: center; }
+.cell .xy { position: absolute; left: 2px; top: 1px; font-size: 8px; opacity: .45; pointer-events: none; }
+.cell.changed::after { content: ""; position: absolute; inset: 0; border: 2px dashed #e0119a; border-radius: 3px; pointer-events: none; }
+.cell .mk { position: absolute; inset: 12%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: .85em; pointer-events: none; box-shadow: 0 0 0 2px #fff; }
+.cell .mk.p1 { background: #2f6fd6; }
+.cell .mk.p2 { background: #e0119a; }
+.cell .mk.ex { background: #d7372b; inset: 22%; border-radius: 5px; }
+.cell .mk.pt { background: #7a3fc9; inset: 28%; }
+.legendrow { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 14px; color: var(--soft); }
+.coords { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 8px; font-size: 15px; }
+
+/* 도구 상자 */
+.tools { display: flex; flex-direction: column; gap: 10px; }
+.group h3 { margin: 0 0 4px; font-size: 14px; font-weight: 400; color: var(--soft); }
+.pal { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 5px; }
+.pal button { display: flex; align-items: center; gap: 5px; padding: 4px 5px; font-size: 13px; text-align: left; box-shadow: 0 2px 0 rgba(0,0,0,.18); }
+.pal button .sw { flex: none; width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.pal button[aria-pressed=true] { outline: 3px solid var(--chili); outline-offset: 1px; background: #fff; }
+.now { font-size: 15px; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fields { display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; align-items: center; font-size: 15px; }
+.fields input[type=text], .fields input[type=number] { width: 100%; }
+.menus { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 14px; }
+.checks { margin: 0; padding-left: 18px; font-size: 15px; line-height: 1.55; }
+.checks li.bad { color: var(--chili); }
+.checks li.warn { color: var(--warn); }
+.checks li.good { color: var(--ok); }
+#out { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; min-height: 150px; }
+.note { font-size: 14px; color: var(--soft); margin: 6px 0 0; line-height: 1.5; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 10px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+<main>
+  <header class="sign">
+    <h1>분식집 맵 에디터</h1>
+    <span class="grow"></span>
+    <label class="row">단계
+      <select id="stageSel"></select>
+    </label>
+    <button type="button" id="newBtn">새 단계</button>
+    <button type="button" id="resetBtn">원래대로</button>
+  </header>
+
+  <div class="layout">
+    <section class="card">
+      <h2>주방 판 (가로 15 × 세로 9)</h2>
+      <div class="boardwrap"><div id="board" role="grid" aria-label="주방 칸"></div></div>
+      <div class="coords">
+        <span id="hover">칸 위에 올려보세요</span>
+        <span class="grow"></span>
+        <button type="button" id="undoBtn">되돌리기 (Ctrl+Z)</button>
+        <button type="button" id="redoBtn">다시하기</button>
+      </div>
+      <div class="legendrow">
+        <span>눌러서 칠하고, 끌면 여러 칸을 한 번에 칠해요.</span>
+        <span>오른쪽 클릭 = 바닥으로 지우기</span>
+        <span>분홍 점선 = 원래 맵에서 바뀐 칸</span>
+      </div>
+    </section>
+
+    <aside class="card tools">
+      <div class="now">지금 도구: <b id="toolName">-</b></div>
+      <div id="palette"></div>
+    </aside>
+  </div>
+
+  <div class="layout">
+    <section class="card">
+      <h2>단계 설정</h2>
+      <div class="fields">
+        <span>번호</span><span id="fId">-</span>
+        <label for="fName">이름</label><input type="text" id="fName">
+        <label for="fTime">시간(초)</label><input type="number" id="fTime" min="30" step="10">
+        <label for="fPlates">접시</label><input type="number" id="fPlates" min="0" step="1" title="0이면 무한">
+        <span>메뉴</span><div class="menus" id="fMenu"></div>
+        <label for="fDuo">둘이서만</label><span><input type="checkbox" id="fDuo"> 2명 이상만 시작</span>
+        <span>바닥 색</span><span class="row"><input type="color" id="fFloor0"><input type="color" id="fFloor1"></span>
+        <label for="fTip">설명</label><textarea id="fTip" rows="3"></textarea>
+      </div>
+      <p class="note">별 기준·주문 간격 같은 숫자나 기차·오토바이·트럭 박자는 여기서 안 바꿔요. 필요하면 요청 글에 말로 적어주세요.</p>
+    </section>
+
+    <section class="card">
+      <h2>점검</h2>
+      <ul class="checks" id="checks"></ul>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Claude에게 보낼 요청 글</h2>
+    <p class="note" style="margin:0 0 6px">바뀐 것만 짧게 담겨요. 아래에 하고 싶은 말을 덧붙인 뒤 복사해서 Claude에게 그대로 붙여넣으세요.</p>
+    <textarea id="extra" rows="2" placeholder="덧붙일 말 (예: 이 단계 시간을 조금 늘려줘)"></textarea>
+    <textarea id="out" rows="9" readonly></textarea>
+    <div class="row" style="margin-top:8px">
+      <button type="button" class="main" id="copyBtn">요청 글 복사</button>
+      <button type="button" class="yel" id="playBtn">게임에서 시험하기</button>
+      <button type="button" id="clearTestBtn">시험 맵 끄기</button>
+      <button type="button" id="importBtn">요청 글/맵 붙여넣어 불러오기</button>
+    </div>
+    <p class="note">"게임에서 시험하기"는 이 맵을 이 기기의 테스트 화면(<code>?test</code>)에만 끼워서 열어요. 친구 화면이나 실제 게임은 안 바뀌어요. 다 끝나면 "시험 맵 끄기"를 눌러요.</p>
+  </section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+  "use strict";
+  const COLS = 15, ROWS = 9;
+  const $ = (id) => document.getElementById(id);
+  const TEST_KEY = "oceantest-bunsik-v2-editor"; // 게임(index.html ?test)이 읽어가는 시험 맵
+  const DRAFT_KEY = "bunsik.editor.drafts";
+
+  // 칸 기호 → 이름·색·글자 (게임 index.html 의 "맵 기호" 설명과 같아요)
+  const TILES = [
+    { g: "기본", list: [
+      [".", "바닥", "#efe6d2", ""], ["C", "조리대", "#b98a5a", "조"], ["#", "벽", "#4a3a30", "", "#fff"],
+      ["|", "칸막이 조리대", "#f2c230", "칸"], ["K", "도마", "#e9d3a5", "도"], ["S", "화구+냄비", "#555c63", "화", "#fff"],
+      ["F", "튀김기", "#d9a520", "튀"], ["W", "내는 곳", "#3f9d5a", "내", "#fff"], ["T", "쓰레기통", "#6b6b6b", "쓰", "#fff"],
+      ["P", "접시", "#f7f7f7", "접"], ["H", "개수대", "#7fc4e6", "개"], ["R", "반납구", "#5e8fb8", "반", "#fff"],
+      [">", "컨베이어(→)", "#333", "▶", "#ffcf33"], ["Z", "쥐구멍", "#2b211b", "쥐", "#fff"] ] },
+    { g: "재료 상자", list: [
+      ["t", "떡", "#c0392b", "떡", "#fff"], ["m", "어묵", "#c0392b", "어", "#fff"], ["p", "파", "#c0392b", "파", "#fff"],
+      ["r", "라면 사리", "#c0392b", "면", "#fff"], ["b", "밥", "#c0392b", "밥", "#fff"], ["g", "김", "#c0392b", "김", "#fff"],
+      ["d", "단무지", "#c0392b", "단", "#fff"], ["o", "오징어", "#c0392b", "오", "#fff"], ["h", "핫도그", "#c0392b", "핫", "#fff"],
+      ["a", "감자", "#c0392b", "감", "#fff"], ["k", "케첩", "#c0392b", "케", "#fff"], ["y", "머스타드", "#c0392b", "머", "#fff"] ] },
+    { g: "장치 바닥", list: [
+      ["~", "얼음", "#bfe6f5", "❄"], ["}", "무빙워크 →", "#9fb3c2", "→"], ["{", "무빙워크 ←", "#9fb3c2", "←"],
+      ["^", "무빙워크 ↑", "#9fb3c2", "↑"], ["v", "무빙워크 ↓", "#9fb3c2", "↓"], ["=", "오토바이 길", "#8a8a8a", "═", "#fff"],
+      ["@", "순간이동문 1", "#a77be0", "@", "#fff"], ["$", "순간이동문 2", "#3cb7b0", "$", "#fff"],
+      ["X", "움직이는 칸막이(세로)", "#e8d14a", "X"], ["Y", "움직이는 칸막이(가로)", "#e8d14a", "Y"],
+      ["!", "철길", "#7a6a5a", "‖", "#fff"], [":", "차단봉 칸", "#d9c48a", ":"], ["%", "철길 끝", "#5b4b3b", "%", "#fff"],
+      ["_", "낭떠러지", "#111", "", "#fff"], ["/", "트럭 사이 틈", "#3a3f44", "/", "#fff"] ] }
+  ];
+  const INFO = {};
+  TILES.forEach((grp) => grp.list.forEach(([ch, name, bg, txt, fg]) => (INFO[ch] = { ch, name, bg, txt, fg: fg || "#241a14" })));
+  const MARKS = [["@sp1", "리스폰 1 (1P)", "#2f6fd6", "1"], ["@sp2", "리스폰 2 (2P)", "#e0119a", "2"], ["@ext", "소화기", "#d7372b", "🧯"]];
+  const WALK = ".~}{^v";
+  // 장치마다 단계에 따로 붙어야 하는 설정 (없으면 게임에서 안 움직여요)
+  const NEEDS = { "=": ["road", "오토바이 길"], "!": ["rail", "철길"], ":": ["rail", "차단봉"], "%": ["rail", "철길 끝"], "/": ["truck", "트럭 틈"], X: ["gate", "움직이는 칸막이"], Y: ["gate", "움직이는 칸막이"] };
+
+  const DISH = {
+    gimbap: { name: "김밥", crates: "bgd", st: "KP" }, tteokbokki: { name: "떡볶이", crates: "tm", st: "KSP" },
+    ramen: { name: "라면", crates: "rp", st: "KSP" }, twigim: { name: "오징어튀김", crates: "o", st: "KFP" },
+    corndog_k: { name: "케첩 핫도그", crates: "hk", st: "FP" }, corndog_m: { name: "머스타드 핫도그", crates: "hy", st: "FP" },
+    fries: { name: "감자튀김", crates: "a", st: "KFP" }
+  };
+
+  let ORIG = [];      // 게임 파일에 적힌 그대로의 단계들
+  let drafts = {};    // id → 고친 단계 (이 기기에 저장)
+  let cur = null;     // 지금 고치는 단계
+  let base = null;    // 비교 기준 (원래 단계, 새 단계면 null)
+  let tool = "C";
+  let undo = [], redo = [];
+
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  const toast = (m) => { const t = $("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("on"), 1800); };
+  const loadDrafts = () => { try { drafts = JSON.parse(localStorage.getItem(DRAFT_KEY)) || {}; } catch (e) { drafts = {}; } };
+  const saveDrafts = () => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts)); } catch (e) {} };
+
+  // ===== 게임 파일에서 단계 읽어오기 =====
+  async function loadStages() {
+    const txt = await (await fetch("index.html", { cache: "no-store" })).text();
+    const a = txt.indexOf("const STAGES = ["), b = txt.indexOf("\n  ];", a);
+    if (a < 0 || b < 0) throw new Error("STAGES 를 못 찾았어요");
+    return new Function("return " + txt.slice(a + "const STAGES = ".length, b + 4))();
+  }
+
+  // ===== 판 그리기 =====
+  const board = $("board");
+  const cells = [];
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    const c = document.createElement("div");
+    c.className = "cell"; c.dataset.x = x; c.dataset.y = y; c.setAttribute("role", "gridcell");
+    board.appendChild(c); cells.push(c);
+  }
+  const cellAt = (x, y) => cells[y * COLS + x];
+  const chAt = (x, y) => cur.map[y][x];
+  const fl = (p) => [Math.floor(p[0]), Math.floor(p[1])];
+
+  function drawCell(x, y) {
+    const c = cellAt(x, y), ch = chAt(x, y), inf = INFO[ch] || { bg: "#f0f", txt: ch, fg: "#000", name: "?" };
+    let bg = inf.bg;
+    if (ch === ".") bg = (x + y) % 2 ? cur.floor[1] : cur.floor[0];
+    c.style.background = bg; c.style.color = inf.fg;
+    c.title = "(" + x + "," + y + ") " + inf.name;
+    let html = '<span class="xy">' + x + "," + y + '</span><span class="g">' + inf.txt + "</span>";
+    const sp = cur.spawn || [];
+    if (sp[0] && fl(sp[0])[0] === x && fl(sp[0])[1] === y) html += '<span class="mk p1">1</span>';
+    if (sp[1] && fl(sp[1])[0] === x && fl(sp[1])[1] === y) html += '<span class="mk p2">2</span>';
+    if (cur.ext && cur.ext[0] === x && cur.ext[1] === y) html += '<span class="mk ex">🧯</span>';
+    if (cur.warp) {
+      const w = cur.warp, spots = [w.pit, ...w.pairs.flatMap((p) => [...p.L, ...p.R])];
+      if (spots.some((s) => s[0] === x && s[1] === y)) html += '<span class="mk pt" title="순간이동문 자리 후보">✦</span>';
+    }
+    c.innerHTML = html;
+    c.classList.toggle("changed", !!base && base.map[y] && base.map[y][x] !== ch);
+  }
+  function drawAll() { for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) drawCell(x, y); refresh(); }
+
+  // ===== 도구 상자 =====
+  function buildPalette() {
+    const box = $("palette");
+    const mk = (title, items) => {
+      const g = document.createElement("div"); g.className = "group";
+      g.innerHTML = "<h3>" + title + "</h3>";
+      const p = document.createElement("div"); p.className = "pal";
+      items.forEach(([key, name, bg, txt, fg]) => {
+        const b = document.createElement("button"); b.type = "button"; b.dataset.tool = key;
+        b.innerHTML = '<span class="sw" style="background:' + bg + ";color:" + (fg || "#241a14") + '">' + (txt || "") + "</span>" + name + (key.length === 1 && key !== "." ? " <small style='opacity:.5'>" + key + "</small>" : "");
+        b.addEventListener("click", () => setTool(key));
+        p.appendChild(b);
+      });
+      g.appendChild(p); box.appendChild(g);
+    };
+    mk("자리 표시", MARKS.map(([k, n, bg, t]) => [k, n, bg, t, "#fff"]));
+    TILES.forEach((grp) => mk(grp.g, grp.list));
+  }
+  function setTool(k) {
+    tool = k;
+    document.querySelectorAll("[data-tool]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tool === k)));
+    const m = MARKS.find((v) => v[0] === k);
+    $("toolName").textContent = m ? m[1] : INFO[k].name + " (" + k + ")";
+  }
+
+  // ===== 칠하기 =====
+  function snapshot() { undo.push(JSON.stringify(cur)); if (undo.length > 200) undo.shift(); redo = []; }
+  function setCh(x, y, ch) {
+    if (chAt(x, y) === ch) return false;
+    const r = cur.map[y]; cur.map[y] = r.slice(0, x) + ch + r.slice(x + 1);
+    drawCell(x, y); return true;
+  }
+  function apply(x, y, erase) {
+    if (erase) return setCh(x, y, ".");
+    if (tool === "@sp1" || tool === "@sp2") {
+      const i = tool === "@sp1" ? 0 : 1, old = cur.spawn[i] && fl(cur.spawn[i]);
+      cur.spawn[i] = [x + 0.5, y + 0.5];
+      if (old) drawCell(old[0], old[1]);
+      drawCell(x, y); return true;
+    }
+    if (tool === "@ext") {
+      const old = cur.ext; cur.ext = [x, y];
+      if (old) drawCell(old[0], old[1]);
+      drawCell(x, y); return true;
+    }
+    return setCh(x, y, tool);
+  }
+  let painting = false, erasing = false, lastKey = "", dirty = false;
+  const cellFromEvent = (e) => { const el = document.elementFromPoint(e.clientX, e.clientY); return el && el.closest && el.closest(".cell"); };
+  board.addEventListener("contextmenu", (e) => e.preventDefault());
+  board.addEventListener("pointerdown", (e) => {
+    const c = cellFromEvent(e); if (!c) return;
+    e.preventDefault();
+    snapshot();
+    painting = true; erasing = e.button === 2; lastKey = ""; dirty = false;
+    board.setPointerCapture(e.pointerId);
+    paintAt(c);
+  });
+  board.addEventListener("pointermove", (e) => {
+    const c = cellFromEvent(e);
+    if (c) { const x = +c.dataset.x, y = +c.dataset.y, inf = INFO[chAt(x, y)]; $("hover").textContent = "(" + x + "," + y + ") " + (inf ? inf.name : chAt(x, y)); }
+    if (painting && c && !tool.startsWith("@")) paintAt(c);
+  });
+  const endPaint = () => {
+    if (!painting) return;
+    painting = false;
+    if (!dirty) undo.pop(); else commit();
+  };
+  board.addEventListener("pointerup", endPaint);
+  board.addEventListener("pointercancel", endPaint);
+  function paintAt(c) {
+    const k = c.dataset.x + "," + c.dataset.y;
+    if (k === lastKey) return; lastKey = k;
+    if (apply(+c.dataset.x, +c.dataset.y, erasing)) dirty = true;
+  }
+  function restore(s) { cur = JSON.parse(s); fillFields(); drawAll(); commit(true); }
+  function doUndo() { if (!undo.length) return; redo.push(JSON.stringify(cur)); restore(undo.pop()); }
+  function doRedo() { if (!redo.length) return; undo.push(JSON.stringify(cur)); restore(redo.pop()); }
+  $("undoBtn").addEventListener("click", doUndo);
+  $("redoBtn").addEventListener("click", doRedo);
+  document.addEventListener("keydown", (e) => {
+    if (e.target.matches("input, textarea, select")) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? doRedo() : doUndo(); }
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") { e.preventDefault(); doRedo(); }
+  });
+
+  // ===== 단계 설정 칸 =====
+  const menuBox = $("fMenu");
+  Object.keys(DISH).forEach((k) => {
+    const l = document.createElement("label");
+    l.innerHTML = '<input type="checkbox" value="' + k + '"> ' + DISH[k].name;
+    menuBox.appendChild(l);
+  });
+  function fillFields() {
+    $("fId").textContent = cur.id + "단계" + (base ? "" : " (새 단계)");
+    $("fName").value = cur.name || "";
+    $("fTime").value = cur.time;
+    $("fPlates").value = cur.plates || 0;
+    $("fDuo").checked = !!cur.duo;
+    $("fTip").value = cur.tip || "";
+    $("fFloor0").value = cur.floor[0]; $("fFloor1").value = cur.floor[1];
+    menuBox.querySelectorAll("input").forEach((i) => (i.checked = cur.menu.includes(i.value)));
+  }
+  function readFields() {
+    cur.name = $("fName").value.trim();
+    cur.time = Math.max(30, Math.round(+$("fTime").value || 180));
+    cur.plates = Math.max(0, Math.round(+$("fPlates").value || 0));
+    cur.duo = $("fDuo").checked;
+    cur.tip = $("fTip").value.trim();
+    cur.floor = [$("fFloor0").value, $("fFloor1").value];
+    cur.menu = [...menuBox.querySelectorAll("input:checked")].map((i) => i.value);
+  }
+  document.querySelectorAll(".fields input, .fields textarea").forEach((el) => {
+    el.addEventListener("focus", () => (el._snap = JSON.stringify(cur)));
+    el.addEventListener("change", () => { if (el._snap) { undo.push(el._snap); redo = []; el._snap = JSON.stringify(cur); } readFields(); if (el.type === "color") drawAll(); commit(); });
+  });
+  $("extra").addEventListener("input", () => refresh());
+
+  // ===== 점검 =====
+  function check() {
+    const out = [], m = cur.map, all = m.join("");
+    const has = (c) => all.includes(c);
+    const add = (lv, t) => out.push([lv, t]);
+    if (!cur.name) add("warn", "이름이 비어 있어요");
+    if (!cur.menu.length) add("bad", "메뉴를 하나 이상 골라요");
+    if (!has("W")) add("bad", "내는 곳(W)이 없어요");
+    if (!has("T")) add("warn", "쓰레기통(T)이 없어요");
+    const needCr = new Set(), needSt = new Set();
+    cur.menu.forEach((d) => { [...DISH[d].crates].forEach((c) => needCr.add(c)); [...DISH[d].st].forEach((c) => needSt.add(c)); });
+    needCr.forEach((c) => { if (!has(c)) add("bad", INFO[c].name + " 상자(" + c + ")가 없어요 — 메뉴에 필요해요"); });
+    needSt.forEach((c) => { if (!has(c)) add("bad", INFO[c].name + "(" + c + ")가 없어요 — 메뉴에 필요해요"); });
+    const usedCr = "tmprbgdohaky".split("").filter(has).filter((c) => !needCr.has(c));
+    if (usedCr.length) add("warn", "메뉴에 안 쓰는 상자: " + usedCr.map((c) => INFO[c].name).join(", "));
+    if (cur.plates > 0 && !has("H")) add("warn", "접시가 " + cur.plates + "개뿐인데 개수대(H)가 없어요");
+    if (cur.plates > 0 && !has("R")) add("warn", "접시가 " + cur.plates + "개뿐인데 반납구(R)가 없어요");
+    ["@", "$"].forEach((c) => { const n = all.split(c).length - 1; if (n && n !== 2) add("bad", "순간이동문 " + c + " 은 꼭 2칸이어야 해요 (지금 " + n + "칸)"); });
+    const asked = new Set();
+    Object.keys(NEEDS).forEach((c) => { const [k, nm] = NEEDS[c]; if (has(c) && !cur[k] && !asked.has(k)) { asked.add(k); add("warn", nm + " 박자 설정(" + k + ")이 이 단계엔 없어요 — 요청 글에 같이 적혀서 Claude가 붙여줘요"); } });
+    if (has("_") && !cur.warp) add("warn", "낭떠러지가 있어요 (떨어지면 5초 뒤 다시 나와요)");
+    // 리스폰
+    const sp = cur.spawn || [];
+    [0, 1].forEach((i) => {
+      if (!sp[i]) return add("bad", "리스폰 " + (i + 1) + " 자리가 없어요");
+      const [x, y] = fl(sp[i]);
+      if (!WALK.includes(m[y][x])) add("bad", "리스폰 " + (i + 1) + " (" + x + "," + y + ") 이 걸을 수 있는 바닥이 아니에요");
+    });
+    if (sp[0] && sp[1] && fl(sp[0]).join() === fl(sp[1]).join()) add("bad", "리스폰 1·2 가 같은 칸이에요");
+    if (!cur.ext) add("warn", "소화기 자리가 없어요");
+    else if (!"C|".includes(m[cur.ext[1]][cur.ext[0]])) add("warn", "소화기는 조리대(C) 위에 둬요 — 지금 " + (INFO[m[cur.ext[1]][cur.ext[0]]] || {}).name);
+    // 닿는지: 리스폰에서 걸어갈 수 있는 바닥 옆에 장비가 있는지
+    const walkable = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS && ".~}{^v=@$X!:_/".includes(m[y][x]) && m[y][x] !== "_";
+    const reach = new Set();
+    sp.slice(0, 2).forEach((p) => {
+      if (!p) return;
+      const q = [fl(p)];
+      while (q.length) {
+        const [x, y] = q.pop(), k = x + "," + y;
+        if (reach.has(k) || !walkable(x, y)) continue;
+        reach.add(k);
+        q.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+      }
+    });
+    const touch = (x, y) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => reach.has(x + dx + "," + (y + dy)));
+    const lost = [];
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      const c = m[y][x];
+      if ("KSFWTPHRtmprbgdohaky".includes(c) && !touch(x, y)) lost.push(INFO[c].name + "(" + x + "," + y + ")");
+    }
+    if (lost.length) add("warn", "아무도 손이 안 닿는 칸: " + lost.join(", ") + " (던져 넘기거나 장치로만 닿는다면 괜찮아요)");
+    const edge = [];
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if ((x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) && WALK.includes(m[y][x])) edge.push(x + "," + y);
+    if (edge.length) add("warn", "가장자리에 바닥이 뚫려 있어요: " + edge.join(" ") + " (밖으로 나가진 않지만 의도한 건지 확인)");
+    if (!out.some((o) => o[0] === "bad")) add("good", "큰 문제 없어요");
+    return out;
+  }
+
+  // ===== 요청 글 =====
+  const lit = (v) => JSON.stringify(v).replace(/"(\w+)":/g, "$1: ").replace(/,(?=["\[\d{-])/g, ", ");
+  function cellDiff() {
+    if (!base) return [];
+    const d = [];
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (base.map[y][x] !== cur.map[y][x]) d.push("(" + x + "," + y + ")" + base.map[y][x] + "→" + cur.map[y][x]);
+    return d;
+  }
+  function request() {
+    const L = [];
+    const extra = $("extra").value.trim();
+    if (!base) {
+      L.push("[분식집 맵 에디터] 새 단계 " + cur.id + " 추가해줘 (duo/index.html STAGES 끝에)");
+      const o = Object.assign({}, cur); delete o._new;
+      L.push(lit(o));
+    } else {
+      const ch = [];
+      const keys = ["name", "time", "plates", "duo", "menu", "tip", "floor", "spawn", "ext"];
+      keys.forEach((k) => { if (JSON.stringify(base[k]) !== JSON.stringify(cur[k])) ch.push(k + ": " + lit(cur[k])); });
+      const cd = cellDiff();
+      if (!cd.length && !ch.length) return extra ? "[분식집 맵 에디터] " + cur.id + "단계 \"" + cur.name + "\"\n" + extra : "(아직 바뀐 게 없어요)";
+      L.push("[분식집 맵 에디터] " + cur.id + "단계 \"" + base.name + "\" 수정해줘 (duo/index.html STAGES)");
+      if (cd.length) {
+        L.push("바뀐 칸 " + cd.length + "개 (x,y)원래→새: " + (cd.length <= 12 ? cd.join(" ") : "아래 map 통째로"));
+        L.push("map: " + lit(cur.map));
+      }
+      ch.forEach((c) => L.push(c));
+    }
+    const need = [];
+    Object.keys(NEEDS).forEach((c) => { const k = NEEDS[c][0]; if (cur.map.join("").includes(c) && !cur[k] && !need.includes(k)) need.push(k); });
+    if (need.length) L.push("※ 장치 설정 필요: " + need.join(", ") + " (값은 비슷한 단계 참고해서 정해줘)");
+    const bad = check().filter((c) => c[0] === "bad").map((c) => c[1]);
+    if (bad.length) L.push("※ 에디터 점검 경고: " + bad.join(" / "));
+    if (extra) L.push("덧붙임: " + extra);
+    return L.join("\n");
+  }
+
+  function refresh() {
+    const ul = $("checks"); ul.innerHTML = "";
+    check().forEach(([lv, t]) => { const li = document.createElement("li"); li.className = lv; li.textContent = t; ul.appendChild(li); });
+    $("out").value = request();
+  }
+  function commit(noSnap) {
+    drafts[cur.id] = cur; saveDrafts();
+    refresh();
+  }
+
+  // ===== 단계 고르기 =====
+  function fillSelect() {
+    const sel = $("stageSel"); sel.innerHTML = "";
+    const ids = [...new Set([...ORIG.map((s) => s.id), ...Object.keys(drafts).map(Number)])].sort((a, b) => a - b);
+    ids.forEach((id) => {
+      const o = ORIG.find((s) => s.id === id), d = drafts[id];
+      const op = document.createElement("option"); op.value = id;
+      const edited = d && (!o || JSON.stringify(d) !== JSON.stringify(o));
+      op.textContent = id + "단계 · " + ((d || o).name || "이름 없음") + (o ? "" : " (새)") + (edited ? " ✎" : "");
+      sel.appendChild(op);
+    });
+    if (cur) sel.value = cur.id;
+  }
+  function openStage(id) {
+    base = ORIG.find((s) => s.id === id) || null;
+    cur = clone(drafts[id] || base);
+    if (!cur.spawn) cur.spawn = [[3.5, 4.5], [11.5, 4.5]];
+    undo = []; redo = [];
+    fillFields(); drawAll(); fillSelect();
+    try { localStorage.setItem(DRAFT_KEY + ".last", id); } catch (e) {}
+  }
+  $("stageSel").addEventListener("change", (e) => openStage(+e.target.value));
+  $("newBtn").addEventListener("click", () => {
+    const id = Math.max(...ORIG.map((s) => s.id), ...Object.keys(drafts).map(Number)) + 1;
+    const wallRow = "C".repeat(COLS), mid = "C" + ".".repeat(COLS - 2) + "C";
+    drafts[id] = { id, name: "새 주방", time: 180, menu: ["gimbap"], stars: [15000, 34000, 62000], plates: 0, gap: [8, 11], extra: 10, duo: false,
+      ext: [7, 0], floor: ["#f4ecda", "#ece2cc"], spawn: [[3.5, 4.5], [11.5, 4.5]], tip: "",
+      map: [wallRow, ...Array(ROWS - 2).fill(mid), wallRow] };
+    saveDrafts(); openStage(id); toast(id + "단계를 새로 만들었어요");
+  });
+  $("resetBtn").addEventListener("click", () => {
+    if (!confirm(base ? "이 단계를 게임에 적힌 원래 모습으로 돌릴까요?" : "이 새 단계를 지울까요?")) return;
+    delete drafts[cur.id]; saveDrafts();
+    openStage(base ? base.id : ORIG[0].id);
+  });
+
+  // ===== 복사·시험·불러오기 =====
+  $("copyBtn").addEventListener("click", async () => {
+    const t = $("out").value;
+    try { await navigator.clipboard.writeText(t); toast("복사했어요. Claude에게 붙여넣으세요"); }
+    catch (e) { $("out").select(); document.execCommand("copy"); toast("복사했어요"); }
+  });
+  $("playBtn").addEventListener("click", () => {
+    const o = clone(cur);
+    o.name = "✎ " + (o.name || "시험 맵");
+    try { localStorage.setItem(TEST_KEY, JSON.stringify(o)); } catch (e) { return toast("저장이 막혀 있어요"); }
+    window.open("./?test", "_blank");
+    toast(cur.id + "단계를 시험 맵으로 끼웠어요");
+  });
+  $("clearTestBtn").addEventListener("click", () => { try { localStorage.removeItem(TEST_KEY); } catch (e) {} toast("시험 맵을 껐어요"); });
+  $("importBtn").addEventListener("click", () => {
+    const t = prompt("요청 글이나 map: [...] 줄을 붙여넣으세요");
+    if (!t) return;
+    const mm = t.match(/map:\s*(\[[^\]]*\])/);
+    if (!mm) return toast("map: [...] 를 못 찾았어요");
+    try {
+      const map = JSON.parse(mm[1]);
+      if (map.length !== ROWS || map.some((r) => r.length !== COLS)) throw 0;
+      snapshot(); cur.map = map;
+      const sp = t.match(/spawn:\s*(\[\[[^\n]*?\]\])/); if (sp) cur.spawn = JSON.parse(sp[1]);
+      const ex = t.match(/ext:\s*(\[\s*\d+\s*,\s*\d+\s*\])/); if (ex) cur.ext = JSON.parse(ex[1]);
+      drawAll(); commit(); toast("불러왔어요");
+    } catch (e) { toast("맵 모양이 15×9 가 아니에요"); }
+  });
+
+  // ===== 시작 =====
+  buildPalette(); setTool("C"); loadDrafts();
+  loadStages().then((st) => {
+    ORIG = st;
+    let last = 1; try { last = +localStorage.getItem(DRAFT_KEY + ".last") || 1; } catch (e) {}
+    openStage(ORIG.some((s) => s.id === last) || drafts[last] ? last : ORIG[0].id);
+  }).catch((e) => {
+    document.querySelector("main").insertAdjacentHTML("afterbegin", '<div class="card" style="color:#d7372b">게임 파일(index.html)을 못 읽었어요. 에디터는 게임과 같은 주소(…/duo/editor.html)에서 열어야 해요. (' + e.message + ")</div>");
+  });
+})();
+</script>
+</body>
+</html>

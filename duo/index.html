@@ -691,6 +691,16 @@ body.modal { overflow: hidden; }
       tip: "트럭 두 대가 나란히 달려요. 왼쪽 트럭엔 핫도그·감자·도마, 오른쪽 트럭엔 튀김기·소스·접시·내는 곳이 있어요. 트럭이 붙어 있을 땐 가운데 발판으로 건너고, 빵빵 소리가 나면 곧 벌어지니 발판에서 내려와요. 벌어진 틈으로 떨어지면 뒤로 날아가서 5초 뒤에 돌아와요. 벌어져 있을 땐 재료를 던져서 넘겨요. 핫도그는 튀긴 다음 접시에 담고 케첩이나 머스타드를 뿌려요.",
       map: ["ChaCCCC/CFFFCCC", "C....../......C", "K....../......W", "K....../......W", "C..CC../..CC..C", "C....../......P", "T....../......C", "C....../......T", "CCCCCCC/CCCkyCC"] }
   ];
+  // 맵 에디터(editor.html)의 "게임에서 시험하기": ?test 화면에서만 그 단계를 이 기기에 저장된 맵으로 바꿔 끼워요
+  if (TEST_OPEN) {
+    try {
+      const ed = JSON.parse(localStorage.getItem(PREFIX + "editor"));
+      if (ed && ed.id && Array.isArray(ed.map) && ed.map.length === ROWS && ed.map.every((r) => typeof r === "string" && r.length === COLS)) {
+        const i = STAGES.findIndex((s) => s.id === ed.id);
+        if (i >= 0) STAGES[i] = Object.assign({}, STAGES[i], ed); else STAGES.push(ed);
+      }
+    } catch (e) {}
+  }
   const SOLO_STAR = 0.6;
   // 3명·4명: 주문이 더 빨리·더 급하게 오고, 별 기준이 높아요. 접시도 모자라서 설거지를 해야 해요
   const MAX_P = 4;
