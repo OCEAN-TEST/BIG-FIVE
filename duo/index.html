@@ -5900,12 +5900,12 @@ body.modal { overflow: hidden; }
   // ===== 지갑·상점: 판이 끝나면 내 몫(번 돈 ÷ 사람 수)의 10%를 이 기기에 모아요. 모은 돈으로 상점에서 물건을 사요 =====
   const WALLET_KEY = "bunsik.wallet", SAVE_RATE = 0.1;
   const SHOP = [ // gear: 사면 늘 써요 (아주 약간 빨라져요). tag: 이름표 꾸미기 (산 것 중 하나를 골라 써요)
-    { id: "sp", kind: "gear", name: "뽀득 수세미", desc: "설거지가 5% 빨라져요", price: 8000 },
-    { id: "kn", kind: "gear", name: "잘 드는 식칼", desc: "재료 썰기가 5% 빨라져요", price: 12000 },
-    { id: "gold", kind: "tag", name: "금테 이름표", desc: "이름표 테두리가 반짝이는 금색", price: 3000 },
-    { id: "star", kind: "tag", name: "별 이름표", desc: "이름 양옆에 별", price: 4000 },
-    { id: "heart", kind: "tag", name: "하트 이름표", desc: "이름 양옆에 하트", price: 4000 },
-    { id: "rainbow", kind: "tag", name: "무지개 이름표", desc: "테두리가 무지개색", price: 6000 }
+    { id: "sp", kind: "gear", name: "뽀득 수세미", desc: "설거지가 5% 빨라져요", price: 50000 },
+    { id: "kn", kind: "gear", name: "잘 드는 식칼", desc: "재료 썰기가 5% 빨라져요", price: 70000 },
+    { id: "gold", kind: "tag", name: "금테 이름표", desc: "이름표 테두리가 반짝이는 금색", price: 20000 },
+    { id: "star", kind: "tag", name: "별 이름표", desc: "이름 양옆에 별", price: 25000 },
+    { id: "heart", kind: "tag", name: "하트 이름표", desc: "이름 양옆에 하트", price: 25000 },
+    { id: "rainbow", kind: "tag", name: "무지개 이름표", desc: "테두리가 무지개색", price: 35000 }
   ];
   const TAGS = SHOP.filter((x) => x.kind === "tag").map((x) => x.id);
   let wallet = (() => { try { const w = JSON.parse(localStorage.getItem(WALLET_KEY)) || {}; return { money: Math.max(0, Math.floor(+w.money || 0)), own: w.own || {}, tag: TAGS.includes(w.tag) ? w.tag : "" }; } catch (e) { return { money: 0, own: {}, tag: "" }; } })();
