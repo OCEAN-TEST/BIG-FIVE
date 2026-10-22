@@ -70,6 +70,17 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sign); outl
 .pgap { flex: 1 1 auto; min-height: 32vh; min-height: 32dvh; }
 .ppanel { width: min(560px, 100%); background: rgba(255,248,230,.95); border: 4px solid var(--chili); border-radius: 18px; box-shadow: 0 8px 0 rgba(60,20,10,.35); padding: 12px; display: flex; flex-direction: column; gap: 9px; }
 .ppanel #hostBtn { font-size: 24px; padding: 11px 12px; }
+.pmain { display: flex; gap: 10px; }
+.pmain .btn { flex: 1 1 0; font-size: 24px; padding: 11px 12px; }
+.pplay { display: flex; flex-direction: column; gap: 9px; }
+.shopmoney { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 6px 0 2px; padding: 10px 14px; background: #fff1cc; border: 2px solid var(--sign); border-radius: 12px; font-family: var(--font-ui); font-size: 18px; color: var(--ink); }
+.shopmoney b { font-weight: 400; font-size: 26px; color: var(--chili); }
+.shopnote { display: block; font-size: 12.5px; color: var(--soft); line-height: 1.45; margin: 4px 0 2px; }
+.shoprow .btn { flex: none; font-size: 16px; padding: 7px 12px; white-space: nowrap; }
+.shoprow .btn.on { background: #2f9e4f; box-shadow: 0 4px 0 #1e6b35; }
+.earn { margin: 6px auto 2px; padding: 8px 14px; background: #fff1cc; border: 2px solid var(--sign); border-radius: 12px; display: inline-flex; flex-direction: column; align-items: center; gap: 1px; }
+.earn .plus { font-family: var(--font-ui); font-size: 26px; color: #2f9e4f; }
+.earn small { font-size: 12.5px; color: var(--soft); }
 .ppanel .status { margin: -2px 0 0; }
 .ppanel .status:empty { display: none; }
 .ppanel .join { align-items: stretch; }
@@ -85,7 +96,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sign); outl
   .pkick { font-size: 13px; margin-bottom: 2px; padding: 0 12px; }
   .pgap { min-height: 16vh; }
   .ppanel { padding: 8px 10px; gap: 6px; border-width: 3px; }
-  .ppanel #hostBtn { font-size: 19px; padding: 6px 10px; }
+  .ppanel #hostBtn, .pmain .btn { font-size: 19px; padding: 6px 10px; }
   .ppanel .join input { font-size: 20px; padding: 2px 6px; }
   .ppanel .join .btn { font-size: 18px; padding: 6px 12px; }
   .ppanel .lobbybar .btn { font-size: 14px; padding: 4px 6px; }
@@ -420,6 +431,11 @@ body.modal { overflow: hidden; }
 
   <section class="ppanel" id="ppanel" aria-label="방 만들기와 들어가기">
     <p class="status" id="no3dNote" hidden>이 기기(브라우저)는 3D 화면이 안 돼서 게임을 할 수 없어요. 다른 브라우저나 기기로 열어 주세요.</p>
+    <div class="pmain" id="pMain">
+      <button class="btn" id="playBtn" type="button">게임 시작</button>
+      <button class="btn alt" id="shopBtn" type="button" aria-haspopup="dialog" aria-controls="shopPanel">상점</button>
+    </div>
+    <div class="pplay" id="pPlay" hidden>
     <button class="btn" id="hostBtn" type="button">방 만들기</button>
     <p class="status" id="hostStatus" aria-live="polite"></p>
     <form class="join" id="joinForm">
@@ -430,6 +446,10 @@ body.modal { overflow: hidden; }
     <p class="status" id="joinStatus" aria-live="polite"></p>
     <div class="lobbybar">
       <button class="btn watch" id="watchBtn" type="button">관전만 하기</button>
+      <button class="btn watch" id="playBack" type="button">← 처음으로</button>
+    </div>
+    </div>
+    <div class="lobbybar">
       <button class="btn watch" id="howBtn" type="button" aria-haspopup="dialog" aria-controls="howPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5a1 1 0 0 0 0 2H20v2H6.5A2.5 2.5 0 0 1 4 19.5zM8 6v2h8V6zm0 4v2h6v-2z"/></svg>게임 방법</button>
       <button class="btn watch setopen" id="setBtnTop" type="button" aria-haspopup="dialog" aria-controls="setPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg><span class="setlabel">설정</span></button>
     </div>
@@ -568,6 +588,14 @@ body.modal { overflow: hidden; }
     </div>
   </div>
 </div>
+<div class="setwrap" id="shopPanel" hidden role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+  <div class="setbox">
+    <div class="sethead"><h2 id="shopTitle">상점</h2><button class="setx" type="button" aria-label="상점 닫기">✕</button></div>
+    <div class="shopmoney">내 돈 <b id="shopMoney">0원</b></div>
+    <small class="shopnote">판이 끝나면 번 돈의 10%가 모여요. 여럿이 하면 사람 수로 나눈 몫의 10%예요. 이 기기에만 저장돼요.</small>
+    <div id="shopList"></div>
+  </div>
+</div>
 <div class="setwrap" id="setPanel" hidden role="dialog" aria-modal="true" aria-labelledby="setTitle">
   <div class="setbox">
     <div class="sethead"><h2 id="setTitle">설정</h2><button class="setx" id="setClose" type="button" aria-label="설정 닫기">✕</button></div>
@@ -600,11 +628,12 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 53;
+  const VERSION = 54;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
   const CHOP_TIME = 1.2, WASH_TIME = 2, SPEED = 4.3, R = 0.3;
+  const GEAR_MUL = { kn: 1.05, sp: 1.05 }; // 상점 물건: 잘 드는 식칼(썰기)·뽀득 수세미(설거지)가 아주 약간 빨라요
   const SAFE = 2, WARN = 4; // 다 익은 뒤 SAFE초는 안전, 그다음 WARN초 동안 타기 시작해서 다 타요 (모두 6초)
   const DASH_TIME = 0.16, DASH_CD = 0.6, DASH_MUL = 3.1;
   const FLY_SPEED = 11, FLY_MAX = 2.7, BELT_STEP = 0.65, RETURN_DELAY = 7;
@@ -733,7 +762,7 @@ body.modal { overflow: hidden; }
   const PARTY = { 3: { gap: 0.72, limit: 0.88, star: 1.3 }, 4: { gap: 0.6, limit: 0.8, star: 1.5 } };
   // 맵·메뉴·규칙 지문: 한쪽만 새 버전이면 같이 못 하게 막아요 (버전 숫자를 깜빡해도 걸러져요)
   const RULES = (() => {
-    const src = JSON.stringify([STAGES, DISH, ING, CHOP_TIME, WASH_TIME, SPEED, R, SAFE, WARN, DASH_TIME, DASH_MUL, FLY_SPEED, FLY_MAX, BELT_STEP, WALK, ICE_GRIP, ICE_GLIDE, MISS, TIP, FIRE_SPREAD, EXT_TIME, FIRE_REGROW, EXT_RANGE, MAX_P, PARTY]);
+    const src = JSON.stringify([STAGES, DISH, ING, CHOP_TIME, WASH_TIME, GEAR_MUL, SPEED, R, SAFE, WARN, DASH_TIME, DASH_MUL, FLY_SPEED, FLY_MAX, BELT_STEP, WALK, ICE_GRIP, ICE_GLIDE, MISS, TIP, FIRE_SPREAD, EXT_TIME, FIRE_REGROW, EXT_RANGE, MAX_P, PARTY]);
     let h = 2166136261;
     for (let i = 0; i < src.length; i++) { h ^= src.charCodeAt(i); h = Math.imul(h, 16777619); }
     return (h >>> 0).toString(36);
@@ -1378,7 +1407,7 @@ body.modal { overflow: hidden; }
     });
     W.orders = []; W.score = 0; W.combo = 1; W.served = 0; W.missed = 0; W.left = st.time; W.last = null;
     applyGates(W); applyBars(W); applyWarp(W); W.wsig = warpSig;
-    const keep = W.players.map((p) => ({ on: p.on, ch: p.ch, nm: p.nm, an: p.an, ds: p.ds }));
+    const keep = W.players.map((p) => ({ on: p.on, ch: p.ch, nm: p.nm, an: p.an, ds: p.ds, tg: p.tg, kn: p.kn, sp: p.sp }));
     W.seed = Math.floor(Math.random() * 1e9); // 판마다 새로 뽑는 수 (트럭 박자가 매판 달라요)
     W.spots = rollSpots(st, W.players); // 판마다 새로 뽑는 시작 자리
     W.players = W.players.map((p, i) => spawn(i, st, W.spots));
@@ -1471,10 +1500,10 @@ body.modal { overflow: hidden; }
       if (W.fire[i]) return;
       if (t.type === "board") {
         const it = W.slots[i];
-        if (isIng(it) && ING[it.k].chop && !it.cut) { it.pr = (it.pr || 0) + dt / CHOP_TIME; if (it.pr >= 1) { it.cut = true; delete it.pr; } }
+        if (isIng(it) && ING[it.k].chop && !it.cut) { it.pr = (it.pr || 0) + (dt * (p.kn ? GEAR_MUL.kn : 1)) / CHOP_TIME; if (it.pr >= 1) { it.cut = true; delete it.pr; } }
       } else if (t.type === "sink") {
         const s = W.sinks[i];
-        if (s && s.n > 0) { s.pr += dt / WASH_TIME; if (s.pr >= 1) { s.pr = 0; s.n--; addCleanPlate(); } }
+        if (s && s.n > 0) { s.pr += (dt * (p.sp ? GEAR_MUL.sp : 1)) / WASH_TIME; if (s.pr >= 1) { s.pr = 0; s.n--; addCleanPlate(); } }
       }
     });
 
@@ -2190,7 +2219,7 @@ body.modal { overflow: hidden; }
       sl, racks: W.racks, rets: W.rets, sinks: W.sinks, od: W.orders, prog: W.prog, last: W.last, np: W.np || 1, pz: W.paused ? 1 : 0, sd: W.seed || 0, ss: W.spots || null,
       fi: Object.keys(W.fire).map((i) => [+i, Math.round(W.fire[i].hp * 100) / 100]),
       fly: W.fly.map((f) => ({ it: f.it, x: f.x, y: f.y, dx: f.dx, dy: f.dy, d: f.d })),
-      pl: W.players.map((p) => ({ x: p.x, y: p.y, fx: p.fx, fy: p.fy, hold: p.hold, chop: p.chop, on: p.on, ch: p.ch, nm: p.nm || undefined, an: p.an, ds: p.ds, sn: p.sn || p.stun > 0 ? 1 : 0, dd: p.dd || p.dead > 0 ? 1 : 0, pz: p.pz ? 1 : undefined })),
+      pl: W.players.map((p) => ({ x: p.x, y: p.y, fx: p.fx, fy: p.fy, hold: p.hold, chop: p.chop, on: p.on, ch: p.ch, nm: p.nm || undefined, tg: p.tg || undefined, an: p.an, ds: p.ds, sn: p.sn || p.stun > 0 ? 1 : 0, dd: p.dd || p.dead > 0 ? 1 : 0, pz: p.pz ? 1 : undefined })),
       rt: (W.rats || []).map((r) => ({ id: r.id, x: Math.round(r.x * 100) / 100, y: Math.round(r.y * 100) / 100, fx: r.fx, fy: r.fy, st: r.st, it: r.it })),
       sp: specs.size
     };
@@ -5389,7 +5418,7 @@ body.modal { overflow: hidden; }
   function noGame(msg) {
     if (msg) $("no3dNote").textContent = msg;
     $("no3dNote").hidden = false;
-    ["hostBtn", "joinForm", "watchBtn", "hostStatus", "joinStatus"].forEach((id) => { $(id).hidden = true; });
+    ["playBtn", "pPlay"].forEach((id) => { $(id).hidden = true; });
   }
   if (!R3) noGame();
   // 대시 키: 기본은 W (위로는 방향키). Q·시프트도 고를 수 있어요. 시프트 연타는 윈도우 고정 키 창이 떠요
@@ -5607,6 +5636,7 @@ body.modal { overflow: hidden; }
     out() { tone(660, 0.1, "sine", 0.1); tone(990, 0.2, "sine", 0.1, 0.09); },
     squeak() { tone(2100, 0.07, "square", 0.035, 0, 2900); tone(2300, 0.06, "square", 0.03, 0.09, 3100); },
     ding() { tone(1180, 0.2, "triangle", 0.07); tone(2360, 0.1, "sine", 0.022); },
+    coin() { tone(1500 + Math.random() * 500, 0.04, "square", 0.03); }, // 돈이 올라가는 띠리릭
     train() { noise(1.7, 0.16, 0, 140, 0.6); noise(1.5, 0.06, 0.05, 650, 0.8); tone(311, 0.55, "sawtooth", 0.035); tone(392, 0.55, "sawtooth", 0.035); },
     crash() { noise(0.4, 0.22, 0, 520, 0.7); tone(130, 0.45, "square", 0.08, 0, 45); },
     fall() { tone(880, 0.75, "sine", 0.08, 0, 160); tone(660, 0.7, "triangle", 0.04, 0.05, 120); },
@@ -5669,6 +5699,10 @@ body.modal { overflow: hidden; }
   $("setPick").addEventListener("click", () => roundCmd("pick"));
   $("setQuit").addEventListener("click", () => { closeModal(); leave(); });
   $("howBtn").addEventListener("click", (e) => openModal("howPanel", e.currentTarget));
+  $("shopBtn").addEventListener("click", (e) => { renderShop(); openModal("shopPanel", e.currentTarget); });
+  const showPlay = (on) => { $("pMain").hidden = on; $("pPlay").hidden = !on; Poster.paint(); (on ? $("hostBtn") : $("playBtn")).focus({ preventScroll: true }); }; // 게임 시작 → 방 만들기·들어가기·관전
+  $("playBtn").addEventListener("click", () => showPlay(true));
+  $("playBack").addEventListener("click", () => showPlay(false));
   document.querySelectorAll(".setx").forEach((b) => b.addEventListener("click", closeModal));
   ["setPanel", "howPanel"].forEach((id) => $(id).addEventListener("click", (e) => { if (e.target === $(id)) closeModal(); }));
   window.addEventListener("keydown", (e) => {
@@ -5863,13 +5897,70 @@ body.modal { overflow: hidden; }
     bubbles.push({ i, text, loud, t0: performance.now(), dur: loud ? 1300 : 3000 });
   }
   // 이름 (3글자까지, 이 기기에 저장). 안 정하면 "방장"·"초록 친구"처럼 불러요
+  // ===== 지갑·상점: 판이 끝나면 내 몫(번 돈 ÷ 사람 수)의 10%를 이 기기에 모아요. 모은 돈으로 상점에서 물건을 사요 =====
+  const WALLET_KEY = "bunsik.wallet", SAVE_RATE = 0.1;
+  const SHOP = [ // gear: 사면 늘 써요 (아주 약간 빨라져요). tag: 이름표 꾸미기 (산 것 중 하나를 골라 써요)
+    { id: "sp", kind: "gear", name: "뽀득 수세미", desc: "설거지가 5% 빨라져요", price: 8000 },
+    { id: "kn", kind: "gear", name: "잘 드는 식칼", desc: "재료 썰기가 5% 빨라져요", price: 12000 },
+    { id: "gold", kind: "tag", name: "금테 이름표", desc: "이름표 테두리가 반짝이는 금색", price: 3000 },
+    { id: "star", kind: "tag", name: "별 이름표", desc: "이름 양옆에 별", price: 4000 },
+    { id: "heart", kind: "tag", name: "하트 이름표", desc: "이름 양옆에 하트", price: 4000 },
+    { id: "rainbow", kind: "tag", name: "무지개 이름표", desc: "테두리가 무지개색", price: 6000 }
+  ];
+  const TAGS = SHOP.filter((x) => x.kind === "tag").map((x) => x.id);
+  let wallet = (() => { try { const w = JSON.parse(localStorage.getItem(WALLET_KEY)) || {}; return { money: Math.max(0, Math.floor(+w.money || 0)), own: w.own || {}, tag: TAGS.includes(w.tag) ? w.tag : "" }; } catch (e) { return { money: 0, own: {}, tag: "" }; } })();
+  function saveWallet() { try { localStorage.setItem(WALLET_KEY, JSON.stringify(wallet)); } catch (e) {} }
+  const gearIn = (d) => ({ kn: d.kn ? 1 : 0, sp: d.sp ? 1 : 0, tg: TAGS.includes(d.tg) ? d.tg : "" }); // 친구가 보낸 물건 (모르는 값은 버려요)
+  const myGear = () => gearIn({ kn: wallet.own.kn, sp: wallet.own.sp, tg: wallet.tag });
+  let paidKey = ""; // 같은 판 돈을 두 번 받지 않게
+  function renderShop() {
+    $("shopMoney").textContent = won(wallet.money);
+    const box = $("shopList"); box.innerHTML = "";
+    SHOP.forEach((x) => {
+      const own = !!wallet.own[x.id], using = x.kind === "tag" && wallet.tag === x.id;
+      const row = document.createElement("div"); row.className = "setrow shoprow";
+      const sp = document.createElement("span"), b = document.createElement("b"), sm = document.createElement("small");
+      b.textContent = x.name; sm.textContent = x.desc + (own ? "" : " · " + won(x.price)); sp.append(b, sm);
+      const btn = document.createElement("button"); btn.type = "button"; btn.className = "btn" + (using ? " on" : own ? " alt" : "");
+      if (!own) { btn.textContent = wallet.money >= x.price ? "사기" : won(x.price - wallet.money) + " 모자라요"; btn.disabled = wallet.money < x.price; }
+      else btn.textContent = x.kind === "gear" ? "쓰는 중" : using ? "쓰는 중" : "쓰기";
+      if (x.kind === "gear" && own) btn.disabled = true;
+      btn.addEventListener("click", () => {
+        if (!own) { if (wallet.money < x.price) return; wallet.money -= x.price; wallet.own[x.id] = 1; if (x.kind === "tag") wallet.tag = x.id; sfx.serve(); }
+        else if (x.kind === "tag") wallet.tag = using ? "" : x.id; // 쓰는 중을 누르면 기본 이름표로
+        saveWallet(); renderShop(); sendName();
+      });
+      row.append(sp, btn); box.appendChild(row);
+    });
+  }
+  // 판 끝: 내 몫의 10%를 지갑에 넣고, 결과 화면에서 띠리릭 올라가요
+  function payRound(st) {
+    const np = Math.max(1, st.np || 1), share = role === "spec" || myIdx < 0 ? 0 : Math.max(0, Math.floor((st.score / np) * SAVE_RATE)), key = st.seed + ":" + st.rs;
+    const before = wallet.money;
+    if (share > 0 && paidKey !== key) { paidKey = key; wallet.money += share; saveWallet(); }
+    return { share, np, before, after: wallet.money };
+  }
+  function countUp(pay) {
+    const a = $("earnNum"), b = $("walletNum");
+    if (!a || !pay.share) return;
+    const t0 = performance.now(), D = 1300;
+    let lastTick = 0;
+    const step = (now) => {
+      if (!a.isConnected) return;
+      const k = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - k, 3);
+      a.textContent = "+" + won(Math.round(pay.share * e));
+      if (b) b.textContent = won(Math.round(pay.before + (pay.after - pay.before) * e));
+      if (k < 1) { if (now - lastTick > 70) { lastTick = now; sfx.coin(); } requestAnimationFrame(step); } else sfx.ding();
+    };
+    requestAnimationFrame(step);
+  }
   const NAME_KEY = "bunsik.name", NAME_MAX = 3;
   const nameClean = (t) => Array.from(String(t || "").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim()).slice(0, NAME_MAX).join("");
   let myName = (() => { try { return nameClean(localStorage.getItem(NAME_KEY)); } catch (e) { return ""; } })();
   const nameOf = (st, i) => { const q = st && st.players && st.players[i]; return (q && q.nm) || seatName(i); };
   function sendName() {
-    if (role === "host" && W) { W.players[0].nm = myName; renderPicker(); }
-    else if (role === "guest" && net && myIdx > 0) net.send({ t: "nm", n: myName });
+    if (role === "host" && W) { W.players[0].nm = myName; Object.assign(W.players[0], myGear()); renderPicker(); }
+    else if (role === "guest" && net && myIdx > 0) { net.send({ t: "nm", n: myName }); net.send(Object.assign({ t: "gr" }, myGear())); }
   }
   function setMyName(v) {
     v = nameClean(v);
@@ -5883,15 +5974,19 @@ body.modal { overflow: hidden; }
     items.forEach(({ i, x, y, s }) => {
       const q = st.players[i];
       if (!q || !q.nm) return;
-      const fs = Math.max(11, s * 0.24);
+      const fs = Math.max(11, s * 0.24), tg = q.tg; // 상점 이름표: 금테·별·하트·무지개
+      const text = tg === "star" ? "★ " + q.nm + " ★" : tg === "heart" ? "♥ " + q.nm + " ♥" : q.nm;
       c.save();
       c.font = Math.round(fs) + "px " + FONT_UI;
-      const w = c.measureText(q.nm).width + fs * 0.9, h = fs * 1.35;
+      const w = c.measureText(text).width + fs * 0.9, h = fs * 1.35;
       c.globalAlpha = 0.93;
       rrect(c, x - w / 2, y, w, h, h / 2); c.fillStyle = APRON[i]; c.fill();
-      c.lineWidth = Math.max(1.5, fs * 0.12); c.strokeStyle = "#fff"; c.stroke();
+      let line = "#fff";
+      if (tg === "gold") line = "#ffd23f";
+      else if (tg === "rainbow") { line = c.createLinearGradient(x - w / 2, 0, x + w / 2, 0); ["#ff4d4d", "#ffa63d", "#ffe14d", "#4cd964", "#4da6ff", "#a66bff"].forEach((col, k) => line.addColorStop(k / 5, col)); }
+      c.lineWidth = Math.max(1.5, fs * (tg === "gold" || tg === "rainbow" ? 0.2 : 0.12)); c.strokeStyle = line; c.stroke();
       c.globalAlpha = 1; c.fillStyle = "#fff"; c.textAlign = "center"; c.textBaseline = "middle";
-      c.fillText(q.nm, x, y + h / 2 + 1);
+      c.fillText(text, x, y + h / 2 + 1);
       c.restore();
     });
   }
@@ -5972,7 +6067,7 @@ body.modal { overflow: hidden; }
         const stars = thr.filter((v) => view.score >= v).length;
         const next = STAGES.find((x) => x.id === st.id + 1);
         const nextOpen = !!(next && unlocked(next.id, view.prog || {}));
-        const best = view.last && view.last.newBest, opened = view.last && view.last.opened;
+        const best = view.last && view.last.newBest, opened = view.last && view.last.opened, pay = payRound(view);
         let btns = "";
         if (role === "host") {
           btns = '<button class="btn" id="againBtn" type="button">다시 하기</button>' +
@@ -5984,6 +6079,7 @@ body.modal { overflow: hidden; }
           '<div class="stars" aria-label="별 ' + stars + '개">' + "★".repeat(stars) + "☆".repeat(3 - stars) + "</div>" +
           '<div class="big">' + won(view.score) + "</div>" +
           (best ? '<p class="best">최고 기록이에요!' + (opened ? " 다음 단계가 열렸어요." : "") + "</p>" : "") +
+          (pay.share ? '<div class="earn"><span class="plus" id="earnNum">+0원</span><small>' + (pay.np > 1 ? "번 돈 ÷ " + pay.np + "명의 10%" : "번 돈의 10%") + ' · 지갑 <b id="walletNum">' + won(pay.before) + "</b></small></div>" : "") +
           "<p>낸 음식 " + view.served + "그릇 · 놓친 주문 " + view.missed + "개</p>" +
           '<p class="note">' + (npTag ? npTag + " · " : "") + "별 하나 " + won(thr[0]) + " · 둘 " + won(thr[1]) + " · 셋 " + won(thr[2]) + "</p>" +
           '<div class="btns">' + btns + '<button class="btn ghost" id="quitBtn" type="button">나가기</button></div></div>';
@@ -5992,6 +6088,7 @@ body.modal { overflow: hidden; }
         if (nextB) nextB.addEventListener("click", () => { W.stage = st.id + 1; startRound(); });
         if (pickB) pickB.addEventListener("click", toRoom);
         $("quitBtn").addEventListener("click", leave);
+        countUp(pay);
       }
     } else {
       ov.hidden = true; ov.dataset.k = ""; ov.innerHTML = "";
@@ -6280,7 +6377,7 @@ body.modal { overflow: hidden; }
     const code = String(Math.floor(1000 + Math.random() * 9000));
     $("hostBtn").disabled = true;
     $("hostStatus").className = "status"; $("hostStatus").textContent = "방을 여는 중이에요...";
-    role = "host"; myIdx = 0; W = newWorld(); view = W; me = W.players[0]; W.players[0].nm = myName;
+    role = "host"; myIdx = 0; W = newWorld(); view = W; me = W.players[0]; W.players[0].nm = myName; Object.assign(W.players[0], myGear());
     resetPeers(); applyRole();
     const seen = new Map(); // 연결마다 마지막으로 소식이 온 때
     const freeSeat = () => seats.findIndex((x, k) => k > 0 && !x);
@@ -6338,6 +6435,8 @@ body.modal { overflow: hidden; }
         } else if (d.t === "nm") {
           p.nm = nameClean(d.n);
           renderPicker();
+        } else if (d.t === "gr") {
+          Object.assign(p, gearIn(d));
         } else if (d.t === "p") {
           if (d.rs != null && d.rs !== W.rs) return;
           p.x = d.x; p.y = d.y; p.fx = d.fx; p.fy = d.fy; p.chop = !!d.ch; p.sn = !!d.sn; p.dd = !!d.dd; if (d.ds != null) p.ds = d.ds;
@@ -6992,7 +7091,7 @@ body.modal { overflow: hidden; }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  if (IS_LOCAL) window.__bunsik = { get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom(), truckSegs: () => truckSegs(view), truckNow: () => truckNow(view) };
+  if (IS_LOCAL) window.__bunsik = { get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, get wallet() { return wallet; }, info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom(), truckSegs: () => truckSegs(view), truckNow: () => truckNow(view) };
   if (document.fonts && document.fonts.load) document.fonts.load('20px "Jua"', "가나다 내는 곳 버리기 방장 친구 반납 개수대");
 })();
 </script>
