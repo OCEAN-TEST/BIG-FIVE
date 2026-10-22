@@ -633,7 +633,7 @@ body.modal { overflow: hidden; }
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
   const CHOP_TIME = 1.2, WASH_TIME = 2, SPEED = 4.3, R = 0.3;
-  const GEAR_MUL = { kn: 1.05, sp: 1.05 }; // 상점 물건: 잘 드는 식칼(썰기)·뽀득 수세미(설거지)가 아주 약간 빨라요
+  const GEAR_TIME = { kn: 1, sp: 1.8 }; // 상점 물건: 잘 드는 식칼이면 썰기 1.2초 → 1초, 뽀득 수세미면 설거지 2초 → 1.8초
   const SAFE = 2, WARN = 4; // 다 익은 뒤 SAFE초는 안전, 그다음 WARN초 동안 타기 시작해서 다 타요 (모두 6초)
   const DASH_TIME = 0.16, DASH_CD = 0.6, DASH_MUL = 3.1;
   const FLY_SPEED = 11, FLY_MAX = 2.7, BELT_STEP = 0.65, RETURN_DELAY = 7;
@@ -762,7 +762,7 @@ body.modal { overflow: hidden; }
   const PARTY = { 3: { gap: 0.72, limit: 0.88, star: 1.3 }, 4: { gap: 0.6, limit: 0.8, star: 1.5 } };
   // 맵·메뉴·규칙 지문: 한쪽만 새 버전이면 같이 못 하게 막아요 (버전 숫자를 깜빡해도 걸러져요)
   const RULES = (() => {
-    const src = JSON.stringify([STAGES, DISH, ING, CHOP_TIME, WASH_TIME, GEAR_MUL, SPEED, R, SAFE, WARN, DASH_TIME, DASH_MUL, FLY_SPEED, FLY_MAX, BELT_STEP, WALK, ICE_GRIP, ICE_GLIDE, MISS, TIP, FIRE_SPREAD, EXT_TIME, FIRE_REGROW, EXT_RANGE, MAX_P, PARTY]);
+    const src = JSON.stringify([STAGES, DISH, ING, CHOP_TIME, WASH_TIME, GEAR_TIME, SPEED, R, SAFE, WARN, DASH_TIME, DASH_MUL, FLY_SPEED, FLY_MAX, BELT_STEP, WALK, ICE_GRIP, ICE_GLIDE, MISS, TIP, FIRE_SPREAD, EXT_TIME, FIRE_REGROW, EXT_RANGE, MAX_P, PARTY]);
     let h = 2166136261;
     for (let i = 0; i < src.length; i++) { h ^= src.charCodeAt(i); h = Math.imul(h, 16777619); }
     return (h >>> 0).toString(36);
@@ -1500,10 +1500,10 @@ body.modal { overflow: hidden; }
       if (W.fire[i]) return;
       if (t.type === "board") {
         const it = W.slots[i];
-        if (isIng(it) && ING[it.k].chop && !it.cut) { it.pr = (it.pr || 0) + (dt * (p.kn ? GEAR_MUL.kn : 1)) / CHOP_TIME; if (it.pr >= 1) { it.cut = true; delete it.pr; } }
+        if (isIng(it) && ING[it.k].chop && !it.cut) { it.pr = (it.pr || 0) + dt / (p.kn ? GEAR_TIME.kn : CHOP_TIME); if (it.pr >= 1) { it.cut = true; delete it.pr; } }
       } else if (t.type === "sink") {
         const s = W.sinks[i];
-        if (s && s.n > 0) { s.pr += (dt * (p.sp ? GEAR_MUL.sp : 1)) / WASH_TIME; if (s.pr >= 1) { s.pr = 0; s.n--; addCleanPlate(); } }
+        if (s && s.n > 0) { s.pr += dt / (p.sp ? GEAR_TIME.sp : WASH_TIME); if (s.pr >= 1) { s.pr = 0; s.n--; addCleanPlate(); } }
       }
     });
 
@@ -5899,9 +5899,9 @@ body.modal { overflow: hidden; }
   // 이름 (3글자까지, 이 기기에 저장). 안 정하면 "방장"·"초록 친구"처럼 불러요
   // ===== 지갑·상점: 판이 끝나면 내 몫(번 돈 ÷ 사람 수)의 10%를 이 기기에 모아요. 모은 돈으로 상점에서 물건을 사요 =====
   const WALLET_KEY = "bunsik.wallet", SAVE_RATE = 0.1;
-  const SHOP = [ // gear: 사면 늘 써요 (아주 약간 빨라져요). tag: 이름표 꾸미기 (산 것 중 하나를 골라 써요)
-    { id: "sp", kind: "gear", name: "뽀득 수세미", desc: "설거지가 5% 빨라져요", price: 50000 },
-    { id: "kn", kind: "gear", name: "잘 드는 식칼", desc: "재료 썰기가 5% 빨라져요", price: 70000 },
+  const SHOP = [ // gear: 사면 늘 써요 (GEAR_TIME만큼 빨라져요). tag: 이름표 꾸미기 (산 것 중 하나를 골라 써요)
+    { id: "sp", kind: "gear", name: "뽀득 수세미", desc: "설거지가 10% 빨라져요", price: 50000 },
+    { id: "kn", kind: "gear", name: "잘 드는 식칼", desc: "재료 썰기가 16% 빨라져요", price: 70000 },
     { id: "gold", kind: "tag", name: "금테 이름표", desc: "이름표 테두리가 반짝이는 금색", price: 20000 },
     { id: "star", kind: "tag", name: "별 이름표", desc: "이름 양옆에 별", price: 25000 },
     { id: "heart", kind: "tag", name: "하트 이름표", desc: "이름 양옆에 하트", price: 25000 },
