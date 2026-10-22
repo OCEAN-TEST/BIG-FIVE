@@ -1166,7 +1166,7 @@ body.modal { overflow: hidden; }
     bear:   { name: "곰",     fur: "#9a6440", dark: "#5e3a24", ear: "#d1a57c", nose: "#2b1d16" },
     otter:  { name: "해달",   fur: "#f4f1ec", body: "#6e5547", body3: "#5a4337", dark: "#4e3b30", ear: "#5a4033", nose: "#4a2e22", tail: "#5e4739", tail3: "#4b3529" }, // 하얀 머리(얼굴 전체 흰색), 갈색 몸·귀·두툼한 꼬리. body3·tail3: 3D는 조명이 밝아서 더 진하게
     poro:   { name: "포로",   fur: "#f3f0f6", dark: "#4a4462", ear: "#e8899b", nose: "#e98aa2", hand: "#4a4462", face: "#f8eeb0", tongue: "#f4a3ae", udder: "#e8798a" }, // 젖소 옷을 입은 동그란 포로: 하얀 바탕에 남색 무늬, 분홍 코·젖, 크림색 얼굴과 콧수염, 길게 내민 분홍 혀. 앞치마 대신 귀표가 내 색
-    hachi:  { name: "하치와레", fur: "#ffffff", dark: "#b0a6a0", ear: "#3d6f93", nose: "#3a2a24", cap: "#3d6f93", spear: "#2f78c8", teeth: "#1f2a44", price: 100000 } // 치이카와 친구 고양이: 하얀 동글이 머리에 넓적한 파란 모자 무늬(이마 가운데만 작게 ㅅ자로 파여요), 끝이 둥근 파란 고양이 귀. 등에 파란 창. 상점에서 사요
+    hachi:  { name: "하치와레", fur: "#ffffff", dark: "#b0a6a0", ear: "#3d6f93", nose: "#3a2a24", cap: "#3d6f93", spear: "#2f78c8", teeth: "#1f2a44", price: 100000 } // 치이카와 친구 고양이: 하얀 동글이 머리에 파란 무늬(넓적한 동그라미 두 개가 이마 가운데서 만나요), 끝이 둥근 파란 고양이 귀. 등에 파란 창. 상점에서 사요
   };
   const CHAR_KEYS = Object.keys(CHARS);
   // 토끼 머리 모양: 위는 둥근 지붕, 옆은 통통, 아래는 넓고 납작한 찐빵. 공 위의 점(위쪽이 +y)을 이 모양 위로 옮겨요.
@@ -3335,13 +3335,13 @@ body.modal { overflow: hidden; }
       shape(blob(0, 4, 26, 7), "#ffffff");
       shape(blob(0, 11, 9, 3.5), "#5a2a34");
     });
-    // 하치와레 머리: 하얀 공 위를 넓적하고 둥근 파란 모자처럼 덮어요 (앞·옆은 위도 27도, 뒤통수는 20도까지).
-    // 이마 가운데만 하얀 틈이 작은 ㅅ자로 조금 파고들어요 (경도 ±15도, 위도 39도까지)
+    // 하치와레 머리: 하얀 공 위를 파란 무늬가 덮어요. 앞에서 보면 넓적한 동그라미 두 개가 이마 가운데서 만나는 모양:
+    // 양쪽 덩이 바닥이 경도 ±42도에서 위도 31도까지 둥글게 처지고, 둘이 만나는 가운데는 44도, 옆(경도 90도)은 37도, 뒤통수는 30도
     const hachiHeadMat = () => skinMat("hachiHeadM", ({ shape, col }) => {
       const pts = [];
       for (let lo = -180; lo <= 180; lo++) {
-        const u = Math.max(0, 1 - (Math.hypot(lo, 2) - 2) / 15), w = Math.max(0, (Math.abs(lo) - 90) / 90); // u: 틈 (꼭대기만 살짝 둥글게), w: 뒤통수
-        pts.push([lo, 27 + 12 * u ** 1.5 - 7 * Math.sin((w * Math.PI) / 2) ** 2]);
+        const t = Math.abs(lo), e = t < 42 ? (42 - t) / 51 : (t - 42) / 80, w = Math.max(0, (t - 90) / 90); // e: 덩이 가운데에서 떨어진 정도 (가운데 쪽이 더 빨리 올라가요), w: 뒤통수
+        pts.push([lo, t <= 90 ? 61 - 30 * Math.sqrt(1 - e * e) : 37 - 7 * Math.sin((w * Math.PI) / 2) ** 2]);
       }
       pts.push([180, 90], [-180, 90]);
       shape(pts, col(CHARS.hachi.cap));
