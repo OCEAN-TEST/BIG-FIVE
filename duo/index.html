@@ -606,8 +606,12 @@ body.modal { overflow: hidden; }
       <div class="roundfoot"><small id="roundNote"></small><button class="btn ghost" id="setQuit" type="button">방 나가기</button></div>
     </div>
     <div class="setrow">
-      <span><b id="sndLabel">게임 소리</b><small>끄면 효과음이 하나도 안 나요 (음소거). 컴퓨터는 <kbd>M</kbd> 키로도 바로 끄고 켜요.</small></span>
+      <span><b id="sndLabel">게임 소리</b><small>끄면 효과음·배경음이 하나도 안 나요 (음소거). 컴퓨터는 <kbd>M</kbd> 키로도 바로 끄고 켜요.</small></span>
       <button class="switch" id="sndSwitch" type="button" role="switch" aria-checked="true" aria-labelledby="sndLabel"></button>
+    </div>
+    <div class="setrow">
+      <span><b id="bgmLabel">배경음</b><small>판 하는 동안 흐르는 노래예요. 30초 남으면 빨라져요.</small></span>
+      <button class="switch" id="bgmSwitch" type="button" role="switch" aria-checked="true" aria-labelledby="bgmLabel"></button>
     </div>
     <div class="setrow" id="dashRow">
       <span><b>대시 키</b><small>W로 하면 위로는 방향키로 가요. 시프트는 여러 번 누르면 윈도우 '고정 키' 창이 떠요.</small></span>
@@ -5635,13 +5639,13 @@ body.modal { overflow: hidden; }
   }
   // 쉬익·타닥 소리용 잡음
   let noiseBuf = null;
+  const noiseOf = (a) => { if (!noiseBuf) { noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } return noiseBuf; };
   function noise(dur, vol, delay, freq, q) {
     const a = audio();
     if (!a || a.state !== "running") return;
-    if (!noiseBuf) { noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
     const t0 = a.currentTime + (delay || 0);
     const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
-    src.buffer = noiseBuf; src.loop = true;
+    src.buffer = noiseOf(a); src.loop = true;
     f.type = "bandpass"; f.frequency.value = freq || 1200; f.Q.value = q || 0.8;
     g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.1, t0 + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     src.connect(f); f.connect(g); g.connect(a.destination);
@@ -5690,6 +5694,91 @@ body.modal { overflow: hidden; }
   }
   $("sndSwitch").addEventListener("click", () => { setSound(!sndOn); if (sndOn) sfx.order(); });
   setSound(sndOn);
+
+  // ===== 배경음 =====
+  // 판 하는 동안 흐르는 경쾌한 노래: 쿵-짝 반주(베이스·화음·북) 위에 통통 튀는 멜로디. 소리 파일 없이 그때그때 만들어요.
+  // 8분음표는 스윙(앞이 길고 뒤가 짧게)으로 쳐요. 16마디를 되풀이하고, 30초 남으면 빨라져요. 게임 소리를 끄면 같이 꺼져요
+  const BGM_KEY = "bunsik.bgm", BGM_VOL = 0.7;
+  let bgmOn = (() => { try { return localStorage.getItem(BGM_KEY) !== "0"; } catch (e) { return true; } })();
+  const SONG = { // 한 마디 = 8분음표 8칸. 음 이름은 새 음, "-"는 앞 음을 끌어요, "."는 쉼표. 화음 두 개면 반 마디씩
+    chords: ["C", "A7", "Dm", "G7", "C", "A7", "Dm G7", "C", "F", "Fm", "C", "A7", "D7", "G7", "C", "G7"],
+    lead: [
+      "C5 E5 G5 - A5 G5 E5 -", "C#5 E5 A5 - G5 - E5 -", "D5 F5 A5 - C6 - A5 -", "G5 - F5 - D5 - B4 -",
+      "C5 E5 G5 - A5 G5 E5 -", "C#5 E5 A5 - G5 - E5 G5", "F5 - A5 - G5 F5 D5 B4", "C5 - - - G4 - C5 .",
+      "A5 - A5 G5 F5 - C5 -", "Ab5 - Ab5 G5 F5 - C5 -", "G5 - E5 - C5 - E5 G5", "A5 - - - G5 - E5 -",
+      "F#5 - A5 - C6 - A5 -", "G5 - F5 - D5 - B4 -", "C5 E5 G5 C6 - - G5 -", "F5 - D5 - B4 - G4 -"
+    ]
+  };
+  const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const pcOf = (s) => PC[s[0]] + (s[1] === "#" ? 1 : s[1] === "b" ? -1 : 0);
+  const hz = (n) => 440 * Math.pow(2, (n - 69) / 12); // 미디 번호 → 진동수 (가온 도 = 60)
+  const BGM_STEPS = (() => { // 8분음표 한 칸마다 칠 것: 멜로디 {n, len}, 베이스 음, 화음
+    const out = [];
+    SONG.lead.forEach((bar, b) => {
+      const ch = SONG.chords[b].split(" ").map((c) => { const q = c.slice(c[1] === "#" || c[1] === "b" ? 2 : 1); return { r: pcOf(c), iv: q === "m" ? [0, 3, 7] : q === "7" ? [0, 4, 7, 10] : [0, 4, 7] }; });
+      const tk = bar.split(" ");
+      for (let i = 0; i < 8; i++) {
+        const st = { lead: null, bass: null, stab: null }, c = ch[i < 4 ? 0 : ch.length - 1];
+        if (tk[i] !== "-" && tk[i] !== ".") { let len = 1; while (tk[i + len] === "-") len++; const m = /^([A-G][#b]?)(\d)$/.exec(tk[i]); st.lead = { n: pcOf(m[1]) + (+m[2] + 1) * 12, len }; }
+        if (i === 0 || i === 4) { // 쿵: 마디 첫 박은 으뜸음, 셋째 박은 (화음이 바뀌면 새 으뜸음) 아니면 5도
+          const root = 36 + c.r + (c.r < 4 ? 12 : 0);
+          st.bass = i === 4 && ch.length === 1 ? (root + 7 > 52 ? root - 5 : root + 7) : root;
+        }
+        if (i === 2 || i === 6) st.stab = c.iv.slice(c.iv.length > 3 ? 1 : 0).map((v) => 60 + ((c.r + v) % 12)); // 짝: 가온 도~시 사이 화음 (폰 스피커로도 들려요)
+        out.push(st);
+      }
+    });
+    return out;
+  })();
+  function bgmVoice(a, bus, t, f, dur, type, vol, f2) { // 음 하나: 바로 커졌다가 dur 동안 잦아들어요
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function bgmHit(a, bus, t, dur, vol, type, freq) { // 작은북·찰랑이: 잡음을 걸러서 짧게
+    const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    src.buffer = noiseOf(a); f.type = type; f.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(bus); src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.02);
+  }
+  function bgmPlayStep(a, bus, k, t, beat) { // k번째 8분음표 칸을 t에 쳐요 (beat: 한 박 길이, 초)
+    const s = BGM_STEPS[k];
+    if (s.lead) { const d = Math.min(0.9, s.lead.len * beat * 0.48 + 0.1); bgmVoice(a, bus, t, hz(s.lead.n), d, "triangle", 0.13); bgmVoice(a, bus, t, hz(s.lead.n + 12), d * 0.4, "sine", 0.03); } // 멜로디: 세모파 + 한 옥타브 위 반짝임
+    if (s.bass != null) { bgmVoice(a, bus, t, hz(s.bass), beat * 0.85, "triangle", 0.2); bgmVoice(a, bus, t, hz(s.bass), beat * 0.5, "square", 0.028); bgmVoice(a, bus, t, 120, 0.13, "sine", 0.12, 45); } // 베이스 (네모파를 살짝 섞어 폰에서도 들려요) + 쿵
+    if (s.stab) { s.stab.forEach((n) => bgmVoice(a, bus, t, hz(n), 0.17, "triangle", 0.05)); bgmHit(a, bus, t, 0.08, 0.08, "bandpass", 1900); } // 짝: 화음 + 작은북
+    if (k % 2) bgmHit(a, bus, t, 0.035, 0.06, "highpass", 7000); // 뒷박 찰랑
+  }
+  let bgmBus = null, bgmAt = 0, bgmStep = 0, bgmRound = -1;
+  function bgmPump() { // 매 화면: 판이 돌아가면 0.4초 앞까지 음을 미리 걸어 두고, 아니면 살짝 줄이며 멈춰요
+    const a = actx, v = view;
+    const want = bgmOn && sndOn && !hushed && !!a && a.state === "running" && !!v && !$("game").hidden && v.phase === "play" && !v.paused;
+    if (!want) {
+      if (bgmBus && a) { const g = bgmBus.gain, t = a.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(0, t + 0.3); }
+      bgmBus = null;
+      return;
+    }
+    if (!bgmBus) {
+      bgmBus = a.createGain(); bgmBus.gain.setValueAtTime(0, a.currentTime); bgmBus.gain.linearRampToValueAtTime(BGM_VOL, a.currentTime + 0.4); bgmBus.connect(a.destination);
+      if (v.rs !== bgmRound) { bgmRound = v.rs; bgmStep = 0; } // 새 판은 처음부터, 잠깐 멈췄던 판은 이어서
+      bgmAt = a.currentTime + 0.05;
+    }
+    if (bgmAt < a.currentTime) bgmAt = a.currentTime + 0.02; // 화면이 한참 멈췄다 오면 밀린 음은 건너뛰어요
+    const beat = 60 / (v.left <= 30 ? 152 : 132);
+    while (bgmAt < a.currentTime + 0.4) {
+      bgmPlayStep(a, bgmBus, bgmStep, bgmAt, beat);
+      bgmAt += beat * (bgmStep % 2 ? 0.4 : 0.6);
+      bgmStep = (bgmStep + 1) % BGM_STEPS.length;
+    }
+  }
+  function setBgm(on) {
+    bgmOn = on;
+    try { localStorage.setItem(BGM_KEY, on ? "1" : "0"); } catch (e) {}
+    $("bgmSwitch").setAttribute("aria-checked", String(on));
+  }
+  $("bgmSwitch").addEventListener("click", () => setBgm(!bgmOn));
+  setBgm(bgmOn);
 
   // 창 (설정, 게임 방법): 하나씩만 열리고, 바깥을 누르거나 ✕·Esc로 닫혀요
   let modalEl = null, modalOpener = null;
@@ -7144,10 +7233,11 @@ body.modal { overflow: hidden; }
       }
     }
     syncCover();
+    bgmPump();
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  if (IS_LOCAL) window.__bunsik = { get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, get wallet() { return wallet; }, info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom(), truckSegs: () => truckSegs(view), truckNow: () => truckNow(view) };
+  if (IS_LOCAL) window.__bunsik = { bgm: { step: bgmPlayStep, n: BGM_STEPS.length, vol: BGM_VOL }, get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, get wallet() { return wallet; }, info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom(), truckSegs: () => truckSegs(view), truckNow: () => truckNow(view) };
   if (document.fonts && document.fonts.load) document.fonts.load('20px "Jua"', "가나다 내는 곳 버리기 방장 친구 반납 개수대");
 })();
 </script>
