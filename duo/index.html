@@ -654,7 +654,7 @@ body.modal { overflow: hidden; }
       <button class="switch" id="sndSwitch" type="button" role="switch" aria-checked="true" aria-labelledby="sndLabel"></button>
     </div>
     <div class="setrow">
-      <span><b id="bgmLabel">배경음</b><small>판 하는 동안 흐르는 노래예요. 30초 남으면 빨라져요.</small></span>
+      <span><b id="bgmLabel">배경음</b><small>판 하는 동안 흐르는 노래예요. 30초 남으면 빨라지고, 10초 남으면 더 빨라져요.</small></span>
       <button class="switch" id="bgmSwitch" type="button" role="switch" aria-checked="true" aria-labelledby="bgmLabel"></button>
     </div>
     <div class="setrow" id="dashRow">
@@ -672,7 +672,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 57;
+  const VERSION = 58;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -5742,7 +5742,7 @@ body.modal { overflow: hidden; }
 
   // ===== 배경음 =====
   // 판 하는 동안 흐르는 경쾌한 노래: 쿵-짝 반주(베이스·화음·북) 위에 통통 튀는 멜로디. 소리 파일 없이 그때그때 만들어요.
-  // 8분음표는 스윙(앞이 길고 뒤가 짧게)으로 쳐요. 16마디를 되풀이하고, 30초 남으면 빨라져요. 게임 소리를 끄면 같이 꺼져요
+  // 8분음표는 스윙(앞이 길고 뒤가 짧게)으로 쳐요. 16마디를 되풀이하고, 30초 남으면 빨라지고 10초 남으면 더 빨라져요. 게임 소리를 끄면 같이 꺼져요
   const BGM_KEY = "bunsik.bgm", BGM_VOL = 0.7;
   let bgmOn = (() => { try { return localStorage.getItem(BGM_KEY) !== "0"; } catch (e) { return true; } })();
   const SONG = { // 한 마디 = 8분음표 8칸. 음 이름은 새 음, "-"는 앞 음을 끌어요, "."는 쉼표. 화음 두 개면 반 마디씩
@@ -5810,7 +5810,7 @@ body.modal { overflow: hidden; }
       bgmAt = a.currentTime + 0.05;
     }
     if (bgmAt < a.currentTime) bgmAt = a.currentTime + 0.02; // 화면이 한참 멈췄다 오면 밀린 음은 건너뛰어요
-    const beat = 60 / (v.left <= 30 ? 152 : 132);
+    const beat = 60 / (v.left <= 10 ? 176 : v.left <= 30 ? 152 : 132); // 빠르기 (1분에 몇 박)
     while (bgmAt < a.currentTime + 0.4) {
       bgmPlayStep(a, bgmBus, bgmStep, bgmAt, beat);
       bgmAt += beat * (bgmStep % 2 ? 0.4 : 0.6);
