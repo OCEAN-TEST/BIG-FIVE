@@ -330,20 +330,16 @@ body.modal { overflow: hidden; }
 .stick { position: absolute; width: 124px; height: 124px; margin: -62px 0 0 -62px; border-radius: 50%; background: rgba(255,248,230,.14); border: 3px solid rgba(255,248,230,.45); opacity: .7; transition: opacity .15s; }
 .stick.active { opacity: 1; transition: none; }
 .knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: rgba(255,207,51,.92); box-shadow: 0 4px 0 #c99a12; }
-.pbtns { position: absolute; right: max(16px, var(--sar)); bottom: max(14px, var(--sab)); display: grid; grid-template-columns: auto auto; grid-template-areas: ". dash" "work grab"; gap: 10px 12px; align-items: end; justify-items: center; pointer-events: auto; touch-action: none; }
+.pbtns { position: absolute; right: max(16px, var(--sar)); bottom: max(14px, var(--sab)); display: grid; grid-template-columns: auto auto; grid-template-areas: "dash work" "grab grab"; gap: 6px 8px; align-items: end; justify-items: end; pointer-events: auto; touch-action: none; }
 .pbtn.dash { grid-area: dash; }
-.pbtn.work { grid-area: work; margin-bottom: 8px; }
+.pbtn.work { grid-area: work; }
 .pbtn.grab { grid-area: grab; }
 .pbtn { border-radius: 50%; border: 0; font-family: var(--font-ui); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; -webkit-tap-highlight-color: transparent; }
-.pbtn small { font-size: 11px; opacity: .9; }
 .pbtn.grab { width: 90px; height: 90px; background: var(--sign); color: var(--ink); font-size: 24px; box-shadow: 0 6px 0 #c99a12; }
 .pbtn.work { width: 74px; height: 74px; background: var(--chili); color: #fff; font-size: 19px; box-shadow: 0 6px 0 var(--chili-dark); }
 .pbtn.dash { width: 62px; height: 62px; background: var(--sky); color: #fff; font-size: 17px; box-shadow: 0 5px 0 #275ba3; }
 .pbtn.on { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
 #game.touch .foot { display: none; }
-/* 가로 폰: 오른쪽 버튼은 세로 한 줄로 좁게 → 주방을 넓게 */
-#game:not(.portrait) .pbtns { grid-template-columns: auto; grid-template-areas: "dash" "work" "grab"; }
-#game:not(.portrait) .pbtn.work { margin-bottom: 0; }
 /* 가로 폰: 위 메뉴를 낮게 */
 #game.touch { gap: 6px; padding-top: max(6px, var(--sat)); padding-bottom: max(6px, var(--sab)); }
 #game.touch .meter { --m: .72; }
@@ -352,10 +348,9 @@ body.modal { overflow: hidden; }
 #game.touch .hudset { width: 32px; height: 32px; }
 #game.touch .hudset svg { width: 19px; height: 19px; }
 @media (max-height: 360px) {
-  .pbtns { gap: 7px 10px; bottom: max(8px, var(--sab)); }
+  .pbtns { gap: 5px 6px; bottom: max(8px, var(--sab)); }
   .pbtn.grab { width: 76px; height: 76px; font-size: 21px; }
-  .pbtn.work { width: 64px; height: 64px; font-size: 17px; margin-bottom: 6px; }
-  .pbtn.work small { font-size: 9.5px; }
+  .pbtn.work { width: 64px; height: 64px; font-size: 17px; }
   .pbtn.dash { width: 54px; height: 54px; font-size: 15px; }
 }
 #game.touch .hud { gap: 8px; }
@@ -549,7 +544,7 @@ body.modal { overflow: hidden; }
     <div class="zone" id="zone" aria-label="이동 조이스틱"><div class="stick" id="stick"><div class="knob" id="knob"></div></div></div>
     <div class="pbtns">
       <button class="pbtn dash" id="dashBtn" type="button">대시</button>
-      <button class="pbtn work" id="workBtn" type="button">작업<small>썰기·던지기<br>불 끄기</small></button>
+      <button class="pbtn work" id="workBtn" type="button">작업</button>
       <button class="pbtn grab" id="grabBtn" type="button">집기</button>
     </div>
   </div>
@@ -2423,12 +2418,14 @@ body.modal { overflow: hidden; }
     const sb = crect(stage), hb = crect(g.querySelector(".hud"));
     const insT = Math.max(0, hb.bottom - sb.top) + 20; // 뒷줄 냄비 위 막대가 위 줄에 안 가리게
     const sp = getComputedStyle($("safeProbe")), px = (k) => parseFloat(sp["padding" + k]) || 0; // 폰 화면 가장자리(노치·홈 막대) 여백. 눕혀 그릴 땐 게임의 옆 = 폰의 위·아래, 게임의 아래 = 폰의 왼쪽
-    const safe = sideways ? Math.max(px("Top"), px("Bottom")) : Math.max(px("Left"), px("Right"));
     const insB = Math.max(4, sideways ? px("Left") : px("Bottom"));
-    const insS = safe + (touchMode && me ? Math.max(0, side - 34) : 2); // 아래 모서리는 조작 버튼과 조금 겹쳐도 돼요
+    const pad = touchMode && me ? Math.max(0, side - 34) : 2; // 아래 모서리는 조작 버튼과 조금 겹쳐도 돼요
+    const insS = (sideways ? px("Top") : px("Left")) + pad;
+    let insR = (sideways ? px("Bottom") : px("Right")) + pad;
+    if (touchMode && me && !$("pad").hidden) insR = Math.max(insR, sb.right - crect($("dashBtn")).left - 26); // 작업 왼쪽의 대시 버튼이 주방 오른쪽 칸을 안 가리게
     const dpr = window.devicePixelRatio || 1;
     w = Math.max(240, Math.floor(w)); h = Math.max(160, Math.floor(h));
-    const got = R3.resize(w, h, false, false, insT, insS, insB);
+    const got = R3.resize(w, h, false, false, insT, insS, insB, insR);
     w = got.w; h = got.h;
     cv.style.width = w + "px"; cv.style.height = h + "px";
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
@@ -4817,7 +4814,7 @@ body.modal { overflow: hidden; }
     // 돌린 화면: 서쪽(왼쪽 끝)에서 동쪽을 보며 내려다봐요. 뒷벽은 옆으로 가니 빼요
     // 위 줄을 띄우는 화면: 뒷벽 윗부분은 위 줄 밑으로 가도 돼요. 대신 뒷줄 냄비 위 막대 높이까지는 보이게
     const FIT_OVER = [[-0.3, -0.5, ROWS + 0.3], [COLS + 0.3, -0.5, ROWS + 0.3], [-0.3, CH, -0.05], [COLS + 0.3, CH, -0.05], [0, CH + 0.62, 0.5], [COLS, CH + 0.62, 0.5]];
-    let insT = 0, insS = 0, insB = 0;
+    let insT = 0, insS = 0, insB = 0, insR = 0;
     const FIT_ROT = [[-0.3, -0.5, -0.3], [-0.3, -0.5, ROWS + 0.3], [COLS + 0.3, CH + 0.7, -0.3], [COLS + 0.3, CH + 0.7, ROWS + 0.3], [-0.3, CH + 0.7, -0.3], [-0.3, CH + 0.7, ROWS + 0.3]];
     // 가로 틈 트럭 (L칸): 왼쪽 운전석 (벌어지면 아래 트럭이 앞·아래로), 오른쪽 뒤꽁무니 (벌어지면 위 트럭이 뒤로), 아래 트럭 바퀴와 그 앞 도로 조금.
     // 돌린 화면은 아래쪽이 운전석이라 앞유리 아래 끝까지, 위쪽은 뒤로 물러난 위 트럭 끝까지 (세로 폰은 캔버스가 그만큼 길어져요)
@@ -4843,7 +4840,7 @@ body.modal { overflow: hidden; }
       const tgt = new T.Vector3(cx, 0.4, ROWS / 2);
       const dir = rotView ? new T.Vector3(-Math.cos(PITCH), Math.sin(PITCH), 0) : new T.Vector3(0, Math.sin(PITCH), Math.cos(PITCH));
       // 주방을 넣을 칸 (화면 좌표 -1~1). 위·옆 여백은 위 줄과 조작 버튼 자리
-      const ax1 = 1 - (2 * (10 + insS)) / vw, ax0 = -ax1;
+      const ax1 = 1 - (2 * (10 + insR)) / vw, ax0 = -1 + (2 * (10 + insS)) / vw;
       const ay1 = 1 - (2 * (over ? insT : 10)) / vh, ay0 = -1 + (2 * (over ? insB || 4 : 10)) / vh;
       const bounds = (d) => {
         cam.position.copy(tgt).addScaledVector(dir, d); cam.lookAt(tgt); cam.updateMatrixWorld(true);
@@ -4860,9 +4857,9 @@ body.modal { overflow: hidden; }
       return ((b.y1 - b.y0) / 2) * vh + 22; // 주방이 실제로 차지하는 높이(px)
     }
     // tight = 세로 폰: 주방 높이만큼만 캔버스를 써서 위에 붙여요
-    function resize(w, h, tight, rot, top, side, bot) {
+    function resize(w, h, tight, rot, top, side, bot, sideR) { // side: 왼쪽 여백, sideR: 오른쪽 여백 (없으면 side 와 같게)
       if (!!rot !== rotView) { rotView = !!rot; dirty = true; } // 이름표 방향을 다시 잡아요
-      vw = w; vh = h; insT = top || 0; insS = side || 0; insB = bot || 0;
+      vw = w; vh = h; insT = top || 0; insS = side || 0; insB = bot || 0; insR = sideR == null ? insS : sideR;
       for (let k = 0; k < (tight ? 4 : 1); k++) {
         const need = fitCam();
         if (!tight || need >= vh - 2) break;
@@ -6844,7 +6841,10 @@ body.modal { overflow: hidden; }
     // 가로로만 해요: 폰·태블릿을 세로로 들고 있으면 게임을 옆으로 눕혀 그려요 (폰만 돌리면 가로 화면. 화면 회전 잠금을 켜 둬도 돼요)
     sideways = touchMode && portrait && !g.hidden;
     document.body.classList.toggle("side", sideways);
-    if (sideways) { const bs = document.body.style; bs.setProperty("--sw", window.innerHeight + "px"); bs.setProperty("--sh", window.innerWidth + "px"); }
+    if (sideways) { // 아이폰 홈 화면 앱은 화면 맨 위(상태 막대 밑)부터 그리는데 innerHeight 가 상태 막대만큼 짧게 나올 때가 있어요 → 화면 끝까지 (아래에 빈 띠 안 남게)
+      const bs = document.body.style, tall = navigator.standalone === true ? Math.max(window.innerHeight, screen.height) : window.innerHeight;
+      bs.setProperty("--sw", tall + "px"); bs.setProperty("--sh", window.innerWidth + "px");
+    }
     if (!g.hidden) {
       const hudB = crect(document.querySelector("#game .hud")).bottom;
       zone.style.top = Math.round(hudB + 4) + "px";
