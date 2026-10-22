@@ -672,7 +672,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 62;
+  const VERSION = 63;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -1550,10 +1550,10 @@ body.modal { overflow: hidden; }
       if (W.fire[i]) return;
       if (t.type === "board") {
         const it = W.slots[i];
-        if (isIng(it) && ING[it.k].chop && !it.cut) { it.pr = (it.pr || 0) + dt / (p.kn ? GEAR_TIME.kn : CHOP_TIME); if (it.pr >= 1) { it.cut = true; delete it.pr; } }
+        if (isIng(it) && ING[it.k].chop && !it.cut) { it.pr = (it.pr || 0) + dt / (p.kn ? GEAR_TIME.kn : CHOP_TIME); if (it.pr >= 1) { it.cut = true; delete it.pr; ev({ snd: "cutDone" }); } }
       } else if (t.type === "sink") {
         const s = W.sinks[i];
-        if (s && s.n > 0) { s.pr += dt / (p.sp ? GEAR_TIME.sp : WASH_TIME); if (s.pr >= 1) { s.pr = 0; s.n--; addCleanPlate(); } }
+        if (s && s.n > 0) { s.pr += dt / (p.sp ? GEAR_TIME.sp : WASH_TIME); if (s.pr >= 1) { s.pr = 0; s.n--; addCleanPlate(); ev({ snd: "clean" }); } }
       }
     });
 
@@ -1618,7 +1618,8 @@ body.modal { overflow: hidden; }
     return true;
   }
   function plateAdd(plate, k) {
-    if (plate.dish && ING[k] && ING[k].sauce) { const d = toppedOf(plate.dish, k); if (d) plate.dish = d.id; return; }
+    if (plate.dish && ING[k] && ING[k].sauce) { const d = toppedOf(plate.dish, k); if (d) plate.dish = d.id; ev({ snd: "squirt" }); return; }
+    ev({ snd: "dish" });
     plate.items.push(k);
     const d = PLATE_DISHES.find((d) => d.need.length === plate.items.length && d.need.every((n) => plate.items.includes(n)));
     if (d) { plate.dish = d.id; plate.items = []; }
@@ -1636,12 +1637,13 @@ body.modal { overflow: hidden; }
     const ds = Object.values(DISH).filter((d) => d.where === c.k && !d.top);
     const possible = ds.some((d) => c.items.every((n) => d.need.includes(n)) && new Set(c.items).size === c.items.length);
     if (!possible) { c.st = "bad"; ev({ m: "엉뚱한 재료가 들어가서 망했어요! 쓰레기통에 비워요", bad: true, snd: "bad" }); return true; }
+    ev({ snd: CONT[c.k].station === "stove" ? "plop" : "put" }); // 냄비는 퐁당 (화구 위면 보글보글도), 튀김 바구니는 탁 (튀김기 위면 치이익도)
     const d = ds.find((d) => d.need.length === c.items.length && d.need.every((n) => c.items.includes(n)));
     if (d) { c.st = "cook"; c.dish = d.id; c.t = 0; }
     return true;
   }
   function pour(c, plate) {
-    if (c.st === "done") { if (!plateEmpty(plate)) return "빈 접시에 담아요"; plate.dish = c.dish; Object.assign(c, freshCont(c.k)); return true; }
+    if (c.st === "done") { if (!plateEmpty(plate)) return "빈 접시에 담아요"; plate.dish = c.dish; Object.assign(c, freshCont(c.k)); ev({ snd: "dish" }); return true; }
     if (c.st === "cook") return "아직 익는 중이에요";
     if (c.st === "burnt" || c.st === "bad") return "망한 음식은 쓰레기통에 버려요";
     return c.items.length ? "다 익혀야 담을 수 있어요" : CONT[c.k].name + "가 비어 있어요";
@@ -1654,7 +1656,7 @@ body.modal { overflow: hidden; }
     if (h.k === "plate" && isCont(s)) return pour(s, h);
     if (isCont(h) && s.k === "plate") return pour(h, s);
     if (isCont(h) && isIng(s)) { const r = contAdd(h, s); if (r === true) W.slots[i] = null; return r; }
-    if (h.k === "dirty" && s.k === "dirty") { s.n += h.n; p.hold = null; return true; }
+    if (h.k === "dirty" && s.k === "dirty") { s.n += h.n; p.hold = null; ev({ snd: "clatter" }); return true; }
     return "자리가 차 있어요";
   }
 
@@ -1676,10 +1678,10 @@ body.modal { overflow: hidden; }
     switch (t.type) {
       case "floor": {
         const s = W.slots[i];
-        if (!h && s) { p.hold = s; W.slots[i] = null; delete s.bt; return; }
+        if (!h && s) { p.hold = s; W.slots[i] = null; delete s.bt; ev({ snd: "pick" }); return; }
         if (h && !s) {
           if (!canDrop(t)) { say(t.road ? "오토바이 길에는 못 내려놔요" : t.rail || t.bar ? "철길에는 못 내려놔요" : t.pit ? "낭떠러지에는 못 내려놔요" : t.gap ? "트럭 사이 발판에는 못 내려놔요" : "순간이동문 위에는 못 내려놔요"); return; }
-          W.slots[i] = h; p.hold = null;
+          W.slots[i] = h; p.hold = null; ev({ snd: "put" });
           if (t.push) ride(h);
           return;
         }
@@ -1690,10 +1692,10 @@ body.modal { overflow: hidden; }
         const k = t.ing;
         if (!h) { // 케첩·머스타드는 들고 다닐 수 없어요: 그 자리에서 접시에 뿌려요
           if (ING[k] && ING[k].sauce) say(eunneun(ING[k].name) + " 못 들어요. 핫도그 접시를 들고 와서 뿌려요");
-          else p.hold = { k };
+          else { p.hold = { k }; ev({ snd: "pick" }); }
           return;
         }
-        if (h.k === k && !h.cut) { p.hold = null; return; }
+        if (h.k === k && !h.cut) { p.hold = null; ev({ snd: "put" }); return; }
         if (h.k === "plate") { const r = plateCheck(h, { k }); if (r === true) plateAdd(h, k); else say(r); return; }
         if (isCont(h)) { say(contAdd(h, { k })); return; }
         say("손이 차 있어요");
@@ -1702,11 +1704,11 @@ body.modal { overflow: hidden; }
       case "counter": case "board": case "belt": case "stove": case "fryer": {
         const s = W.slots[i];
         if (!h && !s) return;
-        if (!h) { p.hold = s; W.slots[i] = null; delete s.bt; return; }
+        if (!h) { p.hold = s; W.slots[i] = null; delete s.bt; ev({ snd: "pick" }); return; }
         if (!s) {
           if (t.type === "board" && !isIng(h)) { say("도마에는 재료만 올려요"); return; }
           if ((t.type === "stove" || t.type === "fryer") && (!isCont(h) || CONT[h.k].station !== t.type)) { say(t.type === "stove" ? "화구에는 냄비만 올려요" : "튀김기에는 튀김 바구니만 올려요"); return; }
-          W.slots[i] = h; p.hold = null;
+          W.slots[i] = h; p.hold = null; ev({ snd: "put" });
           if (t.type === "belt") ride(h);
           return;
         }
@@ -1716,25 +1718,25 @@ body.modal { overflow: hidden; }
       case "plates": {
         const n = W.racks[i];
         if (!h) {
-          if (n === -1) p.hold = freshPlate();
-          else if (n > 0) { W.racks[i]--; p.hold = freshPlate(); }
+          if (n === -1) { p.hold = freshPlate(); ev({ snd: "dish" }); }
+          else if (n > 0) { W.racks[i]--; p.hold = freshPlate(); ev({ snd: "dish" }); }
           else say("깨끗한 접시가 없어요. 설거지해요");
           return;
         }
-        if (plateEmpty(h)) { if (n !== -1) W.racks[i]++; p.hold = null; return; }
+        if (plateEmpty(h)) { if (n !== -1) W.racks[i]++; p.hold = null; ev({ snd: "dish" }); return; }
         say("손이 차 있어요");
         return;
       }
       case "return": {
         const n = W.rets[i] || 0;
-        if (!h) { if (n > 0) { p.hold = { k: "dirty", n }; W.rets[i] = 0; } else say("아직 돌아온 접시가 없어요"); return; }
-        if (h.k === "dirty") { W.rets[i] = n + h.n; p.hold = null; return; }
+        if (!h) { if (n > 0) { p.hold = { k: "dirty", n }; W.rets[i] = 0; ev({ snd: "clatter" }); } else say("아직 돌아온 접시가 없어요"); return; }
+        if (h.k === "dirty") { W.rets[i] = n + h.n; p.hold = null; ev({ snd: "clatter" }); return; }
         say("손이 차 있어요");
         return;
       }
       case "sink": {
         const s = W.sinks[i];
-        if (h && h.k === "dirty") { s.n += h.n; p.hold = null; return; }
+        if (h && h.k === "dirty") { s.n += h.n; p.hold = null; ev({ snd: "splash" }); return; }
         if (!h) { if (s.n > 0) say("작업 버튼을 꾹 눌러서 씻어요"); return; }
         say("설거지할 접시만 넣어요");
         return;
@@ -1760,9 +1762,9 @@ body.modal { overflow: hidden; }
       }
       case "trash": {
         if (!h) return;
-        if (isIng(h)) { p.hold = null; return; }
-        if (isCont(h)) { if (h.items.length || h.st !== "idle") { Object.assign(h, freshCont(h.k)); say(CONT[h.k].name + "를 비웠어요"); } return; }
-        if (h.k === "plate") { if (h.dish || h.items.length) { h.dish = null; h.items = []; say("접시를 비웠어요"); } else say("빈 접시는 버리지 않아요"); return; }
+        if (isIng(h)) { p.hold = null; ev({ snd: "trash" }); return; }
+        if (isCont(h)) { if (h.items.length || h.st !== "idle") { Object.assign(h, freshCont(h.k)); say(CONT[h.k].name + "를 비웠어요"); ev({ snd: "trash" }); } return; }
+        if (h.k === "plate") { if (h.dish || h.items.length) { h.dish = null; h.items = []; say("접시를 비웠어요"); ev({ snd: "trash" }); } else say("빈 접시는 버리지 않아요"); return; }
         if (h.k === "dirty") say("더러운 접시는 개수대에서 씻어요");
         if (h.k === "ext") say("소화기는 버리면 안 돼요");
         if (h.k === "club") say("몽둥이는 버리면 안 돼요");
@@ -1777,7 +1779,7 @@ body.modal { overflow: hidden; }
     const p = W.players[pi], h = p.hold;
     if (!isIng(h)) return;
     const l = Math.hypot(ax, ay) || 1;
-    p.hold = null; p.an = (p.an || 0) + 1;
+    p.hold = null; p.an = (p.an || 0) + 1; ev({ snd: "toss" });
     W.fly.push({ it: h, x: p.x + (ax / l) * 0.3, y: p.y + (ay / l) * 0.3, dx: ax / l, dy: ay / l, d: 0, by: pi, lt: idx(Math.floor(p.x), Math.floor(p.y)) });
   }
   function tryDrop(it, tx, ty) {
@@ -1785,6 +1787,7 @@ body.modal { overflow: hidden; }
     const i = idx(tx, ty);
     if (W.slots[i] || !canDrop(tiles[i])) return false;
     W.slots[i] = it; if (tiles[i].push) ride(it);
+    ev({ snd: "put" });
     return true;
   }
   function dropFloor(it, x, y) {
@@ -1810,9 +1813,9 @@ body.modal { overflow: hidden; }
   function landOn(f, i) {
     const t = tiles[i], it = f.it, s = W.slots[i];
     const back = () => dropBack(f, Math.floor(f.x), Math.floor(f.y));
-    if (t.type === "trash" || t.type === "void") return; // 트럭 밖 빈 곳으로 날아가면 도로에 떨어져서 사라져요
+    if (t.type === "trash" || t.type === "void") { if (t.type === "trash") ev({ snd: "trash" }); return; } // 트럭 밖 빈 곳으로 날아가면 도로에 떨어져서 사라져요
     if (t.type === "counter" || t.type === "board" || t.type === "belt") {
-      if (!s) { W.slots[i] = it; if (t.type === "belt") ride(it); return; }
+      if (!s) { W.slots[i] = it; ev({ snd: "put" }); if (t.type === "belt") ride(it); return; }
       if (s.k === "plate") { if (plateCheck(s, it) === true) { plateAdd(s, it.k); return; } return back(); }
       if (isCont(s)) { if (contAdd(s, it) === true) return; return back(); }
       return back();
@@ -5726,6 +5729,20 @@ body.modal { overflow: hidden; }
     clunk() { tone(160, 0.12, "square", 0.08, 0, 90); noise(0.1, 0.1, 0, 700, 1.2); },
     swish() { noise(0.14, 0.07, 0, 2600, 0.7); },
     squish() { noise(0.08, 0.12, 0, 900, 1.2); tone(2600, 0.07, "square", 0.05, 0.02, 3600); tone(3000, 0.09, "square", 0.04, 0.1, 2200); },
+    pick() { tone(560, 0.06, "sine", 0.07, 0, 820); }, // 집기 톡
+    put() { tone(250, 0.07, "triangle", 0.09, 0, 160); noise(0.03, 0.04, 0, 1800, 1); }, // 내려놓기 탁
+    dish() { tone(2100, 0.07, "triangle", 0.045); tone(2800, 0.08, "sine", 0.025, 0.03); }, // 접시 딸깍
+    clatter() { [0, 0.05, 0.11].forEach((d, k) => tone(1900 + k * 350, 0.06, "triangle", 0.035, d)); }, // 접시 여러 장 달그락
+    squirt() { noise(0.28, 0.08, 0, 1500, 1.8); tone(340, 0.22, "sine", 0.05, 0, 620); tone(240, 0.05, "sine", 0.06, 0.25); }, // 케첩·머스타드 쭈욱-뿍
+    plop() { tone(700, 0.09, "sine", 0.08, 0, 260); noise(0.08, 0.04, 0.02, 900, 1.2); }, // 냄비에 퐁당
+    boil() { for (let k = 0; k < 4; k++) { const f = 280 + Math.random() * 260; tone(f, 0.05, "sine", 0.05, k * 0.08 + Math.random() * 0.03, f * 1.7); } }, // 화구 위 냄비 보글보글
+    splash() { noise(0.3, 0.1, 0, 1100, 0.6); noise(0.18, 0.05, 0.05, 3200, 0.8); }, // 개수대에 넣으면 철벅
+    scrub() { noise(0.09, 0.05, 0, 2400, 2.5); tone(1800 + Math.random() * 400, 0.05, "sine", 0.02); }, // 설거지 뽀득
+    clean() { tone(1568, 0.12, "sine", 0.06); tone(2093, 0.18, "sine", 0.05, 0.08); }, // 접시 다 씻음 반짝
+    cutDone() { noise(0.06, 0.06, 0, 5000, 0.8); tone(1200, 0.06, "triangle", 0.04, 0, 1700); }, // 다 썰었어요 슥
+    trash() { tone(1250, 0.06, "triangle", 0.04); noise(0.16, 0.1, 0.04, 380, 0.8); tone(150, 0.14, "square", 0.04, 0.04, 80); }, // 쓰레기통 깡-퉁
+    toss() { noise(0.16, 0.07, 0, 2200, 0.9); }, // 던지기 휙
+    dash() { noise(0.2, 0.08, 0, 1400, 0.7); tone(420, 0.15, "sine", 0.03, 0, 200); }, // 대시 슝
     fry() { noise(1.2, 0.12, 0, 4500, 0.45); noise(0.5, 0.06, 0, 1400, 0.8); for (let k = 0; k < 6; k++) noise(0.025, 0.04 + Math.random() * 0.04, 0.08 + k * 0.15 + Math.random() * 0.08, 2500 + Math.random() * 3000, 1.4); } // 튀김기에 넣으면 치이익 + 기름 튀는 타닥
   };
   ["pointerdown", "keydown"].forEach((t) => window.addEventListener(t, () => { if (sndOn) audio(); }, true));
@@ -5847,6 +5864,11 @@ body.modal { overflow: hidden; }
   }
   function roadBump(a, dest, t) { voiceAt(a, dest, t, 80, 0.1, "square", 0.028, 48); noiseAt(a, dest, t, 0.07, 0.03, "bandpass", 260); } // 도로 이음매 덜컹 (낮고 작게)
   function startBeep(a, dest, t) { voiceAt(a, dest, t, 880, 0.16, "square", 0.05); voiceAt(a, dest, t, 1760, 0.1, "sine", 0.03); } // 시작 카운트다운 3·2·1 삑
+  function endJingle(a, dest, t) { // 영업 끝! 뚜루루 딴
+    [1568, 1319, 1047].forEach((f, k) => voiceAt(a, dest, t + k * 0.09, f, 0.12, "square", 0.04));
+    [523, 659, 784, 1047].forEach((f) => voiceAt(a, dest, t + 0.3, f, 0.8, "triangle", 0.06));
+    noiseAt(a, dest, t + 0.3, 0.5, 0.04, "highpass", 6000);
+  }
   function startJingle(a, dest, t) { // 시작! 짠: 따-단 하고 밝은 화음 + 찰랑
     voiceAt(a, dest, t, 784, 0.1, "square", 0.05);
     [1047, 1319, 1568].forEach((f) => { voiceAt(a, dest, t + 0.1, f, 0.65, "triangle", 0.07); voiceAt(a, dest, t + 0.1, f * 2, 0.3, "sine", 0.015); });
@@ -5869,6 +5891,7 @@ body.modal { overflow: hidden; }
     const ph = v ? v.phase : "", cd = ph === "count" ? Math.ceil(v.cd) : 0; // 시작 카운트다운: 3·2·1 삑, 시작하면 짠
     if (live && cd >= 1 && cd <= 3 && cd !== lastCd) startBeep(a, a.destination, a.currentTime);
     if (live && ph === "play" && lastPh === "count") startJingle(a, a.destination, a.currentTime);
+    if (live && ph === "end" && lastPh === "play") endJingle(a, a.destination, a.currentTime);
     lastCd = cd; lastPh = ph;
     if (!live || v.phase !== "play") { lastCount = 0; return; }
     const s = Math.ceil(v.left);
@@ -5976,7 +5999,7 @@ body.modal { overflow: hidden; }
       }
       if (key === "warn") warnMax = Math.max(warnMax, (it.t - SAFE) / WARN);
       const n = hot ? it.items.length : 0;
-      if (t.type === "fryer" && n > (contN[t.i] || 0)) sfx.fry(); // 튀김기 바구니에 재료가 들어가면 (재료 든 바구니를 올려도)
+      if (n > (contN[t.i] || 0)) (t.type === "fryer" ? sfx.fry : sfx.boil)(); // 튀김기 바구니·화구 위 냄비에 재료가 들어가면 치이익·보글보글 (재료 든 걸 올려도)
       contN[t.i] = n;
     });
     if (warnMax >= 0 && now - lastBeep > 560 - 380 * Math.min(1, warnMax)) { lastBeep = now; sfx.warn(); }
@@ -5984,6 +6007,7 @@ body.modal { overflow: hidden; }
     if (me && mine && chopHeld() && !mine.hold) {
       const w = workingOn(Object.assign({}, mine, { x: me.x, y: me.y, fx: me.fx, fy: me.fy, chop: true, hold: null }), view);
       if (w && !w.wash && now - lastChop > 118) { lastChop = now; sfx.chop(); }
+      else if (w && w.wash && now - lastChop > 260) { lastChop = now; sfx.scrub(); }
     }
   }
 
@@ -6903,7 +6927,7 @@ body.modal { overflow: hidden; }
     if (!dx && !dy) { dx = me.ax || 0; dy = me.ay == null ? 1 : me.ay; }
     const l = Math.hypot(dx, dy) || 1;
     me.ddx = dx / l; me.ddy = dy / l; me.dashT = DASH_TIME; me.dashCD = DASH_CD;
-    me.ds = (me.ds || 0) + 1;
+    me.ds = (me.ds || 0) + 1; sfx.dash();
     const a = anim[myIdx]; a.ds = me.ds; a.dashT = DASH_TIME; a.ddx = me.ddx; a.ddy = me.ddy;
     spawnDust(me.x, me.y, me.ddx, me.ddy);
     if (buzz && navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
@@ -7331,7 +7355,7 @@ body.modal { overflow: hidden; }
         stepAnim(i, pos.x, pos.y, dt);
         if (i !== myIdx) {
           if (p.an != null && p.an !== anim[i].an) { anim[i].an = p.an; anim[i].reach = REACH; }
-          if (p.ds != null && p.ds !== anim[i].ds) { const first = anim[i].ds === 0 && p.ds > 1; anim[i].ds = p.ds; if (!first) { anim[i].dashT = DASH_TIME; spawnDust(pos.x, pos.y, p.fx || 0, p.fy || 0); } }
+          if (p.ds != null && p.ds !== anim[i].ds) { const first = anim[i].ds === 0 && p.ds > 1; anim[i].ds = p.ds; if (!first) { sfx.dash(); anim[i].dashT = DASH_TIME; spawnDust(pos.x, pos.y, p.fx || 0, p.fy || 0); } }
         }
       });
       smoothRats(dt);
@@ -7356,7 +7380,7 @@ body.modal { overflow: hidden; }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  if (IS_LOCAL) window.__bunsik = { bgm: { step: bgmPlayStep, n: BGM_STEPS.length, vol: BGM_VOL }, snd: { countDing, bikeHorn, bikeZoom, truckRun, roadBump, startBeep, startJingle }, get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, get wallet() { return wallet; }, info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom(), truckSegs: () => truckSegs(view), truckNow: () => truckNow(view) };
+  if (IS_LOCAL) window.__bunsik = { bgm: { step: bgmPlayStep, n: BGM_STEPS.length, vol: BGM_VOL }, snd: { countDing, bikeHorn, bikeZoom, truckRun, roadBump, startBeep, startJingle, endJingle }, sfx, get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, get wallet() { return wallet; }, info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom(), truckSegs: () => truckSegs(view), truckNow: () => truckNow(view) };
   if (document.fonts && document.fonts.load) document.fonts.load('20px "Jua"', "가나다 내는 곳 버리기 방장 친구 반납 개수대");
 })();
 </script>
