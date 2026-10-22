@@ -125,7 +125,7 @@ kbd { font-family: var(--font-ui); background: #fff; border: 2px solid var(--pap
 .waitbox .btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .pick { display: flex; flex-direction: column; gap: 8px; align-items: center; width: 100%; }
 .pick h3 { margin: 0; font-family: var(--font-ui); font-weight: 400; font-size: 20px; color: var(--chili); }
-.chars { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 640px; }
+.chars { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 760px; }
 .charbtn { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 6px 4px 8px; background: #fff; border: 3px solid var(--paper-line); border-radius: 12px; cursor: pointer; font-family: var(--font-ui); font-size: clamp(13px, 3.6vw, 18px); color: var(--ink); min-width: 0; }
 .charbtn canvas { width: 88px; max-width: 100%; height: auto; aspect-ratio: 1 / 1; }
 .charbtn[aria-pressed="true"] { border-color: var(--chili); background: #fff1cc; }
@@ -603,7 +603,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 50;
+  const VERSION = 51;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -1155,7 +1155,8 @@ body.modal { overflow: hidden; }
     mochi:  { name: "치이카와", fur: "#ffffff", dark: "#b0a6a0", ear: "#ffffff", nose: "#3a2a24" }, // 하얗고 머리가 큰 동글이, 작은 반달 귀, 걱정 눈썹, 빗금 볼터치
     rabbit: { name: "토끼",   fur: "#ecd49e", dark: "#c2a46c", ear: "#f1a7b0", nose: "#e8798a" }, // 노란 몸, 머리가 크고 귀가 긴 토끼, 큰 호 눈썹, 혀 보이는 입
     bear:   { name: "곰",     fur: "#9a6440", dark: "#5e3a24", ear: "#d1a57c", nose: "#2b1d16" },
-    otter:  { name: "해달",   fur: "#f4f1ec", body: "#6e5547", body3: "#5a4337", dark: "#4e3b30", ear: "#5a4033", nose: "#4a2e22", tail: "#5e4739", tail3: "#4b3529" } // 하얀 머리(얼굴 전체 흰색), 갈색 몸·귀·두툼한 꼬리. body3·tail3: 3D는 조명이 밝아서 더 진하게
+    otter:  { name: "해달",   fur: "#f4f1ec", body: "#6e5547", body3: "#5a4337", dark: "#4e3b30", ear: "#5a4033", nose: "#4a2e22", tail: "#5e4739", tail3: "#4b3529" }, // 하얀 머리(얼굴 전체 흰색), 갈색 몸·귀·두툼한 꼬리. body3·tail3: 3D는 조명이 밝아서 더 진하게
+    poro:   { name: "포로",   fur: "#f3f0f6", dark: "#4a4462", ear: "#e8899b", nose: "#ec8fac", hand: "#4a4462", face: "#f8eeb0", tongue: "#ef8e9b", udder: "#e8798a" } // 젖소 옷을 입은 동그란 포로: 하얀 바탕에 남색 무늬, 분홍 코·젖, 크림색 얼굴과 콧수염, 길게 내민 분홍 혀. 앞치마 대신 귀표가 내 색
   };
   const CHAR_KEYS = Object.keys(CHARS);
   // 머리가 큰 캐릭터 (2D): [머리 반너비, 반높이, 머리 가운데 y] (칸 크기 S 배). 몸은 작게, 얼굴은 그림으로 그려요
@@ -1177,6 +1178,7 @@ body.modal { overflow: hidden; }
   }
   const APRON = ["#d7372b", "#2f8f5b", "#2f6fd1", "#8e4fc9"];
   const APRON_NAME = ["빨간 앞치마", "초록 앞치마", "파란 앞치마", "보라 앞치마"];
+  const gearOf = (ch, i) => (ch === "poro" ? APRON_NAME[i].replace("앞치마", "귀표") : APRON_NAME[i]); // 포로는 앞치마 대신 귀표가 내 색
 
   function drawEars(c, ch, S, back, sw) { // sw: 걸을 때 귀가 앞(+1)·뒤(-1)로 흔들리는 정도 (토끼만 써요)
     const C = CHARS[ch];
@@ -1326,6 +1328,94 @@ body.modal { overflow: hidden; }
     }
   }
 
+  // 점들을 부드럽게 잇는 곡선 (Catmull-Rom). closed면 처음과 끝도 이어요
+  function catmull(pts, closed) {
+    const n = pts.length, P = (i) => pts[closed ? (i + n) % n : Math.max(0, Math.min(n - 1, i))], out = [];
+    for (let i = 0; i < (closed ? n : n - 1); i++) for (let j = 0; j < 8; j++) {
+      const t = j / 8, a = P(i - 1), b = P(i), c = P(i + 1), d = P(i + 2);
+      out.push([0, 1].map((e) => 0.5 * (2 * b[e] + (c[e] - a[e]) * t + (2 * a[e] - 5 * b[e] + 4 * c[e] - d[e]) * t * t + (3 * b[e] - a[e] - 3 * c[e] + d[e]) * t * t * t)));
+    }
+    if (!closed) out.push(pts[n - 1]);
+    return out;
+  }
+  // 포로 콧수염 [윗선, 아랫선]: 가운데가 살짝 파이고 양 끝이 위로 말려 올라간 통통한 띠. 2D와 3D가 같은 모양을 써요
+  // (x: 가로 -1~1, y: 아랫선 가운데가 0, 말려 올라간 끝이 1. 3D는 경도 ±47도·위도 8.5~27도로, 2D는 얼굴 너비에 맞춰 옮겨요)
+  const PORO_MUST = [[[-1, 1], [-0.87, 0.75], [-0.64, 0.62], [-0.36, 0.64], [-0.13, 0.59], [0, 0.49], [0.13, 0.59], [0.36, 0.64], [0.64, 0.62], [0.87, 0.75], [1, 1]],
+    [[0.94, 0.65], [0.79, 0.3], [0.53, 0.08], [0.28, 0.03], [0.11, 0.08], [0, 0], [-0.11, 0.08], [-0.28, 0.03], [-0.53, 0.08], [-0.79, 0.3], [-0.94, 0.65]]];
+  // 포로 (2D): 몸 전체가 동그란 공이에요. 위는 둥글고 아래로 갈수록 조금 넓어요 (가운데 줄이 y = -0.05)
+  function poroPath(c, S) {
+    c.beginPath();
+    for (let i = 0; i <= 64; i++) { const a = (i / 64) * Math.PI * 2, s = Math.sin(a), x = Math.cos(a) * 0.3 * S * (1 + 0.06 * Math.max(0, s)), y = (-0.05 + s * (s > 0 ? 0.27 : 0.31)) * S; if (i) c.lineTo(x, y); else c.moveTo(x, y); }
+    c.closePath();
+  }
+  // 혀 끝이 걸음마다 좌우로 덜렁, 튈 때 앞으로 펄럭 (2D는 짧아 보여요). 서 있으면 헥헥. [좌우 각, 길이 배]
+  function poroTongue(o, t) {
+    const dash = o.dash || 0;
+    if (dash) return [Math.sin(t * 26) * 0.45 * dash, 1 - 0.25 * dash];
+    if (o.moving) return [Math.sin(o.phase * Math.PI - 0.9) * 0.4, 1 - Math.abs(Math.sin(o.phase * Math.PI - 0.5)) * 0.18];
+    if (o.chop) return [0, 1 - Math.max(0, Math.sin((o.now || 0) / 40)) * 0.12];
+    return [Math.sin(t * 1.7) * 0.06, 1 + Math.sin(t * 6) * 0.04];
+  }
+  function drawPoro(c, S, o, back, t, fx) {
+    const C = CHARS.poro, ox = back ? 0 : fx * 0.06, ink = "#1f1612";
+    const el = (x, y, rx, ry, col, rot) => { c.beginPath(); c.ellipse(x * S, y * S, rx * S, ry * S, rot || 0, 0, Math.PI * 2); c.fillStyle = col; c.fill(); };
+    const blob = (x, y, rx, ry, seed, col) => { // 울퉁불퉁한 젖소 무늬
+      c.beginPath();
+      for (let i = 0; i <= 40; i++) { const a = (i / 40) * Math.PI * 2, k = 1 + 0.16 * Math.sin(3 * a + seed) + 0.08 * Math.sin(5 * a + seed * 2); if (i) c.lineTo((x + Math.cos(a) * rx * k) * S, (y + Math.sin(a) * ry * k) * S); else c.moveTo((x + Math.cos(a) * rx * k) * S, (y + Math.sin(a) * ry * k) * S); }
+      c.closePath(); c.fillStyle = col; c.fill();
+    };
+    [-1, 1].forEach((sd) => { // 귀: 머리 양옆으로 비스듬히 처진 남색 귀, 앞에서는 안쪽이 분홍
+      el(sd * 0.33, -0.17, 0.095, 0.045, C.dark, sd * 0.32);
+      if (!back) el(sd * 0.345, -0.165, 0.06, 0.025, C.ear, sd * 0.32);
+    });
+    const tx = back ? 0.37 : -0.37; // 화면 왼쪽 귀에 귀표: 앞치마 대신 내 색이에요
+    rrect(c, (tx - 0.03) * S, -0.15 * S, 0.06 * S, 0.08 * S, 0.015 * S); c.fillStyle = APRON[o.slot] || APRON[0]; c.fill(); c.strokeStyle = "rgba(0,0,0,.35)"; c.lineWidth = 1; c.stroke();
+    [-1, 1].forEach((sd) => { // 뿔: 머리 위 양쪽에서 바깥으로 휘어 올라가요 (밑동은 몸 뒤에 숨어요)
+      c.beginPath(); c.moveTo(sd * 0.17 * S, -0.31 * S); c.quadraticCurveTo(sd * 0.26 * S, -0.34 * S, sd * 0.25 * S, -0.45 * S); c.quadraticCurveTo(sd * 0.21 * S, -0.37 * S, sd * 0.1 * S, -0.31 * S); c.closePath();
+      c.fillStyle = C.dark; c.fill();
+    });
+    poroPath(c, S); c.fillStyle = C.fur; c.fill();
+    c.save(); poroPath(c, S); c.clip();
+    c.fillStyle = C.dark; c.fillRect(-0.4 * S, 0.17 * S, 0.8 * S, 0.2 * S); // 아래쪽은 남색
+    if (back) { // 등: 큰 무늬 몇 개
+      blob(-0.12, -0.17, 0.13, 0.09, 1, C.dark); blob(0.16, 0.03, 0.1, 0.11, 4, C.dark); blob(-0.2, 0.08, 0.06, 0.06, 2, C.dark);
+    } else {
+      el(ox, -0.17, 0.25, 0.15, C.dark); // 얼굴을 두른 모자 테두리와 가슴은 남색
+      rrect(c, (ox - 0.17) * S, -0.17 * S, 0.34 * S, 0.45 * S, 0.1 * S); c.fillStyle = C.dark; c.fill();
+      blob(-0.29, 0.03, 0.05, 0.09, 2, C.dark); blob(0.29, -0.01, 0.045, 0.08, 5, C.dark); blob(0.2, -0.27, 0.07, 0.05, 3, C.dark); // 옆구리·모자 위 무늬
+      el(ox, -0.2, 0.165, 0.085, C.face); // 이마 (크림색)
+      el(ox, -0.09, 0.1, 0.035, "#ffffff"); // 혀 둘레 하얀 턱
+      el(ox, -0.095, 0.045, 0.022, "#5a2a34"); // 벌린 입
+      const mp = (q, dy) => { c.beginPath(); q.forEach(([x, y], i) => { const px = (ox + x * 0.2) * S, py = (-0.098 - y * 0.092 + (dy || 0)) * S; if (i) c.lineTo(px, py); else c.moveTo(px, py); }); };
+      const must = catmull(PORO_MUST[0].concat(PORO_MUST[1]), true); // 콧수염: 아래로 그림자를 깔고, 이마와 만나는 윗선을 그어요
+      mp(must, 0.008); c.fillStyle = "rgba(150,120,40,.5)"; c.fill();
+      mp(must); c.fillStyle = C.face; c.fill();
+      mp(catmull(PORO_MUST[0])); c.strokeStyle = "rgba(170,140,55,.6)"; c.lineWidth = Math.max(1, 0.008 * S); c.lineCap = "round"; c.stroke();
+      [-1, 1].forEach((sd) => { dot(c, (ox + sd * 0.062) * S, -0.222 * S, 0.02 * S, ink); dot(c, (ox + sd * 0.062 + 0.007) * S, -0.229 * S, 0.007 * S, "#ffffff"); }); // 까만 점 눈
+      el(ox * 0.6, -0.315, 0.1, 0.045, C.nose); // 모자 위 분홍 코 + 콧구멍
+      [-1, 1].forEach((sd) => el(ox * 0.6 + sd * 0.04, -0.312, 0.013, 0.017, "#c4506c"));
+      rrect(c, (ox - 0.095) * S, 0.05 * S, 0.19 * S, 0.1 * S, 0.042 * S); c.fillStyle = C.udder; c.fill(); // 배에 분홍 젖
+      [-1, 1].forEach((sd) => el(ox + sd * 0.045, 0.125, 0.012, 0.016, "#c4506c"));
+    }
+    c.restore();
+    poroPath(c, S); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
+    if (back) { // 꼬리: 가는 하얀 꼬리 끝에 남색 털뭉치, 살랑살랑
+      c.save(); c.translate(0, 0.1 * S); c.rotate(Math.sin(t * (o.moving ? 8 : 2)) * (o.moving ? 0.45 : 0.18));
+      c.strokeStyle = C.dark; c.lineWidth = 0.032 * S; c.lineCap = "round"; c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(0.05 * S, 0.06 * S, 0.03 * S, 0.12 * S); c.stroke();
+      c.strokeStyle = C.fur; c.lineWidth = 0.02 * S; c.stroke();
+      el(0.03, 0.14, 0.028, 0.038, C.dark);
+      c.restore();
+      return;
+    }
+    const [ang, len] = poroTongue(o, t), L = 0.135 * len, Ls = Math.max(0.01, L - 0.085); // 혀: 입에 매달려 흔들려요. 아래는 둥근 U자
+    c.save(); c.translate(ox * S, -0.092 * S); c.rotate(ang);
+    c.beginPath(); c.moveTo(-0.056 * S, 0); c.bezierCurveTo(-0.064 * S, Ls * 0.45 * S, -0.085 * S, Ls * 0.75 * S, -0.085 * S, Ls * S);
+    c.arc(0, Ls * S, 0.085 * S, Math.PI, 0, true); c.bezierCurveTo(0.085 * S, Ls * 0.75 * S, 0.064 * S, Ls * 0.45 * S, 0.056 * S, 0); c.closePath();
+    c.fillStyle = C.tongue; c.fill(); c.strokeStyle = "#c95b6c"; c.lineWidth = Math.max(1, 0.01 * S); c.stroke();
+    c.beginPath(); c.moveTo(0, 0.02 * S); c.lineTo(0, L * 0.62 * S); c.strokeStyle = "rgba(190,70,90,.7)"; c.lineWidth = Math.max(1, 0.012 * S); c.lineCap = "round"; c.stroke();
+    c.restore();
+  }
+
   // 캐릭터 한 명. (X, Y) = 발 딛는 자리 중심, S = 칸 크기
   function drawChar(c, S, X, Y, o) {
     const C = CHARS[o.ch] || CHARS.cat;
@@ -1345,9 +1435,10 @@ body.modal { overflow: hidden; }
       [-0.12, 0, 0.12].forEach((k) => { const ox = -(o.ddx || 0) * S * 0.32 + -(o.ddy || 0) * k * S, oy = -(o.ddy || 0) * S * 0.32 + (o.ddx || 0) * k * S; c.moveTo(X + ox, by + oy); c.lineTo(X + ox - (o.ddx || 0) * S * 0.35 * dash, by + oy - (o.ddy || 0) * S * 0.35 * dash); });
       c.stroke();
     }
-    c.beginPath(); c.ellipse(X, Y + 0.27 * S, 0.26 * S - bob * 0.5, 0.085 * S, 0, 0, Math.PI * 2); c.fillStyle = "rgba(0,0,0,.18)"; c.fill();
-    dot(c, X - 0.1 * S + (fx ? step * fx : 0), Y + 0.24 * S + (fx ? 0 : step), 0.062 * S, C.dark);
-    dot(c, X + 0.1 * S - (fx ? step * fx : 0), Y + 0.24 * S - (fx ? 0 : step), 0.062 * S, C.dark);
+    const poro = o.ch === "poro", fw = poro ? 0.13 : 0.1, fr = poro ? 0.07 : 0.062; // 포로는 몸이 넓어서 발도 벌어지고 커요
+    c.beginPath(); c.ellipse(X, Y + 0.27 * S, (poro ? 0.3 : 0.26) * S - bob * 0.5, 0.085 * S, 0, 0, Math.PI * 2); c.fillStyle = "rgba(0,0,0,.18)"; c.fill();
+    dot(c, X - fw * S + (fx ? step * fx : 0), Y + 0.24 * S + (fx ? 0 : step), fr * S, C.dark);
+    dot(c, X + fw * S - (fx ? step * fx : 0), Y + 0.24 * S - (fx ? 0 : step), fr * S, C.dark);
 
     let hold = null, hands, knife = null;
     if (o.hold && o.hold.k === "club") { // 몽둥이: 한 손으로 옆에 쥐어요
@@ -1369,7 +1460,8 @@ body.modal { overflow: hidden; }
     } else {
       const sw = o.moving ? Math.sin(o.phase * Math.PI) * 0.05 * S : 0;
       const r = reach * 0.18 * S;
-      hands = [[X - 0.25 * S + fx * r, by + 0.13 * S + sw + fy * r], [X + 0.25 * S + fx * r, by + 0.13 * S - sw + fy * r]];
+      const hw = (poro ? 0.31 : 0.25) * S, hy = by + (poro ? 0.07 : 0.13) * S; // 포로: 동그란 몸 양옆에 붙은 짧은 팔
+      hands = [[X - hw + fx * r, hy + sw + fy * r], [X + hw + fx * r, hy - sw + fy * r]];
     }
     const front = () => {
       if (hold && hold.club) { // 몽둥이: 손잡이를 쥔 손에서 뻗어요. 휘두르면 위(젖힘) → 앞(쾅)
@@ -1389,34 +1481,37 @@ body.modal { overflow: hidden; }
         rrect(c, -0.02 * S, -0.06 * S, 0.05 * S, 0.08 * S, 0.015 * S); c.fillStyle = "#6b4a2b"; c.fill();
         c.restore();
       }
-      hands.forEach(([hx, hy]) => { dot(c, hx, hy, (BIG_HEAD[o.ch] ? 0.052 : 0.064) * S, C.body || C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); });
+      hands.forEach(([hx, hy]) => { dot(c, hx, hy, (poro ? 0.058 : BIG_HEAD[o.ch] ? 0.052 : 0.064) * S, C.hand || C.body || C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); });
     };
     if (back) front();
 
     c.save(); c.translate(X, by); c.rotate(tilt);
     if (dash) c.scale(1 + 0.12 * dash, 1 - 0.1 * dash);
-    const big = BIG_HEAD[o.ch], bb = BIG_BODY[o.ch] || [0.19, 0.14]; // 치이카와·토끼·해달: 몸은 작고 머리가 커요
-    const bodyW = (big ? bb[0] : 0.24) * S, bodyH = (big ? bb[1] : 0.21) * S, bodyY = (big ? 0.13 : 0.08) * S;
-    c.beginPath(); c.ellipse(0, bodyY, bodyW, bodyH, 0, 0, Math.PI * 2); c.fillStyle = C.body || C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
-    if (!back) {
-      const ax = fx * 0.05 * S;
-      if (big) { rrect(c, ax - 0.12 * S, 0.07 * S, 0.24 * S, 0.18 * S, 0.06 * S); c.fillStyle = APRON[o.slot]; c.fill(); c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(ax - 0.05 * S, 0.17 * S, 0.1 * S, 0.02 * S); }
-      else { rrect(c, ax - 0.14 * S, 0.0, 0.28 * S, 0.25 * S, 0.07 * S); c.fillStyle = APRON[o.slot]; c.fill(); c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(ax - 0.06 * S, 0.11 * S, 0.12 * S, 0.022 * S); }
-    } else {
-      c.strokeStyle = APRON[o.slot]; c.lineWidth = 0.04 * S; c.lineCap = "round";
-      c.beginPath(); c.moveTo(-0.15 * S, -0.03 * S); c.lineTo(0.12 * S, 0.16 * S); c.moveTo(0.15 * S, -0.03 * S); c.lineTo(-0.12 * S, 0.16 * S); c.stroke();
-      dot(c, -0.045 * S, 0.17 * S, 0.04 * S, APRON[o.slot]); dot(c, 0.045 * S, 0.17 * S, 0.04 * S, APRON[o.slot]);
-      drawTail(c, o.ch, S, t, o.moving);
+    if (poro) drawPoro(c, S, o, back, t, fx);
+    else {
+      const big = BIG_HEAD[o.ch], bb = BIG_BODY[o.ch] || [0.19, 0.14]; // 치이카와·토끼·해달: 몸은 작고 머리가 커요
+      const bodyW = (big ? bb[0] : 0.24) * S, bodyH = (big ? bb[1] : 0.21) * S, bodyY = (big ? 0.13 : 0.08) * S;
+      c.beginPath(); c.ellipse(0, bodyY, bodyW, bodyH, 0, 0, Math.PI * 2); c.fillStyle = C.body || C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
+      if (!back) {
+        const ax = fx * 0.05 * S;
+        if (big) { rrect(c, ax - 0.12 * S, 0.07 * S, 0.24 * S, 0.18 * S, 0.06 * S); c.fillStyle = APRON[o.slot]; c.fill(); c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(ax - 0.05 * S, 0.17 * S, 0.1 * S, 0.02 * S); }
+        else { rrect(c, ax - 0.14 * S, 0.0, 0.28 * S, 0.25 * S, 0.07 * S); c.fillStyle = APRON[o.slot]; c.fill(); c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(ax - 0.06 * S, 0.11 * S, 0.12 * S, 0.022 * S); }
+      } else {
+        c.strokeStyle = APRON[o.slot]; c.lineWidth = 0.04 * S; c.lineCap = "round";
+        c.beginPath(); c.moveTo(-0.15 * S, -0.03 * S); c.lineTo(0.12 * S, 0.16 * S); c.moveTo(0.15 * S, -0.03 * S); c.lineTo(-0.12 * S, 0.16 * S); c.stroke();
+        dot(c, -0.045 * S, 0.17 * S, 0.04 * S, APRON[o.slot]); dot(c, 0.045 * S, 0.17 * S, 0.04 * S, APRON[o.slot]);
+        drawTail(c, o.ch, S, t, o.moving);
+      }
+      drawEars(c, o.ch, S, back, dash ? -1 : o.moving ? Math.sin(o.phase * Math.PI) : Math.sin(t * 2.2) * 0.15);
+      if (big) { if (BUN_CH[o.ch]) bunPath(c, big[0] * S, big[1] * S, big[2] * S); else { c.beginPath(); c.ellipse(0, big[2] * S, big[0] * S, big[1] * S, 0, 0, Math.PI * 2); } c.fillStyle = C.fur; c.fill(); } // 옆으로 넓적한 큰 머리가 몸 위를 덮어요
+      else dot(c, 0, -0.17 * S, 0.21 * S, C.fur);
+      c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
+      if (o.ch === "cat") {
+        c.strokeStyle = C.dark; c.lineWidth = 0.025 * S; c.lineCap = "round"; c.beginPath();
+        [-0.05, 0, 0.05].forEach((dx) => { c.moveTo(dx * S, -0.36 * S); c.lineTo(dx * S, (back ? -0.24 : -0.3) * S); }); c.stroke();
+      }
+      if (!back) drawFace(c, o.ch, S, fx);
     }
-    drawEars(c, o.ch, S, back, dash ? -1 : o.moving ? Math.sin(o.phase * Math.PI) : Math.sin(t * 2.2) * 0.15);
-    if (big) { if (BUN_CH[o.ch]) bunPath(c, big[0] * S, big[1] * S, big[2] * S); else { c.beginPath(); c.ellipse(0, big[2] * S, big[0] * S, big[1] * S, 0, 0, Math.PI * 2); } c.fillStyle = C.fur; c.fill(); } // 옆으로 넓적한 큰 머리가 몸 위를 덮어요
-    else dot(c, 0, -0.17 * S, 0.21 * S, C.fur);
-    c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
-    if (o.ch === "cat") {
-      c.strokeStyle = C.dark; c.lineWidth = 0.025 * S; c.lineCap = "round"; c.beginPath();
-      [-0.05, 0, 0.05].forEach((dx) => { c.moveTo(dx * S, -0.36 * S); c.lineTo(dx * S, (back ? -0.24 : -0.3) * S); }); c.stroke();
-    }
-    if (!back) drawFace(c, o.ch, S, fx);
     c.restore();
 
     if (!back) front();
@@ -3810,7 +3905,8 @@ body.modal { overflow: hidden; }
     }
     // 머리가 큰 캐릭터 (3D): 머리 크기 a×b×c, 얼굴 그림, 얼굴 그림이 덮는 범위 (가로 ±al, 세로 ±be 라디안)
     const BIG3 = { mochi: { a: 0.33, b: 0.28, c: 0.3, al: 1.15, be: 0.7, draw: drawMochiFace }, rabbit: { a: 0.33, b: 0.245, c: 0.29, al: 1.15, be: 1.05, draw: drawUsagiFace, bun: true },
-      otter: { a: 0.35, b: 0.215, c: 0.3, al: 1.2, be: 0.95, draw: drawRakkoFace, bun: true, body: [0.26, 0.2, 0.23], hy: 0.55 } };
+      otter: { a: 0.35, b: 0.215, c: 0.3, al: 1.2, be: 0.95, draw: drawRakkoFace, bun: true, body: [0.26, 0.2, 0.23], hy: 0.55 },
+      poro: { a: 0.34, b: 0.31, c: 0.31, hy: 0.36, ball: true } }; // 포로: 몸 전체가 머리인 공 (얼굴은 공을 덮는 그림에, poroHead)
     // 찐빵 머리 점의 법선: 공 위에서 두 방향으로 조금씩 움직여 본 차이로 구해요 (이음매에서도 똑같이 나와서 금이 안 가요)
     function bunNormal(x, y, z) {
       let t1 = Math.abs(y) < 0.99 ? [-z, 0, x] : [1, 0, 0];
@@ -3874,9 +3970,107 @@ body.modal { overflow: hidden; }
       if (!bun) mesh.rotation.x = -TILT; // 찐빵 머리는 얼굴 자리를 셈할 때 이미 올렸어요
       return mesh;
     }
+    // 포로: 공 모양 몸 전체가 머리예요 (머리 그룹에 붙어서 같이 기울어요). 젖소 옷 무늬·얼굴·콧수염·젖은 공을 덮는 그림 한 장에
+    // 가로는 경도(0이 앞, +가 +x 쪽), 세로는 위도로 그리고, 뿔·귀·귀표·분홍 소 코·혀·팔·발은 입체로 붙여요
+    const PORO = BIG3.poro, DEG = Math.PI / 180;
+    function poroPt(lon, lat, k) { // 포로 몸 겉면 위의 점 (경도·위도는 도). k: 겉면에서 바깥으로 몇 배
+      const y = Math.sin(lat * DEG), q = Math.cos(lat * DEG), w = 1 - 0.07 * y, s = k || 1;
+      return [PORO.a * w * q * Math.sin(lon * DEG) * s, PORO.b * (y < 0 ? y + 0.08 * y * y : y) * s, PORO.c * w * q * Math.cos(lon * DEG) * s];
+    }
+    // 위는 둥글고 아래로 갈수록 조금 넓으며 바닥은 살짝 납작한 공. 돌려 만든 모양이라 법선은 옆모습 곡선(반지름 w·q, 높이 h)의 기울기로 바로 구해요
+    const poroBallG = () => gc("poroBall", () => {
+      const g = new T.SphereGeometry(1, 56, 36), pa = g.attributes.position, na = g.attributes.normal;
+      for (let i = 0; i < pa.count; i++) {
+        const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i), q = Math.hypot(x, z), w = 1 - 0.07 * y;
+        pa.setXYZ(i, x * w, y < 0 ? y + 0.08 * y * y : y, z * w);
+        const dr = -0.07 * q - (w * y) / Math.max(q, 1e-6), dh = y < 0 ? 1 + 0.16 * y : 1, l = Math.hypot(dr, dh);
+        na.setXYZ(i, q > 1e-6 ? (dh * x) / q / l : 0, -dr / l, q > 1e-6 ? (dh * z) / q / l : 0);
+      }
+      return g;
+    });
+    const poroMat = () => gc("poroMat", () => {
+      const C0 = CHARS.poro, W = 2048, H = 1024, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+      const g = cv.getContext("2d"), col = (h) => vivid(h, 1.1, 0.97), fur = col(C0.fur), dark = col(C0.dark), cream = col(C0.face);
+      const E = (lon, lat) => [(0.25 + lon / 360) * W, (0.5 - lat / 180) * H];
+      const shape = (pts, fill, line, lw) => { // 경도·위도 점들로 그린 도형. 이음매(왼쪽 옆)를 넘어도 이어지게 세 번 그려요
+        for (const dx of [-W, 0, W]) {
+          g.beginPath(); pts.forEach(([lo, la], i) => { const [x, y] = E(lo, la); if (i) g.lineTo(x + dx, y); else g.moveTo(x + dx, y); }); g.closePath();
+          if (fill) { g.fillStyle = fill; g.fill(); }
+          if (line) { g.strokeStyle = line; g.lineWidth = lw; g.stroke(); }
+        }
+      };
+      // 둥근 도형: 가운데 (lo0, la0), 반지름 ru·rv (도). n이 크면 네모에 가깝게, wob이면 울퉁불퉁, rot만큼 돌려요. 공 위에서 둥글어 보이게 위도에 맞춰 가로를 늘려요
+      const blob = (lo0, la0, ru, rv, o) => Array.from({ length: 96 }, (_, i) => {
+        const t = (i / 96) * Math.PI * 2, n = (o && o.n) || 2, sd = (o && o.seed) || 0, k = 1 + ((o && o.wob) || 0) * (Math.sin(3 * t + sd) + 0.5 * Math.sin(5 * t + 2 * sd));
+        const cu = Math.cos(t), su = Math.sin(t), u0 = ru * k * Math.sign(cu) * Math.pow(Math.abs(cu), 2 / n), v0 = rv * k * Math.sign(su) * Math.pow(Math.abs(su), 2 / n), r = (o && o.rot) || 0;
+        const u = u0 * Math.cos(r) - v0 * Math.sin(r), la = Math.max(-89, Math.min(89, la0 + u0 * Math.sin(r) + v0 * Math.cos(r)));
+        return [lo0 + (u * Math.cos(la0 * DEG)) / Math.max(0.15, Math.cos(la * DEG)), la];
+      });
+      g.fillStyle = fur; g.fillRect(0, 0, W, H);
+      [[150, 35, 34, 26, 1], [-140, 5, 30, 30, 2], [175, -32, 26, 20, 3], [100, -20, 16, 20, 4], [70, 50, 18, 12, 6], [-125, 58, 22, 13, 7], [-88, -10, 13, 17, 5], [88, -6, 12, 15, 8]] // 젖소 무늬: 등·옆구리·모자 위
+        .forEach(([lo, la, ru, rv, sd]) => shape(blob(lo, la, ru, rv, { wob: 0.11, seed: sd }), dark));
+      g.fillStyle = dark; g.fillRect(0, E(0, -58)[1], W, H); // 아래쪽 둘레
+      shape(blob(0, 25, 50, 28), dark); // 얼굴을 두른 모자 테두리
+      shape(blob(0, -24, 31, 38, { n: 4 }), dark); // 가슴과 배
+      shape(blob(0, 30, 36, 15), cream); // 이마 (크림색)
+      shape(blob(0, 6, 20, 5.5), "#ffffff"); // 혀 둘레 하얀 턱
+      shape(blob(0, 7, 8, 4), "#5a2a34"); // 벌린 입
+      // 콧수염 (PORO_MUST): 아래로 그림자를 깔고, 이마와 만나는 윗선을 그어요
+      const ml = (q) => q.map(([x, y]) => [x * 47, 8.5 + y * 18.5]), must = ml(catmull(PORO_MUST[0].concat(PORO_MUST[1]), true));
+      shape(must.map(([lo, la]) => [lo, la - 1.8]), "rgba(150,120,40,.5)");
+      shape(must, cream);
+      g.beginPath(); ml(catmull(PORO_MUST[0])).forEach(([lo, la], i) => { const [x, y] = E(lo, la); if (i) g.lineTo(x, y); else g.moveTo(x, y); });
+      g.strokeStyle = "rgba(170,140,55,.5)"; g.lineWidth = 5; g.lineCap = "round"; g.stroke();
+      for (const sd of [-1, 1]) { shape(blob(sd * 14, 34, 3.8, 4.2), "#1f1612"); shape(blob(sd * 14 + 1.4, 35.5, 1.3, 1.4), "#ffffff"); } // 까만 점 눈
+      shape(blob(0, -31, 20, 11, { n: 3 }), col(C0.udder)); // 배에 분홍 젖 + 젖꼭지 둘
+      for (const sd of [-1, 1]) shape(blob(sd * 9, -37, 2.2, 2.6), "#c4506c");
+      return std({ map: canvasTex(cv), roughness: 0.72 });
+    });
+    const poroHornG = (sd) => gc("poroHorn" + sd, () => { // 뿔: 원뿔을 바깥(sd 쪽)으로 휘어요 (earG처럼)
+      const L = 0.13, R = sd * 0.11, g = new T.ConeGeometry(0.036, L, 12, 8), pa = g.attributes.position, na = g.attributes.normal;
+      for (let i = 0; i < pa.count; i++) {
+        const x = pa.getX(i), y = pa.getY(i) + L / 2, nx = na.getX(i), ny = na.getY(i), th = y / R, cs = Math.cos(th), sn = Math.sin(th);
+        pa.setXYZ(i, R - (R - x) * cs, (R - x) * sn, pa.getZ(i));
+        na.setXYZ(i, nx * cs + ny * sn, -nx * sn + ny * cs, na.getZ(i));
+      }
+      return g;
+    });
+    const pillowG = () => gc("pillow", () => { // 앞에서 보면 둥근 네모인 납작한 베개 모양 (소 코)
+      const g = new T.SphereGeometry(1, 24, 16), pa = g.attributes.position, sq = (v) => Math.sign(v) * Math.pow(Math.abs(v), 0.6);
+      for (let i = 0; i < pa.count; i++) pa.setXYZ(i, sq(pa.getX(i)), sq(pa.getY(i)), pa.getZ(i));
+      g.computeVertexNormals();
+      return g;
+    });
+    const poroTailG = () => gc("poroTail", () => new T.TubeGeometry(new T.CatmullRomCurve3([new T.Vector3(0, 0, 0), new T.Vector3(0, -0.02, -0.05), new T.Vector3(0.02, -0.08, -0.08), new T.Vector3(0.03, -0.14, -0.07)]), 12, 0.014, 8, false));
+    const poroTongueG = () => gc("poroTongue", () => { // 혀: 아래로 갈수록 넓적해지는 납작한 혀, 앞쪽 가운데가 살짝 오목한 골
+      const g = new T.SphereGeometry(1, 24, 16), pa = g.attributes.position;
+      for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i); pa.setXYZ(i, x * (1 - 0.12 * y), y, z > 0 ? z * (1 - 0.3 * Math.exp(-x * x * 40)) : z); }
+      g.computeVertexNormals();
+      return g;
+    });
+    function poroHead(headG, H, C) { // 그림을 입힌 공 + 뿔·귀·귀표·분홍 소 코 (H에 합쳐요). 혀는 따로 매달아 돌려줘요
+      const ball = new T.Mesh(poroBallG(), poroMat());
+      ball.scale.set(PORO.a, PORO.b, PORO.c); ball.castShadow = true; ball.receiveShadow = true; headG.add(ball);
+      for (const sd of [-1, 1]) {
+        H.add(poroHornG(sd), mtx(...poroPt(sd * 48, 56, 0.95), -0.25, 0, -sd * 0.3), C.dark); // 뿔: 모자 위 양쪽에서 바깥으로 휘어 올라가요
+        const F = mtx(...poroPt(sd * 82, 30), 0, -sd * 0.35, -sd * 0.25).clone(); // 귀: 양옆으로 살짝 처진 남색 귀, 앞쪽 안은 분홍
+        H.add(sphG(14), F.clone().multiply(mtx(sd * 0.065, 0, 0, 0, 0, 0, 0.088, 0.046, 0.026)), C.dark);
+        H.add(sphG(12), F.clone().multiply(mtx(sd * 0.074, 0.002, 0.014, 0, 0, 0, 0.06, 0.028, 0.014)), C.ear);
+        if (sd < 0) H.add(rboxG(0.056, 0.074, 0.016, 0.013, 1), F.clone().multiply(mtx(sd * 0.085, -0.066, 0.012, 0, 0, sd * 0.25)), C.tag); // 화면 왼쪽 귀에 귀표 (앞치마 색)
+      }
+      for (const sd of [-1, 1]) H.add(sphG(16), mtx(...poroPt(sd * 21, 14, 0.992), -14 * DEG, sd * 21 * DEG, sd * 0.22, 0.09, 0.034, 0.018), C.face); // 콧수염을 살짝 도톰하게 (그림 위에 겹쳐요)
+      const M = mtx(...poroPt(0, 59, 0.985), -1.06, 0, 0).clone(); // 모자 위 분홍 소 코: 겉면을 따라 눕힌 납작한 베개 모양, 콧구멍 둘
+      H.add(pillowG(), M.clone().multiply(mtx(0, 0, 0, 0, 0, 0, 0.115, 0.062, 0.032)), C.nose);
+      for (const sd of [-1, 1]) H.add(sphG(8), M.clone().multiply(mtx(sd * 0.052, -0.006, 0.027, 0, 0, sd * 0.35, 0.014, 0.02, 0.01)), "#c4506c");
+      const tongue = sub(headG, ...poroPt(0, 6, 0.985)); // 혀: 입에 매달려서 poseChar가 흔들어요
+      part(tongue, poroTongueG(), mat(C.tongue, "g"), 0, -0.058, 0.024, 0, 0, 0, 0.082, 0.064, 0.02);
+      part(tongue, sphG(8), mat("#d8697b"), 0, -0.052, 0.039, 0, 0, 0, 0.005, 0.04, 0.004);
+      return tongue;
+    }
     function buildChar(k, slot) {
       const C0 = CHARS[k] || CHARS.cat, AP = vivid(APRON[slot], 1.1, 0.95);
       const C = { fur: vivid(C0.fur), dark: vivid(C0.dark), ear: vivid(C0.ear, 1.15), nose: C0.nose, body: vivid(C0.body3 || C0.body || C0.fur), tail: vivid(C0.tail3 || C0.tail || C0.dark) };
+      C.hand = C0.hand ? vivid(C0.hand) : C.body; C.tongue = vivid(C0.tongue || C0.nose, 1.1); C.tag = AP; C.face = vivid(C0.face || C0.fur, 1.1, 0.97);
       const root = new T.Group();
       const blob = new T.Mesh(planeG(0.72, 0.72), blobMat());
       blob.rotation.x = -Math.PI / 2; blob.position.y = 0.006; blob.renderOrder = 1; root.add(blob);
@@ -3886,7 +4080,8 @@ body.modal { overflow: hidden; }
       // 몸통과 앞치마
       const big = BIG3[k]; // 치이카와·토끼·해달: 작은 몸 위에 옆으로 넓적한 큰 머리가 반쯤 묻혀 있어요
       const B = new Batch();
-      if (big) {
+      if (big && big.ball) { /* 포로: 몸이 곧 머리라서 몸통은 따로 없어요 (poroHead) */ }
+      else if (big) {
         const [bw, bh, bd] = big.body || [0.22, 0.19, 0.2];
         B.add(sphG(18), mtx(0, 0.23, 0, 0, 0, 0, bw, bh, bd), C.body);
         B.add(apronG(), mtx(0, 0.23, 0, 0, 0, 0, bw + 0.008, bh + 0.008, bd + 0.008), AP);
@@ -3901,12 +4096,13 @@ body.modal { overflow: hidden; }
         B.add(sphG(8), mtx(-0.045, 0.3, -0.213, 0, 0, 0.5, 0.05, 0.028, 0.02), AP);
         B.add(sphG(8), mtx(0.045, 0.3, -0.213, 0, 0, -0.5, 0.05, 0.028, 0.02), AP);
       }
-      const torso = B.mesh(VSKIN);
-      bodyG.add(torso);
+      const torso = B.p.length ? B.mesh(VSKIN) : null;
+      if (torso) bodyG.add(torso);
       // 머리
       const headG = new T.Group(); headG.position.y = big ? big.hy || 0.6 : 0.8; bodyG.add(headG);
       const H = new Batch();
-      H.add(big && big.bun ? bunG() : sphG(22), big ? mtx(0, 0, 0, 0, 0, 0, big.a, big.b, big.c) : mtx(0, 0, 0, 0, 0, 0, 0.25, 0.235, 0.24), C.fur);
+      const tongue = k === "poro" ? poroHead(headG, H, C) : null;
+      if (!tongue) H.add(big && big.bun ? bunG() : sphG(22), big ? mtx(0, 0, 0, 0, 0, 0, big.a, big.b, big.c) : mtx(0, 0, 0, 0, 0, 0, 0.25, 0.235, 0.24), C.fur);
       if (k === "cat") for (const sd of [-1, 1]) {
         H.add(coneG(0.09, 0.16, 14), mtx(sd * 0.14, 0.2, -0.01, -0.12, 0, -sd * 0.38), C.fur);
         H.add(coneG(0.052, 0.1, 12), mtx(sd * 0.135, 0.19, 0.026, -0.12, 0, -sd * 0.38), C.ear);
@@ -3924,7 +4120,7 @@ body.modal { overflow: hidden; }
         H.add(sphG(8), mtx(sd * 0.148, -0.058, 0.18, 0, sd * 0.68, 0, 0.044, 0.026, 0.012), "#ff9aa8");
       }
       const smallNose = k === "cat" || k === "rabbit";
-      if (big) headG.add(faceMesh(k));
+      if (big && big.draw) headG.add(faceMesh(k));
       else if (smallNose) H.add(sphG(8), mtx(0, -0.035, 0.235, 0, 0, 0, 0.026, 0.019, 0.016), C.nose);
       else {
         H.add(sphG(12), mtx(0, -0.065, 0.2, 0, 0, 0, 0.1, 0.07, 0.075), k === "bear" ? "#d9b38c" : "#fffaf0");
@@ -3953,22 +4149,29 @@ body.modal { overflow: hidden; }
       } else if (k === "otter") { // 해달 꼬리: 몸 뒤 아래로 두툼하고 넓적하게 뻗은 노 모양 (poseChar에서 좌우로 살랑)
         tail = sub(bodyG, 0, 0.13, -0.17);
         part(tail, sphG(14), mat(C.tail), 0, -0.04, -0.2, -0.32, 0, 0, 0.11, 0.05, 0.22);
+      } else if (k === "poro") { // 포로 꼬리: 엉덩이에서 가늘게 늘어진 하얀 꼬리 끝에 남색 털뭉치 (poseChar에서 살랑)
+        tail = sub(bodyG, 0, 0.2, -0.27);
+        part(tail, poroTailG(), mat(C.fur));
+        part(tail, sphG(10), mat(C.dark), 0.03, -0.15, -0.07, 0, 0, 0, 0.032, 0.046, 0.032);
       } else if (big) part(bodyG, sphG(12), mat(C.fur), 0, 0.24, -0.215, 0, 0, 0, 0.055);
       else part(bodyG, sphG(10), mat(C.dark), 0, 0.24, -0.205, 0, 0, 0, 0.05);
       // 손, 칼, 발
-      const hand = (x) => { const h = sub(bodyG, x, 0.33, 0); part(h, sphG(12), mat(C.body), 0, 0, 0, 0, 0, 0, big ? 0.06 : 0.072); return h; };
+      const poro = k === "poro"; // 포로: 동그란 몸 양옆에 짧고 뭉툭한 남색 팔, 넓게 벌린 큰 발
+      const hand = (x) => { const h = sub(bodyG, x, 0.33, 0); if (poro) part(h, sphG(12), mat(C.hand), 0, 0, 0, 0, 0, 0, 0.058, 0.075, 0.062); else part(h, sphG(12), mat(C.body), 0, 0, 0, 0, 0, 0, big ? 0.06 : 0.072); return h; };
       const handL = hand(0.26), handR = hand(-0.26);
       const knife = sub(handR);
       part(knife, boxG(0.011, 0.1, 0.27), mat("#e3e8eb", "p"), 0, -0.05, 0.16);
       part(knife, rboxG(0.032, 0.042, 0.12, 0.012, 1), mat("#6b4a2b"), 0, 0, -0.02);
       knife.visible = false;
-      const footL = part(root, sphG(12), mat(C.dark), 0.11, 0.045, 0.03, 0, 0, 0, 0.075, 0.05, 0.1);
-      const footR = part(root, sphG(12), mat(C.dark), -0.11, 0.045, 0.03, 0, 0, 0, 0.075, 0.05, 0.1);
+      const fw = poro ? 0.14 : 0.11, fs = poro ? 1.1 : 1;
+      const footL = part(root, sphG(12), mat(C.dark), fw, 0.045, 0.03, 0, 0, 0, 0.075 * fs, 0.05 * fs, 0.1 * fs);
+      const footR = part(root, sphG(12), mat(C.dark), -fw, 0.045, 0.03, 0, 0, 0, 0.075 * fs, 0.05 * fs, 0.1 * fs);
       const hold = sub(bodyG, 0, 0.6, 0.5);
       root.scale.setScalar(1.3);
       // 머리 큰 캐릭터(치이카와·토끼·해달)는 든 물건을 얼굴 앞으로 더 내밀어요. 다른 캐릭터 자리면 냄비 뒤쪽이 머리 안에 들어가서 냄비 속에 얼굴이 보여요
-      const holdZ = big ? 0.17 : 0;
-      return { k, slot, root, bodyG, headG, handL, handR, footL, footR, tail, ears, knife, hold, holdZ, ring, held: null, heldSig: "", disp: [torso.geometry, head.geometry] };
+      // 포로는 얼굴이 낮아서 배 앞에 들어요 (얼굴 높이에 들면 위에서 볼 때 접시가 얼굴을 가려요). 썰기·설거지 손도 조금 낮게 (도마보다는 위)
+      const holdZ = big ? 0.17 : 0, holdY = poro ? 0.34 : 0.47, workY = poro ? -0.06 : 0;
+      return { k, slot, root, bodyG, headG, handL, handR, footL, footR, tail, ears, tongue, knife, hold, holdZ, holdY, workY, ring, fw, hx: poro ? 0.355 : 0.26, hy: poro ? 0.29 : 0.33, held: null, heldSig: "", disp: torso ? [torso.geometry, head.geometry] : [head.geometry] };
     }
     function poseChar(c, o, now) {
       const tt = now / 1000;
@@ -3982,37 +4185,46 @@ body.modal { overflow: hidden; }
       c.bodyG.scale.set(1 + 0.08 * dash, 1 - 0.1 * dash, 1 + 0.12 * dash);
       c.headG.rotation.x = o.chop ? 0.2 : 0;
       c.headG.rotation.z = o.moving ? sw * 0.04 : Math.sin(tt * 1.3) * 0.03;
-      c.footL.position.set(0.11, 0.045 + Math.max(0, sw) * 0.05, 0.03 + sw * 0.09);
-      c.footR.position.set(-0.11, 0.045 + Math.max(0, -sw) * 0.05, 0.03 - sw * 0.09);
+      c.footL.position.set(c.fw, 0.045 + Math.max(0, sw) * 0.05, 0.03 + sw * 0.09);
+      c.footR.position.set(-c.fw, 0.045 + Math.max(0, -sw) * 0.05, 0.03 - sw * 0.09);
       c.knife.visible = false;
       c.handR.rotation.x = 0;
       if (o.club) { // 몽둥이: 한 손. 휘두르는 각도대로 팔이 위아래로
         const a = o.swing == null ? -0.9 : o.swing;
         c.handR.position.set(-0.27, 0.57 - 0.14 * Math.sin(a), 0.2 + 0.17 * Math.cos(a));
-        c.handL.position.set(0.26, 0.33, -sw * 0.08);
+        c.handL.position.set(c.hx, c.hy, -sw * 0.08);
       } else if (o.hold) {
         const r = o.reach * 0.08 + (c.holdZ || 0);
-        c.handL.position.set(0.24, 0.52, 0.36 + r); c.handR.position.set(-0.24, 0.52, 0.36 + r);
-        c.hold.position.set(0, 0.47, 0.5 + r);
+        c.handL.position.set(0.24, c.holdY + 0.05, 0.36 + r); c.handR.position.set(-0.24, c.holdY + 0.05, 0.36 + r);
+        c.hold.position.set(0, c.holdY, 0.5 + r);
       } else if (o.wash) {
         const a = tt * 12;
-        c.handL.position.set(0.13 + Math.cos(a) * 0.05, 0.56 + Math.sin(a) * 0.03, 0.42);
-        c.handR.position.set(-0.13 + Math.cos(a + Math.PI) * 0.05, 0.56 + Math.sin(a + Math.PI) * 0.03, 0.42);
+        c.handL.position.set(0.13 + Math.cos(a) * 0.05, 0.56 + c.workY + Math.sin(a) * 0.03, 0.42);
+        c.handR.position.set(-0.13 + Math.cos(a + Math.PI) * 0.05, 0.56 + c.workY + Math.sin(a + Math.PI) * 0.03, 0.42);
       } else if (o.chop) {
         const kk = Math.sin(now / 40), up = kk > 0 ? 0.11 * kk : 0;
-        c.handR.position.set(-0.1, 0.58 + up, 0.4);
+        c.handR.position.set(-0.1, 0.58 + c.workY + up, 0.4);
         c.handR.rotation.x = kk > 0 ? -0.5 * kk : 0.12;
         c.knife.visible = true;
-        c.handL.position.set(0.15, 0.55, 0.4);
+        c.handL.position.set(0.15, 0.55 + c.workY, 0.4);
       } else {
         const r = o.reach * 0.22;
-        c.handL.position.set(0.26, 0.33 + r * 0.9, -sw * 0.08 + r);
-        c.handR.position.set(-0.26, 0.33 + r * 0.9, sw * 0.08 + r);
+        c.handL.position.set(c.hx, c.hy + r * 0.9, -sw * 0.08 + r);
+        c.handR.position.set(-c.hx, c.hy + r * 0.9, sw * 0.08 + r);
       }
       // 토끼 귀: 걸으면 발걸음에 맞춰 앞뒤로 흔들리고, 대시하면 뒤로 젖혀져요. 서 있으면 살랑살랑
       if (c.ears) c.ears.forEach((e, j) => { e.rotation.x = dash ? -0.6 * dash : o.moving ? -0.1 + Math.sin(o.phase * Math.PI + j * 0.7) * 0.32 : Math.sin(tt * 2.2 + j) * 0.05; });
+      // 포로 혀: 걸으면 걸음마다 좌우로 덜렁거리고 튈 때마다 앞으로 펄럭, 대시하면 마구 펄럭. 썰 때는 칼질에 맞춰 들썩, 서 있으면 헥헥
+      if (c.tongue) {
+        const tg = c.tongue;
+        if (dash) { tg.rotation.x = -0.12 - 0.7 * dash; tg.rotation.z = Math.sin(tt * 26) * 0.45 * dash; }
+        else if (o.moving) { tg.rotation.x = -0.12 - Math.abs(Math.sin(o.phase * Math.PI - 0.5)) * 0.4; tg.rotation.z = Math.sin(o.phase * Math.PI - 0.9) * 0.42; }
+        else if (o.chop) { tg.rotation.x = -0.12 - Math.max(0, Math.sin(now / 40)) * 0.25; tg.rotation.z = 0; }
+        else { tg.rotation.x = -0.14 + Math.sin(tt * 6) * 0.06; tg.rotation.z = Math.sin(tt * 1.7) * 0.06; }
+      }
       if (c.tail) {
         if (c.k === "cat") c.tail.rotation.z = Math.sin(tt * 3) * 0.25;
+        else if (c.k === "poro") c.tail.rotation.z = Math.sin(tt * (o.moving ? 8 : 2)) * (o.moving ? 0.45 : 0.18);
         else if (c.k === "otter") { c.tail.rotation.y = Math.sin(tt * (o.moving ? 9 : 2.5)) * (o.moving ? 0.35 : 0.12); c.tail.rotation.x = o.moving ? Math.sin(tt * 9 + 1.2) * 0.1 : 0; }
         else c.tail.rotation.z = Math.sin(tt * (o.moving ? 22 : 12)) * 0.5;
       }
@@ -5790,8 +6002,8 @@ body.modal { overflow: hidden; }
       poseChar(c, { x: 0, z: 0, yaw: 0.42, moving: false, phase: 0, reach: 0, dash: 0, chop: false, wash: false, hold: false }, 0);
       pScene.add(c.root);
       c.root.scale.setScalar(1);
-      const cy = k === "rabbit" ? 0.7 : 0.62;
-      pCam.position.set(0.12, cy + 0.38, k === "rabbit" ? 2.6 : 2.4); pCam.lookAt(0, cy, 0);
+      const cy = k === "rabbit" ? 0.7 : k === "poro" ? 0.5 : 0.62; // 포로는 키가 작고 동글동글해서 조금 낮게, 가까이
+      pCam.position.set(0.12, cy + 0.38, k === "rabbit" ? 2.6 : k === "poro" ? 2.2 : 2.4); pCam.lookAt(0, cy, 0);
       const size = 256;
       gl.setPixelRatio(1); gl.setSize(size, size, false);
       gl.render(pScene, pCam);
@@ -6561,7 +6773,7 @@ body.modal { overflow: hidden; }
       b.addEventListener("click", () => pickChar(k));
       box.appendChild(b);
     });
-    $("pickNote").textContent = "내 앞치마는 " + iyeyo(APRON_NAME[myIdx]) + "." + (others.length ? " 지금 " + (others.length + 1) + "명이에요." + (others.length >= 2 ? " 3명부터는 접시가 모자라서 설거지를 해야 하고, 쥐가 나오고, 주문이 더 빨리 와요." : "") : "");
+    $("pickNote").textContent = "내 " + (mine.ch === "poro" ? "귀표" : "앞치마") + "는 " + iyeyo(gearOf(mine.ch, myIdx)) + "." + (others.length ? " 지금 " + (others.length + 1) + "명이에요." + (others.length >= 2 ? " 3명부터는 접시가 모자라서 설거지를 해야 하고, 쥐가 나오고, 주문이 더 빨리 와요." : "") : "");
   }
   // 관전: 요리사들이 고른 캐릭터만 보여줘요 (못 골라요)
   function renderPickerSpec(st) {
@@ -7320,7 +7532,8 @@ body.modal { overflow: hidden; }
       rabbit: { slot: 2, o: { yaw: 0.6, moving: true, phase: 1.5, lean: 0.1, reach: 0.5, hold: { k: "plate", items: [], dish: "tteokbokki" } } },
       cat:    { slot: 2, o: { yaw: -0.6, chop: "pa" } },
       bear:   { slot: 3, o: { yaw: -0.95, reach: 0.6, hold: { k: "ext" } } },
-      otter:  { slot: 1, o: { yaw: -0.95, moving: true, phase: 0.5, dash: 0.3, hold: { k: "basket", items: ["potato"], st: "done", dish: "fries" } } }
+      otter:  { slot: 1, o: { yaw: -0.95, moving: true, phase: 0.5, dash: 0.3, hold: { k: "basket", items: ["potato"], st: "done", dish: "fries" } } },
+      poro:   { slot: 2, o: { yaw: 0.55, moving: true, phase: 0.85, dash: 0.25 } } // 혀를 펄럭이며 달려요 (귀표는 사진처럼 파랑)
     };
     const FLY = [ // 날아다니는 음식
       { it: { k: "plate", items: [], dish: "tteokbokki" } }, { it: { k: "plate", items: [], dish: "gimbap" } }, { it: { k: "plate", items: [], dish: "corndog_k" } },
@@ -7441,8 +7654,8 @@ body.modal { overflow: hidden; }
       const ch = (k) => sp.cast[k];
       const big = Math.min(Ha * (land ? 0.6 : 0.56), W * (land ? 0.24 : 0.44)), mid = big * 0.8;
       const L = land
-        ? { rabbit: [0.3, 0.6, mid, 0.06], cat: [0.71, 0.66, mid], bear: [0.14, 1.0, big * 0.98], otter: [0.86, 1.0, big * 0.98], mochi: [0.5, 1.0, big] }
-        : { rabbit: [0.2, 0.56, mid * 0.9, 0.06], cat: [0.81, 0.6, mid * 0.88], bear: [0.18, 1.0, mid * 1.02], otter: [0.83, 1.0, mid * 1.02], mochi: [0.5, 1.0, big] };
+        ? { rabbit: [0.3, 0.6, mid, 0.06], cat: [0.71, 0.66, mid], bear: [0.14, 1.0, big * 0.98], otter: [0.86, 1.0, big * 0.98], mochi: [0.5, 1.0, big], poro: [0.32, 1.0, mid * 0.62] }
+        : { rabbit: [0.2, 0.56, mid * 0.9, 0.06], cat: [0.81, 0.6, mid * 0.88], bear: [0.18, 1.0, mid * 1.02], otter: [0.83, 1.0, mid * 1.02], mochi: [0.5, 1.0, big], poro: [0.4, 0.645, mid * 0.55] };
       const at = (k) => { const [fx, fy, h, rot] = L[k]; return { x: W * fx, y: top + Ha * fy, h, rot: rot || 0 }; };
       // 불 + 소화기 거품 (곰 왼쪽)
       const bp = at("bear"), fire = { x: bp.x - bp.h * 0.55, y: bp.y - bp.h * 0.05 };
@@ -7453,9 +7666,10 @@ body.modal { overflow: hidden; }
       // 뛰어오른 토끼: 바닥 그림자
       const rp = at("rabbit");
       g.fillStyle = "rgba(90,40,10,.18)"; g.beginPath(); g.ellipse(rp.x, rp.y + rp.h * 0.22, rp.h * 0.22, rp.h * 0.05, 0, 0, Math.PI * 2); g.fill();
-      ["rabbit", "cat", "bear", "otter", "mochi"].forEach((k) => {
+      ["rabbit", "cat", "poro", "bear", "otter", "mochi"].forEach((k) => {
         if (!ch(k)) return;
         const p = at(k), r = place(g, ch(k), p.x, p.y, p.h, p.rot);
+        if (k === "poro") speed(g, p.x - p.h * 0.5, p.y - p.h * 0.45, p.h * 0.32, 3, p.h * 0.1, 1);
         if (k === "mochi") speed(g, p.x - p.h * 0.34, p.y - p.h * 0.45, p.h * 0.32, 4, p.h * 0.07, 1);
         if (k === "otter") speed(g, p.x + p.h * 0.36, p.y - p.h * 0.4, p.h * 0.28, 3, p.h * 0.07, -1);
         if (k === "cat" || k === "bear") { sweat(g, p.x + (k === "cat" ? -1 : 1) * r.w * 0.42, r.top + p.h * 0.18, p.h * 0.05); sweat(g, p.x + (k === "cat" ? -1 : 1) * r.w * 0.5, r.top + p.h * 0.3, p.h * 0.035); }
@@ -7507,7 +7721,7 @@ body.modal { overflow: hidden; }
         $("peerTag").textContent = (role === "host" ? (guestOn ? onCount(view) + "명이 함께" : "혼자 하는 중") : "방장과 연결됨") + (sn ? " · 관전 " + sn + "명" : "");
         const mc = CHARS[view.players[myIdx].ch] || CHARS.cat;
         const mn = view.players[myIdx].nm;
-        $("whoami").textContent = "나는 " + (mn ? mn + " · " : "") + mc.name + " · " + APRON_NAME[myIdx] + (role === "host" ? " (방장)" : " (친구)");
+        $("whoami").textContent = "나는 " + (mn ? mn + " · " : "") + mc.name + " · " + gearOf(view.players[myIdx].ch, myIdx) + (role === "host" ? " (방장)" : " (친구)");
       }
     }
     syncCover();
