@@ -672,7 +672,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 61;
+  const VERSION = 62;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -5832,21 +5832,27 @@ body.modal { overflow: hidden; }
     if (p) { p.pan.setValueAtTime(-0.8 * dir, t); p.pan.linearRampToValueAtTime(0.8 * dir, t + dur); g.connect(p); p.connect(dest); } else g.connect(dest);
     o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
   }
-  function truckRun(a, dest, t) { // 트럭이 달리는 소리: 엔진 브르르(톱니파를 피스톤처럼 떨리게) + 바퀴가 도로를 쓸고 가는 쏴아. 계속 나는 소리라 멈출 때 쓸 것들을 돌려줘요
+  function truckRun(a, dest, t) { // 트럭이 달리는 소리: 낮은 엔진 브르르(톱니파를 피스톤처럼 떨리게) + 바퀴가 도로를 구르는 낮은 우웅. 계속 나는 소리라 멈출 때 쓸 것들을 돌려줘요
     const lp = a.createBiquadFilter(), eg = a.createGain(), o1 = a.createOscillator(), o2 = a.createOscillator(), g2 = a.createGain(), lfo = a.createOscillator(), ld = a.createGain();
-    lp.type = "lowpass"; lp.frequency.value = 900; lp.Q.value = 1; eg.gain.value = 0.04; // 폰 스피커로도 들리게 배음을 넉넉히
-    o1.type = "sawtooth"; o1.frequency.value = 68; o2.type = "square"; o2.frequency.value = 136; g2.gain.value = 0.6;
-    lfo.frequency.value = 11; ld.gain.value = 0.018;
+    lp.type = "lowpass"; lp.frequency.value = 320; lp.Q.value = 0.7; eg.gain.value = 0.03; // 낮고 작게 (깔리는 소리)
+    o1.type = "sawtooth"; o1.frequency.value = 46; o2.type = "square"; o2.frequency.value = 92; g2.gain.value = 0.45;
+    lfo.frequency.value = 8; ld.gain.value = 0.012;
     o1.connect(lp); o2.connect(g2); g2.connect(lp); lp.connect(eg); eg.connect(dest); lfo.connect(ld); ld.connect(eg.gain);
     const nz = a.createBufferSource(), bp = a.createBiquadFilter(), ng = a.createGain();
-    nz.buffer = noiseOf(a); nz.loop = true; bp.type = "bandpass"; bp.frequency.value = 800; bp.Q.value = 0.5; ng.gain.value = 0.05;
+    nz.buffer = noiseOf(a); nz.loop = true; bp.type = "bandpass"; bp.frequency.value = 300; bp.Q.value = 0.7; ng.gain.value = 0.022;
     nz.connect(bp); bp.connect(ng); ng.connect(dest);
     const src = [o1, o2, lfo, nz];
     src.forEach((n) => n.start(t));
     return src;
   }
-  function roadBump(a, dest, t) { voiceAt(a, dest, t, 95, 0.1, "square", 0.04, 55); noiseAt(a, dest, t, 0.07, 0.05, "bandpass", 450); } // 도로 이음매 덜컹
-  let truckAmb = null, nextBump = 0, lastCount = 0, bikeRound = "";
+  function roadBump(a, dest, t) { voiceAt(a, dest, t, 80, 0.1, "square", 0.028, 48); noiseAt(a, dest, t, 0.07, 0.03, "bandpass", 260); } // 도로 이음매 덜컹 (낮고 작게)
+  function startBeep(a, dest, t) { voiceAt(a, dest, t, 880, 0.16, "square", 0.05); voiceAt(a, dest, t, 1760, 0.1, "sine", 0.03); } // 시작 카운트다운 3·2·1 삑
+  function startJingle(a, dest, t) { // 시작! 짠: 따-단 하고 밝은 화음 + 찰랑
+    voiceAt(a, dest, t, 784, 0.1, "square", 0.05);
+    [1047, 1319, 1568].forEach((f) => { voiceAt(a, dest, t + 0.1, f, 0.65, "triangle", 0.07); voiceAt(a, dest, t + 0.1, f * 2, 0.3, "sine", 0.015); });
+    noiseAt(a, dest, t + 0.1, 0.5, 0.05, "highpass", 6000);
+  }
+  let truckAmb = null, nextBump = 0, lastCount = 0, bikeRound = "", lastCd = 0, lastPh = "";
   const bikeHeard = new Set();
   function stageSounds(now) { // 매 화면
     const a = actx, v = view, live = sndOn && !hushed && !!a && a.state === "running" && !!v && !$("game").hidden && !v.paused;
@@ -5860,6 +5866,10 @@ body.modal { overflow: hidden; }
       truckAmb = null;
     }
     if (truckAmb && a.currentTime > nextBump) { roadBump(a, truckAmb.bus, a.currentTime + 0.02); nextBump = a.currentTime + 0.8 + Math.random() * 1.2; }
+    const ph = v ? v.phase : "", cd = ph === "count" ? Math.ceil(v.cd) : 0; // 시작 카운트다운: 3·2·1 삑, 시작하면 짠
+    if (live && cd >= 1 && cd <= 3 && cd !== lastCd) startBeep(a, a.destination, a.currentTime);
+    if (live && ph === "play" && lastPh === "count") startJingle(a, a.destination, a.currentTime);
+    lastCd = cd; lastPh = ph;
     if (!live || v.phase !== "play") { lastCount = 0; return; }
     const s = Math.ceil(v.left);
     if (s >= 1 && s <= 5 && s !== lastCount) countDing(a, a.destination, a.currentTime, s === 1);
@@ -7346,7 +7356,7 @@ body.modal { overflow: hidden; }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  if (IS_LOCAL) window.__bunsik = { bgm: { step: bgmPlayStep, n: BGM_STEPS.length, vol: BGM_VOL }, snd: { countDing, bikeHorn, bikeZoom, truckRun, roadBump }, get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, get wallet() { return wallet; }, info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom(), truckSegs: () => truckSegs(view), truckNow: () => truckNow(view) };
+  if (IS_LOCAL) window.__bunsik = { bgm: { step: bgmPlayStep, n: BGM_STEPS.length, vol: BGM_VOL }, snd: { countDing, bikeHorn, bikeZoom, truckRun, roadBump, startBeep, startJingle }, get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, get wallet() { return wallet; }, info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom(), truckSegs: () => truckSegs(view), truckNow: () => truckNow(view) };
   if (document.fonts && document.fonts.load) document.fonts.load('20px "Jua"', "가나다 내는 곳 버리기 방장 친구 반납 개수대");
 })();
 </script>
