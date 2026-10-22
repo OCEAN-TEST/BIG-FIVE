@@ -419,6 +419,7 @@ body.modal { overflow: hidden; }
   <p class="appnote" id="appNote" hidden><span id="appNoteText"></span><button type="button" id="appNoteX" aria-label="안내 닫기">✕</button></p>
 
   <section class="ppanel" id="ppanel" aria-label="방 만들기와 들어가기">
+    <p class="status" id="no3dNote" hidden>이 기기(브라우저)는 3D 화면이 안 돼서 게임을 할 수 없어요. 다른 브라우저나 기기로 열어 주세요.</p>
     <button class="btn" id="hostBtn" type="button">방 만들기</button>
     <p class="status" id="hostStatus" aria-live="polite"></p>
     <form class="join" id="joinForm">
@@ -599,7 +600,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 52;
+  const VERSION = 53;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -1062,26 +1063,6 @@ body.modal { overflow: hidden; }
   const isCont = (it) => !!(it && CONT[it.k]);
   const isIng = (it) => !!(it && ING[it.k]);
 
-  function drawItem(c, it, cx, cy, s, now) {
-    if (!it) return;
-    if (it.k === "plate") {
-      if (it.dish) { drawIcon(c, it.dish, cx, cy, s); return; }
-      drawIcon(c, "plate", cx, cy, s);
-      const n = it.items.length;
-      it.items.forEach((k, i) => { const a = (i / Math.max(1, n)) * Math.PI * 2 - Math.PI / 2; const d = n > 1 ? s * 0.18 : 0; drawIcon(c, k, cx + Math.cos(a) * d, cy + Math.sin(a) * d, s * 0.45, ING[k].chop); });
-      return;
-    }
-    if (it.k === "dirty") {
-      const n = Math.min(3, it.n);
-      for (let j = n - 1; j >= 0; j--) drawIcon(c, "dirty", cx, cy - j * s * 0.08, s);
-      if (it.n > 1) badge(c, cx + s * 0.42, cy - s * 0.38, String(it.n), "#7a5a3a", s * 0.32);
-      return;
-    }
-    if (isCont(it)) { drawCont(c, it, cx, cy, s, now || 0, false); return; }
-    drawIcon(c, it.k, cx, cy, ING[it.k] ? s * 1.3 : s, it.cut); // 재료는 크게
-  }
-  let lateUI = null; // 2D 그리기 중이면 막대·표시를 모았다가 캐릭터 다음에 그려요
-  const later = (fn) => { if (lateUI) lateUI.push(fn); else fn(); };
   function bar(c, x, y, w, h, f, col) {
     h = Math.max(7, h);
     rrect(c, x, y, w, h, h / 2); c.fillStyle = "rgba(36,26,20,.75)"; c.fill();
@@ -1145,7 +1126,7 @@ body.modal { overflow: hidden; }
     if (it.st === "burnt" || it.st === "bad") crossPill(c, x, y, it.st === "burnt" ? "#2b2522" : "#8a5a3a", fs * 1.15); // 탔거나 망함: ✕
   }
 
-  // ===== 캐릭터: 동물 요리사 4종 =====
+  // ===== 캐릭터: 동물 요리사 =====
   const CHARS = {
     cat:    { name: "고양이", fur: "#f2a65a", dark: "#c9752a", ear: "#f7c9a8", nose: "#e8798a" },
     mochi:  { name: "치이카와", fur: "#ffffff", dark: "#b0a6a0", ear: "#ffffff", nose: "#3a2a24" }, // 하얗고 머리가 큰 동글이, 작은 반달 귀, 걱정 눈썹, 빗금 볼터치
@@ -1155,10 +1136,6 @@ body.modal { overflow: hidden; }
     poro:   { name: "포로",   fur: "#f3f0f6", dark: "#4a4462", ear: "#e8899b", nose: "#e98aa2", hand: "#4a4462", face: "#f8eeb0", tongue: "#f4a3ae", udder: "#e8798a" } // 젖소 옷을 입은 동그란 포로: 하얀 바탕에 남색 무늬, 분홍 코·젖, 크림색 얼굴과 콧수염, 길게 내민 분홍 혀. 앞치마 대신 귀표가 내 색
   };
   const CHAR_KEYS = Object.keys(CHARS);
-  // 머리가 큰 캐릭터 (2D): [머리 반너비, 반높이, 머리 가운데 y] (칸 크기 S 배). 몸은 작게, 얼굴은 그림으로 그려요
-  const BIG_HEAD = { mochi: [0.29, 0.23, -0.12], rabbit: [0.29, 0.215, -0.115], otter: [0.31, 0.19, -0.1] };
-  const BUN_CH = { rabbit: 1, otter: 1 }; // 찐빵 머리 (bunPt)
-  const BIG_BODY = { otter: [0.22, 0.15] }; // 몸 반너비·반높이 (없으면 0.19·0.14)
   // 토끼 머리 모양: 위는 둥근 지붕, 옆은 통통, 아래는 넓고 납작한 찐빵. 공 위의 점(위쪽이 +y)을 이 모양 위로 옮겨요.
   // 가장 넓은 줄이 y=0, 꼭대기는 1.1배 높이, 바닥은 0.88배. 길이가 어떻든 방향만 봐요
   function bunPt(x, y, z) {
@@ -1167,42 +1144,12 @@ body.modal { overflow: hidden; }
     const f = Math.pow(Math.pow(Math.abs(x), n) + Math.pow(Math.abs(y), n) + Math.pow(Math.abs(z), n), -1 / n);
     return [x * f, y * f * (0.99 + 0.11 * Math.tanh(y * 4)), z * f];
   }
-  function bunPath(c, A, B, cy) { // 2D 머리 테두리 (A 반너비, B 높이 단위, cy 가장 넓은 줄)
-    c.beginPath();
-    for (let i = 0; i <= 64; i++) { const a = (i / 64) * Math.PI * 2, [x, y] = bunPt(Math.cos(a), Math.sin(a), 0); if (i) c.lineTo(x * A, cy - y * B); else c.moveTo(x * A, cy - y * B); }
-    c.closePath();
-  }
   const APRON = ["#d7372b", "#2f8f5b", "#2f6fd1", "#8e4fc9"];
   const APRON_NAME = ["빨간 앞치마", "초록 앞치마", "파란 앞치마", "보라 앞치마"];
   const gearOf = (ch, i) => (ch === "poro" ? APRON_NAME[i].replace("앞치마", "귀표") : APRON_NAME[i]); // 포로는 앞치마 대신 귀표가 내 색
 
-  function drawEars(c, ch, S, back, sw) { // sw: 걸을 때 귀가 앞(+1)·뒤(-1)로 흔들리는 정도 (토끼만 써요)
-    const C = CHARS[ch];
-    if (ch === "cat") {
-      [-1, 1].forEach((sd) => {
-        c.beginPath(); c.moveTo(sd * 0.2 * S, -0.27 * S); c.lineTo(sd * 0.16 * S, -0.49 * S); c.lineTo(sd * 0.02 * S, -0.35 * S); c.closePath();
-        c.fillStyle = C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
-        if (!back) { c.beginPath(); c.moveTo(sd * 0.165 * S, -0.31 * S); c.lineTo(sd * 0.15 * S, -0.43 * S); c.lineTo(sd * 0.07 * S, -0.35 * S); c.closePath(); c.fillStyle = C.ear; c.fill(); }
-      });
-    } else if (ch === "mochi") { // 머리 위 양쪽 어깨에 동그란 귀 (머리 뒤에 그려서 위쪽만 보여요)
-      [-1, 1].forEach((sd) => { dot(c, sd * 0.18 * S, -0.3 * S, 0.05 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); });
-    } else if (ch === "rabbit") { // 머리 위 가운데 가까이 길쭉한 귀 둘. 사진처럼 가운데가 바깥으로 불룩한 ( ) 모양, 바깥쪽이 분홍 (머리 뒤에 그려서 밑동은 가려져요)
-      const bend = (pts, w, col) => { c.beginPath(); c.moveTo(pts[0][0] * S, pts[0][1] * S); c.quadraticCurveTo(pts[1][0] * S, pts[1][1] * S, pts[2][0] * S, pts[2][1] * S); c.lineWidth = w; c.strokeStyle = col; c.lineCap = "round"; c.stroke(); };
-      [-1, 1].forEach((sd) => {
-        const k = (sw || 0) * (sd > 0 ? 1 : 0.8), dy = 0.1 * k; // 앞으로 오면 귀 끝이 내려오고(짧아 보여요), 뒤로 가면 올라가요
-        const ear = [[sd * 0.058, -0.29], [sd * 0.125, -0.47 + dy * 0.5], [sd * 0.08, -0.61 + dy]];
-        bend(ear, 0.084 * S + 2, C.dark); bend(ear, 0.084 * S, C.fur);
-        if (!back) bend([[sd * 0.072, -0.34], [sd * 0.14, -0.47 + dy * 0.5], [sd * 0.095, -0.575 + dy * 0.9]], 0.036 * S, C.ear);
-      });
-    } else if (ch === "otter") { // 머리 양옆 위쪽에 작은 갈색 귀 (머리 뒤에 그려서 반쯤 보여요)
-      const [A, B, cy] = BIG_HEAD.otter;
-      [-1, 1].forEach((sd) => { const [x, y] = bunPt(sd * Math.cos(0.62), Math.sin(0.62), 0); dot(c, x * A * S * 1.02, (cy - y * B * 1.02) * S, 0.05 * S, C.ear); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); });
-    } else if (ch === "bear") {
-      [-1, 1].forEach((sd) => { dot(c, sd * 0.16 * S, -0.35 * S, 0.08 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); if (!back) dot(c, sd * 0.16 * S, -0.35 * S, 0.042 * S, C.ear); });
-    }
-  }
   // 치이카와 얼굴 (피규어 사진에서 잰 자리). 머리 가운데가 (0, 0), 머리 반너비가 1, 아래가 +.
-  // P(x, y) → 캔버스 좌표, k = 1의 픽셀 크기. 2D는 머리 위에 바로, 3D는 머리 앞을 덮는 텍스처에 그려요
+  // P(x, y) → 캔버스 좌표, k = 1의 픽셀 크기. 3D 머리 앞을 덮는 텍스처에 그려요 (faceMesh)
   function drawMochiFace(c, P, k) {
     const ink = "#1f1612", lw = (w) => Math.max(1, w * k);
     c.save(); c.lineCap = "round"; c.lineJoin = "round";
@@ -1287,237 +1234,7 @@ body.modal { overflow: hidden; }
     [-1, 1].forEach((sd) => { path([[sd * 0.09, 0.07], [sd * 0.103, 0.066, sd * 0.116, 0.052]]); c.stroke(); }); // 입꼬리 살짝 올라가요
     c.restore();
   }
-  function drawFace(c, ch, S, fx) {
-    const C = CHARS[ch];
-    const hy = -0.17 * S, ox = fx * 0.07 * S;
-    if (BIG_HEAD[ch]) { const A = BIG_HEAD[ch][0] * S, hc = BIG_HEAD[ch][2] * S; ({ rabbit: drawUsagiFace, otter: drawRakkoFace }[ch] || drawMochiFace)(c, (x, y) => [ox + x * A, hc + y * A], A); return; }
-    if (ch === "bear") { c.beginPath(); c.ellipse(ox * 1.25, hy + 0.075 * S, 0.095 * S, 0.068 * S, 0, 0, Math.PI * 2); c.fillStyle = "#d9b38c"; c.fill(); }
-    const eyeY = hy - 0.01 * S;
-    const ex = [ox - 0.075 * S + fx * 0.02 * S, ox + 0.075 * S + fx * 0.02 * S];
-    ex.forEach((x) => { dot(c, x, eyeY, 0.03 * S, "#241a14"); dot(c, x + 0.01 * S, eyeY - 0.011 * S, 0.01 * S, "#ffffff"); });
-    const nx = ox * 1.35, ny = hy + 0.055 * S;
-    if (ch === "cat" || ch === "rabbit") { c.beginPath(); c.moveTo(nx - 0.024 * S, ny - 0.012 * S); c.lineTo(nx + 0.024 * S, ny - 0.012 * S); c.lineTo(nx, ny + 0.016 * S); c.closePath(); c.fillStyle = C.nose; c.fill(); }
-    else { c.beginPath(); c.ellipse(nx, ny, 0.032 * S, 0.023 * S, 0, 0, Math.PI * 2); c.fillStyle = C.nose; c.fill(); }
-    if (ch === "cat") {
-      c.strokeStyle = "rgba(36,26,20,.5)"; c.lineWidth = 1; c.beginPath();
-      [-1, 1].forEach((sd) => { c.moveTo(nx + sd * 0.05 * S, ny); c.lineTo(nx + sd * 0.16 * S, ny - 0.02 * S); c.moveTo(nx + sd * 0.05 * S, ny + 0.02 * S); c.lineTo(nx + sd * 0.16 * S, ny + 0.035 * S); });
-      c.stroke();
-    }
-    c.globalAlpha = 0.35; dot(c, ex[0] - 0.035 * S, eyeY + 0.065 * S, 0.032 * S, "#ff7f8a"); dot(c, ex[1] + 0.035 * S, eyeY + 0.065 * S, 0.032 * S, "#ff7f8a"); c.globalAlpha = 1;
-  }
-  function drawTail(c, ch, S, t, moving) {
-    const C = CHARS[ch], y0 = 0.24 * S;
-    if (ch === "cat") {
-      const w = Math.sin(t * 3) * 0.05 * S;
-      c.strokeStyle = C.dark; c.lineWidth = 0.05 * S; c.lineCap = "round";
-      c.beginPath(); c.moveTo(0, y0); c.quadraticCurveTo(0.16 * S + w, y0 + 0.06 * S, 0.12 * S + w, y0 - 0.12 * S); c.stroke();
-    } else if (ch === "mochi") {
-      dot(c, 0, y0, 0.05 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
-    } else if (ch === "rabbit") {
-      dot(c, 0, y0, 0.05 * S, C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
-    } else if (ch === "bear") {
-      dot(c, 0, y0, 0.05 * S, C.dark);
-    } else if (ch === "otter") { // 해달 꼬리: 몸 뒤로 두툼하고 넓적하게 늘어진 노 모양, 걸으면 좌우로 살랑
-      c.save(); c.translate(0, y0 - 0.02 * S); c.rotate(Math.sin(t * (moving ? 9 : 2.5)) * (moving ? 0.3 : 0.1));
-      c.beginPath(); c.ellipse(0, 0.12 * S, 0.085 * S, 0.15 * S, 0, 0, Math.PI * 2); c.fillStyle = C.tail; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
-      c.restore();
-    }
-  }
 
-  // 점들을 부드럽게 잇는 곡선 (Catmull-Rom). closed면 처음과 끝도 이어요
-  function catmull(pts, closed) {
-    const n = pts.length, P = (i) => pts[closed ? (i + n) % n : Math.max(0, Math.min(n - 1, i))], out = [];
-    for (let i = 0; i < (closed ? n : n - 1); i++) for (let j = 0; j < 8; j++) {
-      const t = j / 8, a = P(i - 1), b = P(i), c = P(i + 1), d = P(i + 2);
-      out.push([0, 1].map((e) => 0.5 * (2 * b[e] + (c[e] - a[e]) * t + (2 * a[e] - 5 * b[e] + 4 * c[e] - d[e]) * t * t + (3 * b[e] - a[e] - 3 * c[e] + d[e]) * t * t * t)));
-    }
-    if (!closed) out.push(pts[n - 1]);
-    return out;
-  }
-  // 포로 (2D): 젖소 옷 몸통 위에 모자 쓴 머리가 반쯤 묻혀 있어요 (자리는 칸 크기 S 배, 아래가 +). 머리 가운데 y = -0.2, 몸통 가운데 y = 0.07
-  const poroBodyPath = (c, S) => { c.beginPath(); c.ellipse(0, 0.07 * S, 0.33 * S, 0.19 * S, 0, 0, Math.PI * 2); };
-  const poroHeadPath = (c, S) => { c.beginPath(); c.ellipse(0, -0.2 * S, 0.27 * S, 0.2 * S, 0, 0, Math.PI * 2); };
-  // 혀 끝이 걸음마다 좌우로 덜렁, 튈 때 앞으로 펄럭 (2D는 짧아 보여요). 서 있으면 헥헥. [좌우 각, 길이 배]
-  function poroTongue(o, t) {
-    const dash = o.dash || 0;
-    if (dash) return [Math.sin(t * 26) * 0.45 * dash, 1 - 0.25 * dash];
-    if (o.moving) return [Math.sin(o.phase * Math.PI - 0.9) * 0.4, 1 - Math.abs(Math.sin(o.phase * Math.PI - 0.5)) * 0.18];
-    if (o.chop) return [0, 1 - Math.max(0, Math.sin((o.now || 0) / 40)) * 0.12];
-    return [Math.sin(t * 1.7) * 0.06, 1 + Math.sin(t * 6) * 0.04];
-  }
-  function drawPoro(c, S, o, back, t, fx) {
-    const C = CHARS.poro, ox = back ? 0 : fx * 0.05, ink = "#1f1612";
-    const el = (x, y, rx, ry, col, rot) => { c.beginPath(); c.ellipse(x * S, y * S, rx * S, ry * S, rot || 0, 0, Math.PI * 2); c.fillStyle = col; c.fill(); };
-    const curve = (pts) => { c.beginPath(); catmull(pts, true).forEach(([x, y], i) => { if (i) c.lineTo(x * S, y * S); else c.moveTo(x * S, y * S); }); c.closePath(); };
-    const blob = (x, y, rx, ry, seed, col) => { // 울퉁불퉁한 젖소 무늬
-      curve(Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * Math.PI * 2, k = 1 + 0.18 * Math.sin(3 * a + seed) + 0.08 * Math.sin(5 * a + seed * 2); return [x + Math.cos(a) * rx * k, y + Math.sin(a) * ry * k]; }));
-      c.fillStyle = col; c.fill();
-    };
-    const clipped = (path, draw) => { c.save(); path(c, S); c.clip(); draw(); c.restore(); path(c, S); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); };
-    // 몸통: 앞판은 남색, 옆구리는 하양, 배에 큼직한 분홍 젖 (뒤에서는 젖소 무늬)
-    poroBodyPath(c, S); c.fillStyle = C.fur; c.fill();
-    clipped(poroBodyPath, () => {
-      c.fillStyle = C.dark; c.fillRect(-S, 0.21 * S, 2 * S, S);
-      if (back) { blob(0.12, 0.02, 0.12, 0.08, 4, C.dark); blob(-0.18, 0.12, 0.08, 0.06, 2, C.dark); }
-      else {
-        rrect(c, (ox - 0.22) * S, -0.14 * S, 0.44 * S, 0.5 * S, 0.12 * S); c.fillStyle = C.dark; c.fill();
-        blob(-0.31, 0.02, 0.05, 0.07, 2, C.dark); blob(0.31, 0.0, 0.045, 0.065, 5, C.dark);
-        rrect(c, (ox - 0.085) * S, 0.075 * S, 0.17 * S, 0.12 * S, 0.045 * S); c.fillStyle = C.udder; c.fill();
-        [-1, 1].forEach((sd) => el(ox + sd * 0.035, 0.105, 0.01, 0.013, "#c4506c"));
-      }
-    });
-    if (back) { // 꼬리: 가는 하얀 꼬리 끝에 남색 털뭉치, 살랑살랑
-      c.save(); c.translate(0, 0.12 * S); c.rotate(Math.sin(t * (o.moving ? 8 : 2)) * (o.moving ? 0.45 : 0.18));
-      c.strokeStyle = C.dark; c.lineWidth = 0.032 * S; c.lineCap = "round"; c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(0.05 * S, 0.06 * S, 0.03 * S, 0.12 * S); c.stroke();
-      c.strokeStyle = C.fur; c.lineWidth = 0.02 * S; c.stroke();
-      el(0.03, 0.14, 0.028, 0.038, C.dark);
-      c.restore();
-    }
-    [-1, 1].forEach((sd) => { // 뿔: 머리 위 양쪽에서 바깥으로 나갔다가 위로 휘어 올라가요 (밑동은 머리 뒤에 숨어요)
-      c.beginPath(); c.moveTo(sd * 0.16 * S, -0.33 * S); c.quadraticCurveTo(sd * 0.27 * S, -0.36 * S, sd * 0.22 * S, -0.48 * S); c.quadraticCurveTo(sd * 0.2 * S, -0.39 * S, sd * 0.08 * S, -0.36 * S); c.closePath();
-      c.fillStyle = C.dark; c.fill();
-    });
-    [-1, 1].forEach((sd) => { // 귀: 머리 양옆으로 뻗은 남색 귀, 앞에서는 안쪽이 분홍
-      el(sd * 0.33, -0.17, 0.09, 0.045, C.dark, sd * 0.25);
-      if (!back) el(sd * 0.345, -0.168, 0.06, 0.026, C.ear, sd * 0.25);
-    });
-    // 머리(모자): 얼굴을 두른 남색 테두리, 크림색 얼굴, 위에 분홍 소 코 (뒤에서는 무늬와 정수리 너머 코)
-    poroHeadPath(c, S); c.fillStyle = C.fur; c.fill();
-    clipped(poroHeadPath, () => {
-      if (back) { blob(-0.1, -0.25, 0.12, 0.08, 1, C.dark); blob(0.14, -0.12, 0.08, 0.07, 3, C.dark); el(0, -0.4, 0.1, 0.03, C.nose); return; }
-      el(ox, -0.17, 0.235, 0.15, C.dark);
-      el(ox, -0.2, 0.2, 0.115, C.face);
-      el(ox, -0.07, 0.13, 0.04, "#ffffff"); // 콧수염 밑 하얀 턱과 벌린 입
-      el(ox, -0.095, 0.035, 0.015, "#5a2a34");
-    });
-    if (!back) {
-      rrect(c, (ox * 0.6 - 0.1) * S, -0.4 * S, 0.2 * S, 0.09 * S, 0.035 * S); c.fillStyle = C.nose; c.fill(); // 모자 위 분홍 소 코 + 콧구멍
-      [-1, 1].forEach((sd) => el(ox * 0.6 + sd * 0.04, -0.355, 0.012, 0.016, "#d45f78"));
-      const [ang, len] = poroTongue(o, t), L = 0.16 * len, Ls = Math.max(0.01, L - 0.08); // 혀: 콧수염 밑 입에 매달려 가슴까지 늘어져요. 넓적하고 아래는 둥근 U자
-      c.save(); c.translate(ox * S, -0.1 * S); c.rotate(ang);
-      c.beginPath(); c.moveTo(-0.058 * S, 0); c.bezierCurveTo(-0.066 * S, Ls * 0.45 * S, -0.08 * S, Ls * 0.75 * S, -0.08 * S, Ls * S);
-      c.arc(0, Ls * S, 0.08 * S, Math.PI, 0, true); c.bezierCurveTo(0.08 * S, Ls * 0.75 * S, 0.066 * S, Ls * 0.45 * S, 0.058 * S, 0); c.closePath();
-      c.fillStyle = C.tongue; c.fill(); c.strokeStyle = "#c95b6c"; c.lineWidth = Math.max(1, 0.008 * S); c.stroke();
-      c.beginPath(); c.moveTo(0, 0.025 * S); c.lineTo(0, L * 0.55 * S); c.strokeStyle = "rgba(190,70,90,.7)"; c.lineWidth = Math.max(1, 0.01 * S); c.lineCap = "round"; c.stroke();
-      c.restore();
-      // 콧수염: 작은 눈 바로 아래, 양 끝이 뾰족하게 뻗은 통통한 덩어리 (아래로 그림자를 깔아요)
-      const must = [[-0.27, -0.12], [-0.21, -0.165], [-0.12, -0.18], [-0.045, -0.17], [0, -0.155], [0.045, -0.17], [0.12, -0.18], [0.21, -0.165], [0.27, -0.12], [0.2, -0.095], [0.13, -0.075], [0.06, -0.075], [0, -0.092], [-0.06, -0.075], [-0.13, -0.075], [-0.2, -0.095]];
-      curve(must.map(([x, y]) => [x + ox, y + 0.012])); c.fillStyle = "rgba(150,120,40,.45)"; c.fill();
-      curve(must.map(([x, y]) => [x + ox, y])); c.fillStyle = C.face; c.fill(); c.strokeStyle = "rgba(170,140,55,.55)"; c.lineWidth = Math.max(1, 0.006 * S); c.stroke();
-      [-1, 1].forEach((sd) => { el(ox + sd * 0.08, -0.215, 0.018, 0.024, ink); el(ox + sd * 0.08 + 0.006, -0.223, 0.007, 0.007, "#ffffff"); }); // 작고 까만 눈 (반짝)
-    }
-    const tx = back ? 0.38 : -0.38; // 화면 왼쪽 귀에 매단 귀표: 앞치마 대신 내 색이에요
-    rrect(c, (tx - 0.023) * S, -0.15 * S, 0.046 * S, 0.062 * S, 0.012 * S); c.fillStyle = APRON[o.slot] || APRON[0]; c.fill(); c.strokeStyle = "rgba(0,0,0,.35)"; c.lineWidth = 1; c.stroke();
-  }
-
-  // 캐릭터 한 명. (X, Y) = 발 딛는 자리 중심, S = 칸 크기
-  function drawChar(c, S, X, Y, o) {
-    const C = CHARS[o.ch] || CHARS.cat;
-    const fx = o.fx || 0, fy = o.fy == null ? 1 : o.fy;
-    const back = fy < 0;
-    const t = (o.now || 0) / 1000;
-    const dash = o.dash || 0;
-    const bob = dash ? 0 : o.moving ? Math.abs(Math.sin(o.phase * Math.PI)) * S * 0.06 : Math.sin(t * 2.4) * S * 0.008;
-    const tilt = dash ? (o.ddx || 0) * 0.35 * dash : o.moving ? Math.sin(o.phase * Math.PI) * 0.07 : 0;
-    const step = o.moving ? Math.sin(o.phase * Math.PI) * S * 0.05 : 0;
-    const reach = o.reach || 0;
-    const by = Y - bob;
-    const perp = { x: -fy, y: fx };
-
-    if (dash) { // 대시 잔상
-      c.strokeStyle = "rgba(255,255,255," + 0.65 * dash + ")"; c.lineWidth = Math.max(2, S * 0.04); c.lineCap = "round"; c.beginPath();
-      [-0.12, 0, 0.12].forEach((k) => { const ox = -(o.ddx || 0) * S * 0.32 + -(o.ddy || 0) * k * S, oy = -(o.ddy || 0) * S * 0.32 + (o.ddx || 0) * k * S; c.moveTo(X + ox, by + oy); c.lineTo(X + ox - (o.ddx || 0) * S * 0.35 * dash, by + oy - (o.ddy || 0) * S * 0.35 * dash); });
-      c.stroke();
-    }
-    const poro = o.ch === "poro", fw = poro ? 0.19 : 0.1, fr = poro ? 0.072 : 0.062; // 포로는 몸이 넓어서 발도 벌어지고 커요
-    c.beginPath(); c.ellipse(X, Y + 0.27 * S, (poro ? 0.3 : 0.26) * S - bob * 0.5, 0.085 * S, 0, 0, Math.PI * 2); c.fillStyle = "rgba(0,0,0,.18)"; c.fill();
-    dot(c, X - fw * S + (fx ? step * fx : 0), Y + 0.24 * S + (fx ? 0 : step), fr * S, C.dark);
-    dot(c, X + fw * S - (fx ? step * fx : 0), Y + 0.24 * S - (fx ? 0 : step), fr * S, C.dark);
-
-    let hold = null, hands, knife = null;
-    if (o.hold && o.hold.k === "club") { // 몽둥이: 한 손으로 옆에 쥐어요
-      const gx = X + perp.x * 0.25 * S + fx * S * 0.1, gy = by + 0.14 * S + perp.y * 0.12 * S + fy * S * 0.06;
-      hold = { x: gx, y: gy, club: true };
-      const sw2 = o.moving ? Math.sin(o.phase * Math.PI) * 0.05 * S : 0;
-      hands = [[gx, gy], [X - perp.x * 0.25 * S, by + 0.13 * S - perp.y * 0.1 * S + sw2]];
-    } else if (o.hold) {
-      const f = 0.24 + reach * 0.1;
-      hold = { x: X + fx * S * f, y: by + 0.1 * S + fy * S * (f - 0.08) - (back ? 0.14 * S : 0) };
-      const sp = 0.19 * S;
-      hands = [[hold.x + perp.x * sp, hold.y + perp.y * sp * 0.6 + 0.04 * S], [hold.x - perp.x * sp, hold.y - perp.y * sp * 0.6 + 0.04 * S]];
-    } else if (o.chop) {
-      const k = Math.sin((o.now || 0) / 40);
-      const up = k > 0 ? -0.1 * S * k : 0.015 * S;
-      const kx = X + fx * S * 0.34 + perp.x * 0.05 * S, ky = by + 0.06 * S + fy * S * 0.26 + up;
-      knife = o.wash ? null : { x: kx, y: ky };
-      hands = [[kx, ky], [X + fx * S * 0.28 - perp.x * 0.16 * S, by + 0.14 * S + fy * S * 0.2 - perp.y * 0.1 * S + (o.wash ? up : 0)]];
-    } else {
-      const sw = o.moving ? Math.sin(o.phase * Math.PI) * 0.05 * S : 0;
-      const r = reach * 0.18 * S;
-      const hw = (poro ? 0.33 : 0.25) * S, hy = by + (poro ? 0.06 : 0.13) * S; // 포로: 동그란 몸통 양옆에 붙은 짧은 팔
-      hands = [[X - hw + fx * r, hy + sw + fy * r], [X + hw + fx * r, hy - sw + fy * r]];
-    }
-    const front = () => {
-      if (hold && hold.club) { // 몽둥이: 손잡이를 쥔 손에서 뻗어요. 휘두르면 위(젖힘) → 앞(쾅)
-        const a = -(o.swing == null ? -0.9 : o.swing), fl = Math.hypot(fx, fy) || 1;
-        let dx = (fx / fl) * Math.cos(a), dy = (fy / fl) * Math.cos(a) - Math.sin(a) * 0.95;
-        const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
-        const px = -dy, py = dx, L = 0.6 * S, x0 = hold.x, y0 = hold.y;
-        c.lineCap = "round"; c.strokeStyle = "#3a2a1c"; c.lineWidth = 0.075 * S;
-        c.beginPath(); c.moveTo(x0 - dx * 0.05 * S, y0 - dy * 0.05 * S); c.lineTo(x0 + dx * 0.2 * S, y0 + dy * 0.2 * S); c.stroke();
-        const w0 = 0.04 * S, w1 = 0.075 * S, hx = x0 + dx * 0.17 * S, hy = y0 + dy * 0.17 * S, ex = x0 + dx * L, ey = y0 + dy * L;
-        c.beginPath(); c.moveTo(hx + px * w0, hy + py * w0); c.lineTo(ex + px * w1, ey + py * w1); c.arc(ex, ey, w1, Math.atan2(py, px), Math.atan2(py, px) + Math.PI, true); c.lineTo(hx - px * w0, hy - py * w0); c.closePath();
-        c.fillStyle = "#c8955a"; c.fill(); c.lineWidth = Math.max(1, 0.02 * S); c.strokeStyle = "#7a5230"; c.stroke();
-      } else if (hold) drawItem(c, o.hold, hold.x, hold.y, S * 0.48, o.now);
-      if (knife) {
-        c.save(); c.translate(knife.x, knife.y); c.rotate(fx ? fx * 0.9 : 0);
-        rrect(c, -0.025 * S, -0.2 * S, 0.06 * S, 0.15 * S, 0.02 * S); c.fillStyle = "#e3e8eb"; c.fill(); c.strokeStyle = "#8e979c"; c.lineWidth = 1; c.stroke();
-        rrect(c, -0.02 * S, -0.06 * S, 0.05 * S, 0.08 * S, 0.015 * S); c.fillStyle = "#6b4a2b"; c.fill();
-        c.restore();
-      }
-      hands.forEach(([hx, hy]) => { dot(c, hx, hy, (poro ? 0.058 : BIG_HEAD[o.ch] ? 0.052 : 0.064) * S, C.hand || C.body || C.fur); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); });
-    };
-    if (back) front();
-
-    c.save(); c.translate(X, by); c.rotate(tilt);
-    if (dash) c.scale(1 + 0.12 * dash, 1 - 0.1 * dash);
-    if (poro) drawPoro(c, S, o, back, t, fx);
-    else {
-      const big = BIG_HEAD[o.ch], bb = BIG_BODY[o.ch] || [0.19, 0.14]; // 치이카와·토끼·해달: 몸은 작고 머리가 커요
-      const bodyW = (big ? bb[0] : 0.24) * S, bodyH = (big ? bb[1] : 0.21) * S, bodyY = (big ? 0.13 : 0.08) * S;
-      c.beginPath(); c.ellipse(0, bodyY, bodyW, bodyH, 0, 0, Math.PI * 2); c.fillStyle = C.body || C.fur; c.fill(); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
-      if (!back) {
-        const ax = fx * 0.05 * S;
-        if (big) { rrect(c, ax - 0.12 * S, 0.07 * S, 0.24 * S, 0.18 * S, 0.06 * S); c.fillStyle = APRON[o.slot]; c.fill(); c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(ax - 0.05 * S, 0.17 * S, 0.1 * S, 0.02 * S); }
-        else { rrect(c, ax - 0.14 * S, 0.0, 0.28 * S, 0.25 * S, 0.07 * S); c.fillStyle = APRON[o.slot]; c.fill(); c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(ax - 0.06 * S, 0.11 * S, 0.12 * S, 0.022 * S); }
-      } else {
-        c.strokeStyle = APRON[o.slot]; c.lineWidth = 0.04 * S; c.lineCap = "round";
-        c.beginPath(); c.moveTo(-0.15 * S, -0.03 * S); c.lineTo(0.12 * S, 0.16 * S); c.moveTo(0.15 * S, -0.03 * S); c.lineTo(-0.12 * S, 0.16 * S); c.stroke();
-        dot(c, -0.045 * S, 0.17 * S, 0.04 * S, APRON[o.slot]); dot(c, 0.045 * S, 0.17 * S, 0.04 * S, APRON[o.slot]);
-        drawTail(c, o.ch, S, t, o.moving);
-      }
-      drawEars(c, o.ch, S, back, dash ? -1 : o.moving ? Math.sin(o.phase * Math.PI) : Math.sin(t * 2.2) * 0.15);
-      if (big) { if (BUN_CH[o.ch]) bunPath(c, big[0] * S, big[1] * S, big[2] * S); else { c.beginPath(); c.ellipse(0, big[2] * S, big[0] * S, big[1] * S, 0, 0, Math.PI * 2); } c.fillStyle = C.fur; c.fill(); } // 옆으로 넓적한 큰 머리가 몸 위를 덮어요
-      else dot(c, 0, -0.17 * S, 0.21 * S, C.fur);
-      c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
-      if (o.ch === "cat") {
-        c.strokeStyle = C.dark; c.lineWidth = 0.025 * S; c.lineCap = "round"; c.beginPath();
-        [-0.05, 0, 0.05].forEach((dx) => { c.moveTo(dx * S, -0.36 * S); c.lineTo(dx * S, (back ? -0.24 : -0.3) * S); }); c.stroke();
-      }
-      if (!back) drawFace(c, o.ch, S, fx);
-    }
-    c.restore();
-
-    if (!back) front();
-
-    if (o.label && !back) {
-      const tagY = by - (o.ch === "rabbit" ? 0.9 : 0.68) * S;
-      c.font = Math.round(S * 0.19) + "px " + FONT_UI;
-      const tw = c.measureText(o.label).width + 12;
-      rrect(c, X - tw / 2, tagY - S * 0.13, tw, S * 0.25, 6); c.fillStyle = o.isMe ? APRON[o.slot] : "rgba(36,26,20,.75)"; c.fill();
-      c.fillStyle = "#fff"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(o.label, X, tagY);
-    }
-  }
 
   // 움직임 상태 (두 화면 각자 계산)
   const anim = [0, 1, 2, 3].map(() => ({ lx: null, ly: null, phase: 0, moving: false, reach: 0, an: 0, ds: 0, dashT: 0, ddx: 0, ddy: 0, lastBit: 0, hitT: -1e9, fallT: -1e9, wasDizzy: false, deadAt: 0, fallAt: 0, fallWhy: "fall" }));
@@ -1544,8 +1261,8 @@ body.modal { overflow: hidden; }
   }
   const reachAmt = (i) => (anim[i].reach > 0 ? Math.sin((1 - anim[i].reach / REACH) * Math.PI) : 0);
 
-  // 썰기 조각, 대시 먼지
-  const bits = [], dust = [], foam = []; // foam: 소화기 거품 (x, z 바닥 좌표, h 높이)
+  // 대시 먼지, 소화기 거품 (foam: x, z 바닥 좌표, h 높이)
+  const dust = [], foam = [];
   const BIT_COLOR = { eomuk: "#dca65e", pa: "#3f9b4a", danmuji: "#f7d84a", ojingeo: "#f3d3c4", potato: "#f1dca0" };
   function spawnDust(x, y, dx, dy) {
     const now = performance.now();
@@ -2490,12 +2207,7 @@ body.modal { overflow: hidden; }
   const touchIn = { x: 0, y: 0, m: 0, chop: false };
   const chopHeld = () => !(me && (me.stun > 0 || me.dead > 0)) && (keys.has("KeyE") || touchIn.chop); // 작업(썰기·설거지·불 끄기)은 E를 꾹
   function syncChop() { if (role === "host" && W) W.players[0].chop = chopHeld(); }
-  let viewRot = false; // 세로 폰 3D: 주방을 90도 돌려서 길게 보여줘요 (화면 위 = 주방 오른쪽)
   function inputVec() {
-    const v = rawInput();
-    return viewRot && (v.x || v.y) ? { x: -v.y, y: v.x } : v;
-  }
-  function rawInput() {
     if (touchIn.m > 0) { const f = touchIn.m >= 0.55 ? 1 : 0.45 + touchIn.m; return { x: touchIn.x * f, y: touchIn.y * f }; }
     let x = 0, y = 0;
     if (keys.has("KeyA") || keys.has("ArrowLeft")) x -= 1;
@@ -2655,7 +2367,6 @@ body.modal { overflow: hidden; }
   // ===== 화면 =====
   const cv = $("kitchen");
   const ctx = cv.getContext("2d");
-  let TS = 48;
   let touchMode = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
   const pops = [];
 
@@ -2668,269 +2379,34 @@ body.modal { overflow: hidden; }
     return { left: r.top, right: r.bottom, top: W - r.right, bottom: W - r.left, width: r.height, height: r.width };
   }
   const cpt = (e) => (sideways ? { x: e.clientY, y: window.innerWidth - e.clientX } : { x: e.clientX, y: e.clientY }); // 손가락 자리를 게임 화면 안 좌표로
-  function fit() {
+  function fit() { // 위 줄을 주방 위에 띄우고 주방(3D)이 화면을 꽉 채워요 (가로로만 해요). 2D 캔버스는 그 위에 막대·글자만 그려요
     const stage = $("stage"), g = $("game");
-    const over = use3D(); // 3D: 위 줄을 주방 위에 띄우고 주방이 화면을 꽉 채워요 (가로로만 해요)
-    g.classList.toggle("over", over);
-    let w = stage.clientWidth, h = stage.clientHeight, insT = 0, insS = 0, insB = 0;
+    if (!R3) return;
+    g.classList.add("over");
+    let w = stage.clientWidth, h = stage.clientHeight;
     const side = Math.min(150, Math.max(96, w * 0.13)); // 조이스틱·버튼 한 줄 폭
-    if (over) {
-      const sb = crect(stage), hb = crect(g.querySelector(".hud"));
-      insT = Math.max(0, hb.bottom - sb.top) + 20; // 뒷줄 냄비 위 막대가 위 줄에 안 가리게
-      const sp = getComputedStyle($("safeProbe")), px = (k) => parseFloat(sp["padding" + k]) || 0; // 폰 화면 가장자리(노치·홈 막대) 여백. 눕혀 그릴 땐 게임의 옆 = 폰의 위·아래, 게임의 아래 = 폰의 왼쪽
-      const safe = sideways ? Math.max(px("Top"), px("Bottom")) : Math.max(px("Left"), px("Right"));
-      insB = Math.max(4, sideways ? px("Left") : px("Bottom"));
-      insS = safe + (touchMode && me ? Math.max(0, side - 34) : 2); // 아래 모서리는 조작 버튼과 조금 겹쳐도 돼요
-    } else if (touchMode && me) w -= 2 * side; // 관전은 조작 버튼이 없어서 화면을 다 써요
-    TS = Math.max(16, Math.floor(Math.min(w / COLS, h / ROWS)));
+    const sb = crect(stage), hb = crect(g.querySelector(".hud"));
+    const insT = Math.max(0, hb.bottom - sb.top) + 20; // 뒷줄 냄비 위 막대가 위 줄에 안 가리게
+    const sp = getComputedStyle($("safeProbe")), px = (k) => parseFloat(sp["padding" + k]) || 0; // 폰 화면 가장자리(노치·홈 막대) 여백. 눕혀 그릴 땐 게임의 옆 = 폰의 위·아래, 게임의 아래 = 폰의 왼쪽
+    const safe = sideways ? Math.max(px("Top"), px("Bottom")) : Math.max(px("Left"), px("Right"));
+    const insB = Math.max(4, sideways ? px("Left") : px("Bottom"));
+    const insS = safe + (touchMode && me ? Math.max(0, side - 34) : 2); // 아래 모서리는 조작 버튼과 조금 겹쳐도 돼요
     const dpr = window.devicePixelRatio || 1;
-    if (use3D()) { // 3D: 남는 칸을 다 쓰고, 2D 캔버스는 그 위에 막대·글자만 그려요
-      w = Math.max(240, Math.floor(w)); h = Math.max(160, Math.floor(h));
-      viewRot = false;
-      const got = R3.resize(w, h, false, false, insT, insS, insB);
-      w = got.w; h = got.h;
-      cv.style.width = w + "px"; cv.style.height = h + "px";
-      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      return;
-    }
-    viewRot = false;
-    cv.style.width = TS * COLS + "px"; cv.style.height = TS * ROWS + "px";
-    cv.width = Math.round(TS * COLS * dpr); cv.height = Math.round(TS * ROWS * dpr);
+    w = Math.max(240, Math.floor(w)); h = Math.max(160, Math.floor(h));
+    const got = R3.resize(w, h, false, false, insT, insS, insB);
+    w = got.w; h = got.h;
+    cv.style.width = w + "px"; cv.style.height = h + "px";
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  function counterBase(px, py, s) {
-    ctx.fillStyle = "#c98b4f"; ctx.fillRect(px, py, s, s);
-    ctx.fillStyle = "#d89c5f"; ctx.fillRect(px + 2, py + 2, s - 4, s - 6);
-    ctx.fillStyle = "rgba(0,0,0,.12)"; ctx.fillRect(px, py + s - 4, s, 4);
-  }
   function label(text, x, y, size, col) {
     ctx.fillStyle = col; ctx.font = Math.round(size) + "px " + FONT_UI;
     ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, x, y);
   }
 
-  // 노랑·검정 사선 (움직이는 칸막이 표시)
-  function hazard(c, x, y, w, h, a) {
-    c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip();
-    c.fillStyle = "rgba(242,179,27," + a + ")"; c.fillRect(x, y, w, h);
-    c.strokeStyle = "rgba(43,43,43," + a + ")"; c.lineWidth = Math.max(2, TS * 0.09);
-    for (let k = -h; k < w + h; k += TS * 0.26) { c.beginPath(); c.moveTo(x + k, y + h); c.lineTo(x + k + h, y); c.stroke(); }
-    c.restore();
-  }
-  const PORTAL_COL = ["#a855f7", "#14b8a6"];
   const NO_HL = { wall: 1, bar: 1, railend: 1, pit: 1, void: 1 };
-  function drawFloorFx(t, px, py, s, now, st) {
-    if (t.ice) {
-      ctx.fillStyle = (t.x + t.y) % 2 ? "#cfe8f5" : "#d9eef8"; ctx.fillRect(px, py, s, s);
-      ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = Math.max(1.5, s * 0.04); ctx.lineCap = "round";
-      const k = (t.x * 7 + t.y * 3) % 4;
-      ctx.beginPath(); ctx.moveTo(px + s * (0.15 + k * 0.05), py + s * 0.7); ctx.lineTo(px + s * (0.45 + k * 0.05), py + s * 0.35);
-      ctx.moveTo(px + s * 0.55, py + s * (0.85 - k * 0.04)); ctx.lineTo(px + s * 0.8, py + s * (0.55 - k * 0.04)); ctx.stroke();
-    } else if (t.push) {
-      ctx.fillStyle = "#7d868c"; ctx.fillRect(px, py, s, s);
-      ctx.fillStyle = "#666f75";
-      if (t.push[0]) { ctx.fillRect(px, py, s, s * 0.1); ctx.fillRect(px, py + s * 0.9, s, s * 0.1); } else { ctx.fillRect(px, py, s * 0.1, s); ctx.fillRect(px + s * 0.9, py, s * 0.1, s); }
-      const off = ((now / 1000) * WALK) % 1;
-      ctx.save(); ctx.beginPath(); ctx.rect(px + s * 0.1, py + s * 0.1, s * 0.8, s * 0.8); ctx.clip();
-      ctx.translate(px + s / 2, py + s / 2); ctx.rotate(Math.atan2(t.push[1], t.push[0]));
-      ctx.strokeStyle = "#e8edf0"; ctx.lineWidth = Math.max(2, s * 0.08); ctx.lineCap = "round"; ctx.lineJoin = "round";
-      for (let k = -2; k <= 1; k++) { const x0 = (k + off) * s * 0.5; ctx.beginPath(); ctx.moveTo(x0 - s * 0.1, -s * 0.2); ctx.lineTo(x0 + s * 0.08, 0); ctx.lineTo(x0 - s * 0.1, s * 0.2); ctx.stroke(); }
-      ctx.restore();
-    } else if (t.road) {
-      ctx.fillStyle = "#45484d"; ctx.fillRect(px, py, s, s);
-      ctx.fillStyle = "#f2c21b"; ctx.fillRect(px, py, s, s * 0.06); ctx.fillRect(px, py + s * 0.94, s, s * 0.06);
-      ctx.fillStyle = "#f2f2f2"; ctx.fillRect(px + s * 0.15, py + s * 0.47, s * 0.4, s * 0.06);
-    } else if (t.portal != null) {
-      const col = PORTAL_COL[t.portal], a = now / 600;
-      ctx.save(); ctx.translate(px + s / 2, py + s / 2);
-      const g = ctx.createRadialGradient(0, 0, s * 0.05, 0, 0, s * 0.46); g.addColorStop(0, "rgba(255,255,255,.9)"); g.addColorStop(0.55, col); g.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, s * 0.46, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "#fff"; ctx.lineWidth = Math.max(2, s * 0.06);
-      for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(0, 0, s * 0.33, a + (k * Math.PI * 2) / 3, a + (k * Math.PI * 2) / 3 + 1.1); ctx.stroke(); }
-      ctx.restore();
-    }
-  }
-  function drawGateTile(t, px, py, s, now, v, st) {
-    const up = t.type === "counter";
-    const soon = gateSoon(v, now), blink = soon != null && gateUp(t, soon) && !up && Math.floor(now / 220) % 2 === 0;
-    if (up) {
-      counterBase(px, py, s);
-      hazard(ctx, px + 2, py + 2, s - 4, s * 0.22, 1);
-      ctx.fillStyle = "#c9cfd3"; ctx.fillRect(px + 2, py + s * 0.24, s - 4, s * 0.68);
-      return;
-    }
-    ctx.fillStyle = st.floor[(t.x + t.y) % 2]; ctx.fillRect(px, py, s, s);
-    hazard(ctx, px, py, s, s, blink ? 0.85 : 0.22);
-  }
-  // 철길 칸: 자갈 + 가로 침목 + 세로 레일 두 줄
-  function drawRail(c, px, py, s) {
-    c.fillStyle = "#8a847a"; c.fillRect(px, py, s, s);
-    c.fillStyle = "#5a4636"; for (let k = 0; k < 2; k++) c.fillRect(px + s * 0.08, py + s * (0.14 + k * 0.5), s * 0.84, s * 0.2);
-    c.fillStyle = "#c3cacf"; c.fillRect(px + s * 0.26, py, s * 0.07, s); c.fillRect(px + s * 0.67, py, s * 0.07, s);
-  }
-  // 차단봉 칸: 바닥 + 바깥쪽 노란 정지선. 내려와 있으면 빨강·하양 막대
-  function drawBarTile(t, px, py, s, st, rl) {
-    ctx.fillStyle = st.floor[(t.x + t.y) % 2]; ctx.fillRect(px, py, s, s);
-    const out = t.x < rl.col ? 0 : s * 0.9;
-    ctx.fillStyle = "#f2c21b"; ctx.fillRect(px + out, py, s * 0.1, s);
-    if (t.type !== "bar") return;
-    const w = s * 0.2, x0 = px + s / 2 - w / 2;
-    for (let k = 0; k < 4; k++) { ctx.fillStyle = k % 2 ? "#ffffff" : "#e0352b"; ctx.fillRect(x0, py + (k * s) / 4, w, s / 4 + 0.5); }
-    ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = 1.5; ctx.strokeRect(x0, py, w, s);
-  }
-  // 트럭 사이 틈: 뒤로 흘러가는 도로 점선 (세로 틈은 아래로, 가로 틈은 오른쪽으로) + 붙어 있으면 바닥 (곧 벌어지면 깜빡)
-  function drawGapTile(t, px, py, s, now, v, st) {
-    const tn = truckNow(v, now) || { open: 0, warn: false }, sp = (st.truck && st.truck.speed) || 10;
-    ctx.save(); ctx.beginPath(); ctx.rect(px, py, s, s); ctx.clip();
-    ctx.fillStyle = "#3c3f45"; ctx.fillRect(px, py, s, s);
-    const per = s * 2, off = ((now / 1000) * sp * s) % per;
-    ctx.fillStyle = "#f4f4f0";
-    if (truckRow(st)) for (let x = -per + off - ((t.x * s) % per); x < s; x += per) ctx.fillRect(px + x, py + s * 0.44, s * 0.9, s * 0.12);
-    else for (let y = -per + off - ((t.y * s) % per); y < s; y += per) ctx.fillRect(px + s * 0.44, py + y, s * 0.12, s * 0.9);
-    if (tn.joined) { ctx.fillStyle = st.floor[(t.x + t.y) % 2]; ctx.fillRect(px, py, s, s); } // 건널 수 있으면 트럭 바닥끼리 맞닿아요
-    if (tn.warn && Math.floor(now / 200) % 2 === 0) hazard(ctx, px, py, s, s, 0.6);
-    ctx.restore();
-  }
-  function drawTrain2D(c, x, head, dir, s) {
-    const tail = head - dir * TRAIN_LEN, y0 = Math.min(head, tail) * s, h = TRAIN_LEN * s;
-    c.save();
-    c.fillStyle = "rgba(0,0,0,.25)"; c.fillRect(x * s + s * 0.1, y0 + s * 0.15, s * 0.9, h);
-    for (let k = 0; k < 2; k++) {
-      const cy = y0 + k * (TRAIN_LEN / 2) * s;
-      rrect(c, x * s + s * 0.08, cy + s * 0.05, s * 0.84, (TRAIN_LEN / 2) * s - s * 0.1, s * 0.16); c.fillStyle = "#2f9e5b"; c.fill();
-      c.fillStyle = "#c9d3d8"; c.fillRect(x * s + s * 0.3, cy + s * 0.3, s * 0.4, (TRAIN_LEN / 2) * s - s * 0.6);
-      c.fillStyle = "#7a868c"; for (let n = 0; n < 3; n++) c.fillRect(x * s + s * 0.36, cy + s * (0.6 + n * 1), s * 0.28, s * 0.4);
-    }
-    const hy = (dir > 0 ? head - 0.12 : head + 0.12) * s;
-    dot(c, x * s + s * 0.3, hy, s * 0.07, "#fff6c2"); dot(c, x * s + s * 0.7, hy, s * 0.07, "#fff6c2");
-    c.restore();
-  }
-  function drawTile(t, now, v, st) {
-    const px = t.x * TS, py = t.y * TS, s = TS;
-    if (t.gate) { drawGateTile(t, px, py, s, now, v, st); return; }
-    if (t.rail || t.type === "railend") { drawRail(ctx, px, py, s); if (t.type === "railend") { ctx.fillStyle = "rgba(20,14,10,.45)"; ctx.fillRect(px, py, s, s); } return; }
-    if (t.bar) { drawBarTile(t, px, py, s, st, st.rail || { col: 7 }); return; }
-    if (t.gap) { drawGapTile(t, px, py, s, now, v, st); return; }
-    if (t.type === "void") { ctx.fillStyle = "#5a534c"; ctx.fillRect(px, py, s, s); return; } // 트럭 밖: 도로
-    if (t.pit) { // 낭떠러지: 가운데로 갈수록 깜깜
-      const pl = (dx) => { const q = tiles[idx(t.x + dx, t.y)]; return !!(q && q.pit); }; // 옆도 낭떠러지면 그쪽 테두리 없이 이어져요
-      const g = ctx.createLinearGradient(px, 0, px + s, 0);
-      g.addColorStop(0, pl(-1) ? "#0d0915" : "#3a2c55"); g.addColorStop(0.25, "#0d0915"); g.addColorStop(0.75, "#0d0915"); g.addColorStop(1, pl(1) ? "#0d0915" : "#3a2c55");
-      ctx.fillStyle = g; ctx.fillRect(px, py, s, s);
-      if (t.portal != null) drawFloorFx(t, px, py, s, now, st); // 낭떠러지 위로 이어진 문
-      return;
-    }
-    switch (t.type) {
-      case "floor":
-        ctx.fillStyle = st.floor[(t.x + t.y) % 2]; ctx.fillRect(px, py, s, s);
-        drawFloorFx(t, px, py, s, now, st);
-        return;
-      case "wall":
-        ctx.fillStyle = "#6d4a30"; ctx.fillRect(px, py, s, s);
-        ctx.fillStyle = "#82593a"; ctx.fillRect(px + 2, py + 2, s - 4, s * 0.3);
-        ctx.fillStyle = "rgba(0,0,0,.18)"; for (let k = 1; k < 3; k++) ctx.fillRect(px + (k * s) / 3, py + s * 0.34, 2, s * 0.62);
-        return;
-      case "stove":
-        ctx.fillStyle = "#2f3336"; ctx.fillRect(px, py, s, s);
-        ctx.fillStyle = "#3d4246"; ctx.fillRect(px + 3, py + 3, s - 6, s - 6);
-        ctx.beginPath(); ctx.arc(px + s / 2, py + s / 2, s * 0.33, 0, Math.PI * 2); ctx.strokeStyle = "#5b6166"; ctx.lineWidth = 3; ctx.stroke();
-        return;
-      case "fryer":
-        ctx.fillStyle = "#2f3336"; ctx.fillRect(px, py, s, s);
-        rrect(ctx, px + s * 0.1, py + s * 0.1, s * 0.8, s * 0.8, 5); ctx.fillStyle = "#c9932f"; ctx.fill();
-        rrect(ctx, px + s * 0.16, py + s * 0.16, s * 0.68, s * 0.68, 4); ctx.fillStyle = "#e5b347"; ctx.fill();
-        return;
-      case "serve":
-        ctx.fillStyle = "#d7372b"; ctx.fillRect(px, py, s, s);
-        ctx.fillStyle = "#ffcf33"; for (let i = 0; i < 4; i++) ctx.fillRect(px + (i * s) / 4, py, s / 8, s * 0.18);
-        { // 바깥쪽(바닥 반대쪽)으로 향하는 화살표 두 개
-          const d = [[0, 1], [0, -1], [1, 0], [-1, 0]].find(([dx, dy]) => !solid(t.x + dx, t.y + dy)) || [0, 1];
-          ctx.save(); ctx.translate(px + s / 2, py + s * 0.55); ctx.rotate(Math.atan2(-d[1], -d[0]) + Math.PI / 2);
-          ctx.strokeStyle = "#fff"; ctx.lineWidth = Math.max(2.5, s * 0.09); ctx.lineCap = "round"; ctx.lineJoin = "round";
-          for (const oy of [-0.12, 0.12]) { ctx.beginPath(); ctx.moveTo(-s * 0.2, (oy + 0.1) * s); ctx.lineTo(0, (oy - 0.08) * s); ctx.lineTo(s * 0.2, (oy + 0.1) * s); ctx.stroke(); }
-          ctx.restore();
-        }
-        return;
-      case "belt": { // 오른쪽으로 가는 벨트를 그린 다음 방향만큼 돌려요
-        ctx.fillStyle = "#34373a"; ctx.fillRect(px, py, s, s);
-        ctx.save(); ctx.translate(px + s / 2, py + s / 2); ctx.rotate(Math.atan2(t.dir[1], t.dir[0])); ctx.translate(-s / 2, -s / 2);
-        ctx.fillStyle = "#26282a"; ctx.fillRect(0, s * 0.08, s, s * 0.06); ctx.fillRect(0, s * 0.86, s, s * 0.06);
-        const off = ((now / 1000) / BELT_STEP) % 1;
-        ctx.beginPath(); ctx.rect(0, s * 0.14, s, s * 0.72); ctx.clip();
-        ctx.strokeStyle = "#55595d"; ctx.lineWidth = Math.max(2, s * 0.06);
-        for (let k = -1; k < 2; k++) {
-          const x0 = (k + off) * s * 0.5 + s * 0.15;
-          ctx.beginPath(); ctx.moveTo(x0, s * 0.3); ctx.lineTo(x0 + s * 0.16, s * 0.5); ctx.lineTo(x0, s * 0.7); ctx.stroke();
-        }
-        ctx.restore();
-        return;
-      }
-    }
-    counterBase(px, py, s);
-    if (t.div) { // 칸막이 조리대: 노란 칸
-      ctx.fillStyle = "#ffcf33"; ctx.fillRect(px + 1, py + 1, s - 2, s - 4);
-      ctx.fillStyle = "#f5bf1d"; ctx.fillRect(px + 1, py + s * 0.5, s - 2, 2);
-    } else if (t.type === "crate") {
-      rrect(ctx, px + s * 0.06, py + s * 0.06, s * 0.88, s * 0.88, 5); ctx.fillStyle = "#8f5d2c"; ctx.fill();
-      ctx.fillStyle = "#a8743a"; for (let i = 0; i < 3; i++) ctx.fillRect(px + s * 0.1, py + s * (0.1 + i * 0.27), s * 0.8, s * 0.22);
-      rrect(ctx, px + s * 0.12, py + s * 0.12, s * 0.76, s * 0.76, s * 0.14); ctx.fillStyle = "#cfe2ee"; ctx.fill(); ctx.lineWidth = Math.max(1.5, s * 0.045); ctx.strokeStyle = "#6b4520"; ctx.stroke();
-      drawIcon(ctx, t.ing, px + s / 2, py + s / 2, s * 0.66, false);
-    } else if (t.type === "board") {
-      rrect(ctx, px + s * 0.12, py + s * 0.14, s * 0.76, s * 0.7, 5); ctx.fillStyle = "#f0d6a4"; ctx.fill(); ctx.strokeStyle = "#c9a56a"; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = "#9aa3a8"; ctx.fillRect(px + s * 0.66, py + s * 0.18, s * 0.06, s * 0.3);
-    } else if (t.type === "plates") {
-      const n = v.racks ? v.racks[t.i] : -1;
-      const show = n === -1 ? 3 : Math.min(4, n || 0);
-      for (let k = show - 1; k >= 0; k--) drawIcon(ctx, "plate", px + s / 2, py + s / 2 - k * 3, s * 0.7);
-      if (n !== -1) badge(ctx, px + s * 0.8, py + s * 0.2, String(n || 0), n ? "#2f8f5b" : "#d7372b", s * 0.22);
-    } else if (t.type === "trash") {
-      rrect(ctx, px + s * 0.2, py + s * 0.22, s * 0.6, s * 0.64, 6); ctx.fillStyle = "#6f7a7c"; ctx.fill();
-      ctx.fillStyle = "#59636a"; ctx.fillRect(px + s * 0.14, py + s * 0.16, s * 0.72, s * 0.1);
-    } else if (t.type === "sink") {
-      rrect(ctx, px + s * 0.1, py + s * 0.12, s * 0.8, s * 0.74, 6); ctx.fillStyle = "#b8c2c8"; ctx.fill();
-      rrect(ctx, px + s * 0.17, py + s * 0.24, s * 0.66, s * 0.54, 5); ctx.fillStyle = "#8fc3e0"; ctx.fill();
-      ctx.fillStyle = "#7d8a90"; ctx.fillRect(px + s * 0.46, py + s * 0.06, s * 0.08, s * 0.16);
-      const sk = v.sinks ? v.sinks[t.i] : null;
-      if (sk && sk.n > 0) {
-        drawIcon(ctx, "dirty", px + s / 2, py + s * 0.52, s * 0.5);
-        badge(ctx, px + s * 0.8, py + s * 0.2, String(sk.n), "#7a5a3a", s * 0.22);
-        if (sk.pr > 0) later(() => bar(ctx, px + s * 0.1, t.y === 0 ? py + s * 1.02 : py - s * 0.18, s * 0.8, s * 0.15, sk.pr, "#3b9bd8"));
-      }
-    } else if (t.type === "return") {
-      rrect(ctx, px + s * 0.1, py + s * 0.12, s * 0.8, s * 0.74, 6); ctx.fillStyle = "#5a3d26"; ctx.fill();
-      const n = v.rets ? v.rets[t.i] || 0 : 0;
-      if (n > 0) { for (let k = Math.min(3, n) - 1; k >= 0; k--) drawIcon(ctx, "dirty", px + s / 2, py + s * 0.52 - k * 3, s * 0.55); badge(ctx, px + s * 0.8, py + s * 0.2, String(n), "#7a5a3a", s * 0.22); }
-    } else if (t.type === "hole") { // 쥐구멍: 바닥 쪽 모서리에 까만 반원
-      const d = [[0, 1], [0, -1], [1, 0], [-1, 0]].find(([dx, dy]) => !solid(t.x + dx, t.y + dy)) || [0, 1];
-      const a = Math.atan2(d[1], d[0]), cx = px + s / 2 + d[0] * s * 0.46, cy = py + s / 2 + d[1] * s * 0.46, r = s * 0.25;
-      ctx.beginPath(); ctx.arc(cx, cy, r, a + Math.PI / 2, a + Math.PI * 1.5); ctx.closePath();
-      ctx.fillStyle = "#1a120c"; ctx.fill(); ctx.lineWidth = Math.max(2, s * 0.05); ctx.strokeStyle = "#5a3d26"; ctx.stroke();
-    }
-  }
 
-  // 불 (2D). hp가 줄면 불길이 작아져요
-  function drawFire(c, cx, cy, s, now, hp, seed) {
-    const k = 0.5 + 0.5 * Math.max(0, hp);
-    const g = c.createRadialGradient(cx, cy - s * 0.1, s * 0.05, cx, cy - s * 0.1, s * 0.62);
-    g.addColorStop(0, "rgba(255,190,60," + 0.55 * k + ")"); g.addColorStop(1, "rgba(255,80,0,0)");
-    c.fillStyle = g; c.fillRect(cx - s * 0.62, cy - s * 0.72, s * 1.24, s * 1.24);
-    c.save(); c.translate(cx, cy + s * 0.32); c.scale(k, k);
-    for (const [ox, sc, col, ph] of [[-0.22, 0.72, "#ff4a12", 0], [0.21, 0.68, "#ff4a12", 1.7], [0, 1, "#ff7a14", 0.8], [-0.06, 0.66, "#ffb52e", 2.4], [0.07, 0.42, "#ffe27a", 3.1]]) {
-      const fl = 1 + Math.sin(now / 65 + ph + seed) * 0.13, hh = s * 0.7 * sc * fl, ww = s * 0.24 * sc, sway = Math.sin(now / 110 + ph * 2 + seed) * ww * 0.35;
-      c.beginPath(); c.moveTo(ox * s - ww, 0);
-      c.quadraticCurveTo(ox * s - ww * 1.1, -hh * 0.5, ox * s + sway, -hh);
-      c.quadraticCurveTo(ox * s + ww * 1.1, -hh * 0.5, ox * s + ww, 0);
-      c.closePath(); c.fillStyle = col; c.fill();
-    }
-    c.restore();
-    for (let j = 0; j < 2; j++) {
-      const ph = (now / 1500 + j * 0.5 + seed * 0.137) % 1;
-      c.globalAlpha = 0.4 * (1 - ph);
-      dot(c, cx + Math.sin(ph * 6 + seed) * s * 0.14, cy - s * 0.45 - ph * s * 0.9, s * (0.12 + ph * 0.2), "#4a4240");
-      c.globalAlpha = 1;
-    }
-  }
   // 별 (기절 표시)
   function drawStar(c, x, y, r, col) {
     c.beginPath();
@@ -2938,21 +2414,6 @@ body.modal { overflow: hidden; }
     c.closePath(); c.fillStyle = col; c.fill(); c.lineWidth = Math.max(1, r * 0.18); c.strokeStyle = "#b07d00"; c.stroke();
   }
   function dizzyOf(i) { return i === myIdx ? !!(me && me.stun > 0) : !!(view && view.players[i] && view.players[i].sn); }
-  // 쥐 (2D). 몸이 바라보는 쪽(fx, fy)으로 돌아가고, 문 음식은 입 앞에
-  function drawRat(c, x, y, s, fx, fy, now, it, st) {
-    c.save(); c.translate(x, y);
-    c.beginPath(); c.ellipse(0, s * 0.14, s * 0.26, s * 0.08, 0, 0, Math.PI * 2); c.fillStyle = "rgba(0,0,0,.2)"; c.fill();
-    c.rotate(Math.atan2(fy || 0, fx || 1));
-    const wig = st === "bite" ? 0 : Math.sin(now / 55) * 0.08;
-    c.strokeStyle = "#d99aa4"; c.lineWidth = Math.max(1.5, s * 0.035); c.lineCap = "round";
-    c.beginPath(); c.moveTo(-s * 0.2, 0); c.quadraticCurveTo(-s * 0.4, s * (0.16 + wig), -s * 0.56, s * (0.02 - wig)); c.stroke();
-    c.beginPath(); c.ellipse(0, 0, s * 0.24, s * 0.15, 0, 0, Math.PI * 2); c.fillStyle = "#8a8f96"; c.fill();
-    c.beginPath(); c.ellipse(s * 0.22, 0, s * 0.13, s * 0.1, 0, 0, Math.PI * 2); c.fill();
-    for (const sy of [-1, 1]) { dot(c, s * 0.16, sy * s * 0.11, s * 0.065, "#b9bdc3"); dot(c, s * 0.16, sy * s * 0.11, s * 0.035, "#e8a3ad"); dot(c, s * 0.27, sy * s * 0.045, s * 0.022, "#1d1d1f"); }
-    dot(c, s * 0.35, 0, s * 0.03, "#e58fa0");
-    c.restore();
-    if (it) drawItem(c, it, x + (fx || 0) * s * 0.42, y + (fy || 0) * s * 0.42 - s * 0.06, s * 0.36, now);
-  }
   let ratDraw = [];
   const ratSm = new Map();
   function smoothRats(dt) {
@@ -2984,34 +2445,6 @@ body.modal { overflow: hidden; }
     if (foam.length > 500) foam.splice(0, foam.length - 500);
   }
 
-  // 배달 오토바이 (2D). x, y는 가운데, s는 한 칸 크기
-  function drawBike(c, x, y, dir, s, now) {
-    c.save(); c.translate(x, y); c.scale(dir, 1);
-    c.beginPath(); c.ellipse(0, s * 0.3, s * 0.62, s * 0.12, 0, 0, Math.PI * 2); c.fillStyle = "rgba(0,0,0,.25)"; c.fill();
-    for (const wx of [-0.38, 0.4]) { dot(c, wx * s, s * 0.2, s * 0.15, "#1f2224"); dot(c, wx * s, s * 0.2, s * 0.06, "#9aa3a8"); }
-    rrect(c, -s * 0.42, -s * 0.05, s * 0.9, s * 0.24, s * 0.1); c.fillStyle = "#d7372b"; c.fill();
-    rrect(c, -s * 0.62, -s * 0.42, s * 0.36, s * 0.38, s * 0.05); c.fillStyle = "#fff"; c.fill(); c.strokeStyle = "#d7372b"; c.lineWidth = Math.max(1.5, s * 0.04); c.stroke();
-    c.fillStyle = "#d7372b"; c.fillRect(-s * 0.62, -s * 0.26, s * 0.36, s * 0.07);
-    rrect(c, -s * 0.2, -s * 0.38, s * 0.3, s * 0.36, s * 0.1); c.fillStyle = "#3d4a57"; c.fill();
-    dot(c, -s * 0.02, -s * 0.5, s * 0.15, "#ffcf33"); c.fillStyle = "#26323d"; c.fillRect(s * 0.02, -s * 0.55, s * 0.13, s * 0.08);
-    c.strokeStyle = "#2b2e31"; c.lineWidth = Math.max(2, s * 0.05); c.beginPath(); c.moveTo(s * 0.3, -s * 0.05); c.lineTo(s * 0.4, -s * 0.3); c.stroke();
-    dot(c, s * 0.5, s * 0.02, s * 0.06, "#fff6c2");
-    c.strokeStyle = "rgba(255,255,255,.7)"; c.lineWidth = Math.max(1.5, s * 0.035);
-    for (const ly of [-0.3, -0.1, 0.1]) { c.beginPath(); c.moveTo(-s * 0.75, ly * s); c.lineTo(-s * (1.05 + Math.random() * 0.2), ly * s); c.stroke(); }
-    c.restore();
-  }
-  function drawBikeWarn(c, dir, row, now, s) {
-    if (Math.floor(now / 160) % 2) return;
-    const y = (row + 0.5) * s;
-    c.save();
-    for (let k = 0; k < 3; k++) {
-      const x = dir > 0 ? (0.45 + k * 0.42) * s : (COLS - 0.45 - k * 0.42) * s;
-      c.strokeStyle = "#ff3b30"; c.lineWidth = Math.max(3, s * 0.1); c.lineCap = "round"; c.lineJoin = "round";
-      c.beginPath(); c.moveTo(x - dir * s * 0.12, y - s * 0.24); c.lineTo(x + dir * s * 0.12, y); c.lineTo(x - dir * s * 0.12, y + s * 0.24); c.stroke();
-    }
-    c.restore();
-    pill(c, dir > 0 ? s * 1.3 : (COLS - 1.3) * s, y - s * 0.42, "!", "#ff3b30", s * 0.3, false);
-  }
 
   // 지금 썰거나 씻는 중인지 (화면용)
   function workingOn(p, v) {
@@ -3024,183 +2457,10 @@ body.modal { overflow: hidden; }
     return null;
   }
 
-  function render(now) {
-    if (!view) return;
-    const st = stageOf(view.stage);
-    ctx.clearRect(0, 0, TS * COLS, TS * ROWS);
-    lateUI = [];
-    tiles.forEach((t) => drawTile(t, now, view, st));
-
-    const chopKey = chopHeld();
-    const list = [];
-    view.players.forEach((p, i) => {
-      if (!p.on) return;
-      const mine = i === myIdx;
-      const q = mine ? { ...p, x: me.x, y: me.y, fx: me.fx, fy: me.fy, chop: chopKey, hold: p.hold } : { ...p, x: remotes[i].x, y: remotes[i].y };
-      list.push({ q, i, mine, w: workingOn(q, view) });
-    });
-    const busy = new Set(list.filter((o) => o.w && !o.w.wash).map((o) => o.w.i));
-
-    // 조리대·바닥 위 물건
-    view.slots.forEach((it, i) => {
-      if (!it) return;
-      const t = tiles[i];
-      let cx = t.x * TS + TS / 2, cy = t.y * TS + TS / 2;
-      const f = slide(t, it, view, now);
-      if (f) { const d = t.push || t.dir; cx += d[0] * f * TS; cy += d[1] * f * TS; }
-      if (busy.has(i)) cx += Math.sin(now / 25) * TS * 0.025;
-      if (t.type === "floor") {
-        ctx.beginPath(); ctx.ellipse(cx, cy + TS * 0.2, TS * 0.22, TS * 0.07, 0, 0, Math.PI * 2); ctx.fillStyle = "rgba(0,0,0,.15)"; ctx.fill();
-        drawItem(ctx, it, cx, cy, TS * 0.5, now);
-        return;
-      }
-      if (isCont(it)) {
-        const hot = (t.type === "stove" || t.type === "fryer") && CONT[it.k].station === t.type;
-        drawCont(ctx, it, cx, cy, TS * 0.7, now, hot);
-        if (hot || it.st === "burnt" || it.st === "bad") {
-          const gy = t.y === 0 ? cy + TS * 0.95 : cy - TS * 0.44;
-          later(() => contGauge(ctx, it, cx, gy, TS, now));
-        }
-        return;
-      }
-      drawItem(ctx, it, cx, cy, TS * 0.62, now);
-      if (it.pr) later(() => bar(ctx, cx - TS * 0.38, t.y === 0 ? cy + TS * 0.5 : cy - TS * 0.56, TS * 0.76, TS * 0.15, it.pr, "#4bc06a"));
-    });
-
-    // 내가 바라보는 칸
-    if (me && view.phase === "play" && !(me.dead > 0)) {
-      const i = targetIdx(Object.assign({}, me, { hold: myHold() }), view);
-      if (i >= 0) {
-        const t = tiles[i];
-        const mineHold = view.players[myIdx] && view.players[myIdx].hold;
-        const show = t.type !== "floor" ? !NO_HL[t.type] : !t.pit && !t.gap && !!(view.slots[i] || mineHold);
-        if (show) { ctx.save(); ctx.setLineDash([6, 4]); rrect(ctx, t.x * TS + 2, t.y * TS + 2, TS - 4, TS - 4, 6); ctx.strokeStyle = t.type === "floor" ? "rgba(36,26,20,.4)" : "rgba(255,255,255,.95)"; ctx.lineWidth = 3; ctx.stroke(); ctx.restore(); }
-      }
-    }
-
-    // 불
-    const fires = view.fire || {};
-    for (const k in fires) { const t = tiles[+k]; drawFire(ctx, (t.x + 0.5) * TS, (t.y + 0.5) * TS, TS, now, fires[k].hp, +k); }
-    // 쥐
-    ratDraw.forEach((r) => drawRat(ctx, r.x * TS, r.y * TS, TS, r.fx, r.fy, now, r.it, r.st));
-
-    // 오토바이와 경고
-    const bk = bikeNow(view, now);
-    bk.warn.forEach((b) => drawBikeWarn(ctx, b.dir, stageOf(view.stage).road.row, now, TS));
-    bk.on.forEach((b) => drawBike(ctx, b.x * TS, (b.row + 0.5) * TS, b.dir, TS, now));
-    // 순간이동문이 옮겨 갈 자리: 그 색 점선 고리가 반짝여요
-    if (st.warp) {
-      const w = warpNow(view, now), on = Math.floor(now / 180) % 2 === 0;
-      w.forEach((p, k) => { if (p.next && on) p.next.forEach(([x, y]) => { ctx.save(); ctx.setLineDash([5, 4]); ctx.lineWidth = Math.max(2.5, TS * 0.08); ctx.strokeStyle = PORTAL_COL[k]; ctx.beginPath(); ctx.arc((x + 0.5) * TS, (y + 0.5) * TS, TS * 0.36, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }); });
-    }
-    // 기차와 땡땡 경고
-    if (st.rail) {
-      const rn = railNow(view, now);
-      if (rn.bell && !rn.train && Math.floor(now / 210) % 2 === 0) [0.9, ROWS - 0.3].forEach((y) => pill(ctx, (st.rail.col + 0.5) * TS, y * TS, "!", "#ff3b30", TS * 0.3, false));
-      if (rn.train) drawTrain2D(ctx, st.rail.col, rn.train.head, rn.train.dir, TS);
-    }
-
-    // 캐릭터
-    list.sort((a, b) => a.q.y - b.q.y).forEach(({ q, i, mine, w }) => {
-      if (w && !w.wash && now - anim[i].lastBit > 55) {
-        anim[i].lastBit = now;
-        const t = tiles[w.i];
-        for (let n = 0; n < 2; n++) bits.push({ x: t.x + 0.5 + (Math.random() - 0.5) * 0.3, y: t.y + 0.45, vx: (Math.random() - 0.5) * 2.6, vy: -1.2 - Math.random() * 1.4, t0: now, col: BIT_COLOR[w.it.k] || "#fff" });
-      }
-      if (w && w.wash && now - anim[i].lastBit > 90) {
-        anim[i].lastBit = now;
-        const t = tiles[w.i];
-        bits.push({ x: t.x + 0.5 + (Math.random() - 0.5) * 0.4, y: t.y + 0.5, vx: (Math.random() - 0.5) * 1.6, vy: -1.4 - Math.random(), t0: now, col: "#bfe4f7" });
-      }
-      const a = anim[i];
-      const fk = fallK(i, now);
-      if (isDead(i) && fk < 0) return;
-      if (fk >= 0) { // 떨어지는 중: 그 자리에서 빙글 돌며 작아지고 흐려져요. 트럭 틈이면 뒤(달리는 반대쪽: 세로 틈은 화면 아래, 가로 틈은 오른쪽)로 날아가요
-        const fling = a.fallWhy === "fling", k = fling ? 1 - fk * 0.3 : Math.max(0.03, 1 - fk * fk), fr = fling && truckRow(st), fd = fling ? fk * fk * TS * 9 : 0;
-        ctx.save(); ctx.globalAlpha = 1 - fk * 0.6; ctx.translate(q.x * TS + (fr ? fd : 0), q.y * TS + (fr ? 0 : fd)); ctx.rotate(fk * (fling ? 14 : 8)); ctx.scale(k, k); ctx.translate(-q.x * TS, -q.y * TS);
-        drawChar(ctx, TS * 1.15, q.x * TS, q.y * TS, { ch: q.ch, slot: i, fx: q.fx, fy: q.fy, hold: null, chop: false, wash: false, moving: false, phase: 0, reach: 0, dash: 0, ddx: 0, ddy: 0, now, isMe: mine || myIdx < 0 });
-        ctx.restore();
-        return;
-      }
-      drawChar(ctx, TS * 1.15, q.x * TS, q.y * TS, { swing: swingAng(i, now), ch: q.ch, slot: i, fx: q.fx, fy: q.fy, hold: q.hold, chop: !!w, wash: !!(w && w.wash), moving: a.moving, phase: a.phase, reach: reachAmt(i), dash: a.dashT > 0 ? a.dashT / DASH_TIME : 0, ddx: a.ddx, ddy: a.ddy, now, isMe: mine || myIdx < 0 });
-    });
-    // 납작해진 쥐 (잠깐 남았다가 사라져요)
-    for (let k = squashes.length - 1; k >= 0; k--) {
-      const q = squashes[k], ag = (now - q.t0) / 1000;
-      if (ag > 0.9) { squashes.splice(k, 1); continue; }
-      ctx.save(); ctx.globalAlpha = ag > 0.6 ? (0.9 - ag) / 0.3 : 1; ctx.translate(q.x * TS, q.y * TS); ctx.scale(1.25, 0.45); ctx.translate(-q.x * TS, -q.y * TS);
-      drawRat(ctx, q.x * TS, q.y * TS, TS, q.fx, q.fy, 0, null, "bite"); ctx.restore();
-    }
-    drawNames(ctx, view, list.filter(({ i }) => !isDead(i) && fallK(i, now) < 0).map(({ q, i }) => ({ i, x: q.x * TS, y: q.y * TS + TS * 0.42, s: TS })));
-    drawTalk(ctx, now, (i) => { const e = list.find((o) => o.i === i); return e ? [e.q.x * TS, e.q.y * TS - TS * 0.35, e.q.y * TS - TS * 1.05, TS] : null; }, (x, y) => [x * TS, y * TS - TS * 0.1, y * TS - TS * 0.45, TS]);
-    list.forEach(({ i }) => { const left = deadLeft(i, now); if (left) { const sp = spotOf(view, st, i); drawRespawn(ctx, sp[0] * TS, sp[1] * TS, TS * 0.42, left, APRON[i]); } });
-
-    // 진행 막대·완성·탐 표시
-    const ob = lateUI; lateUI = null;
-    ob.forEach((fn) => fn());
-
-    // 날아가는 재료
-    const age = role === "guest" ? Math.min(0.1, (now - (view.at || now)) / 1000) : 0;
-    (view.fly || []).forEach((f) => {
-      const x = f.x + f.dx * FLY_SPEED * age, y = f.y + f.dy * FLY_SPEED * age;
-      const p = Math.min(1, (f.d + FLY_SPEED * age) / FLY_MAX);
-      const hgt = Math.sin(p * Math.PI) * 0.5 + 0.18;
-      ctx.beginPath(); ctx.ellipse(x * TS, (y + 0.22) * TS, TS * 0.16, TS * 0.06, 0, 0, Math.PI * 2); ctx.fillStyle = "rgba(0,0,0,.2)"; ctx.fill();
-      ctx.save(); ctx.translate(x * TS, (y - hgt) * TS); ctx.rotate(now / 90);
-      drawItem(ctx, f.it, 0, 0, TS * 0.42, now);
-      ctx.restore();
-    });
-
-    // 조각·물방울
-    for (let j = bits.length - 1; j >= 0; j--) {
-      const b = bits[j], ag = (now - b.t0) / 1000;
-      if (ag > 0.45) { bits.splice(j, 1); continue; }
-      const x = (b.x + b.vx * ag) * TS, y = (b.y + b.vy * ag + 4.5 * ag * ag) * TS;
-      ctx.globalAlpha = 1 - ag / 0.45; ctx.fillStyle = b.col; ctx.fillRect(x - TS * 0.03, y - TS * 0.03, TS * 0.06, TS * 0.06); ctx.globalAlpha = 1;
-    }
-    // 대시 먼지
-    for (let j = dust.length - 1; j >= 0; j--) {
-      const d = dust[j], ag = (now - d.t0) / 1000;
-      if (ag > 0.4) { dust.splice(j, 1); continue; }
-      ctx.globalAlpha = 0.55 * (1 - ag / 0.4);
-      dot(ctx, (d.x + d.vx * ag) * TS, (d.y + d.vy * ag) * TS, TS * (0.06 + ag * 0.2), "#ffffff");
-      ctx.globalAlpha = 1;
-    }
-    // 소화기 거품
-    for (let j = foam.length - 1; j >= 0; j--) {
-      const f = foam[j], ag = (now - f.t0) / 1000;
-      if (ag > 0.45) { foam.splice(j, 1); continue; }
-      const x = f.x + f.vx * ag, z = f.z + f.vz * ag, h = f.h + f.vh * ag;
-      ctx.globalAlpha = 0.85 * (1 - ag / 0.45);
-      dot(ctx, x * TS, (z - h * 0.5) * TS, TS * (f.r + ag * 0.22), "#ffffff");
-      ctx.globalAlpha = 1;
-    }
-    // 기절: 머리 위를 도는 별
-    list.forEach(({ q, i }) => {
-      if (!dizzyOf(i)) return;
-      for (let k = 0; k < 3; k++) {
-        const a = now / 260 + (k * Math.PI * 2) / 3;
-        drawStar(ctx, q.x * TS + Math.cos(a) * TS * 0.32, q.y * TS - TS * 1.0 + Math.sin(a) * TS * 0.1, TS * 0.11, "#ffd23f");
-      }
-    });
-    // 매출 팝업
-    for (let j = pops.length - 1; j >= 0; j--) {
-      const q = pops[j], ag = (now - q.t0) / 1300;
-      if (ag >= 1) { pops.splice(j, 1); continue; }
-      const t = tiles[q.i];
-      ctx.globalAlpha = 1 - ag;
-      ctx.font = Math.round(TS * 0.36) + "px " + FONT_UI;
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      const yy = t.y * TS + TS * (t.y === 0 ? 1.2 + ag * 0.6 : -0.2 - ag * 0.6);
-      ctx.lineWidth = 5; ctx.strokeStyle = "#241a14"; ctx.strokeText(q.text, t.x * TS + TS / 2, yy);
-      ctx.fillStyle = "#ffcf33"; ctx.fillText(q.text, t.x * TS + TS / 2, yy);
-      ctx.globalAlpha = 1;
-    }
-  }
 
   // ===== 3D 화면 =====
   // three.js로 주방을 입체로 그려요. 바닥 칸 (x, y)가 X·Z 평면, 높이가 Y이고 한 칸이 1이에요.
-  // WebGL이 안 되는 기기이거나 3D로 그리다 오류가 나면 위의 2D 그림으로 그려요.
+  // WebGL이 안 되는 기기는 게임을 못 해요 (첫 화면에 알려요, noGame).
   const CH = 0.56; // 조리대 높이
   const SIGN_FONT = '"Black Han Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
   const PAL = {
@@ -3936,8 +3196,8 @@ body.modal { overflow: hidden; }
         return g;
       });
     }
-    // 얼굴: 2D와 같은 그림을 머리 앞쪽을 덮는 구 조각에 붙여요. 가로는 경도, 세로는 위도로 펴서 그리는데,
-    // 정면에서 봤을 때 2D와 같은 자리에 오게 위쪽·아래쪽일수록 경도를 넓혀요 (안 그러면 눈썹 끝이 안쪽으로 오그라들어요)
+    // 얼굴: 얼굴 그림(drawMochiFace 등)을 머리 앞쪽을 덮는 구 조각에 붙여요. 가로는 경도, 세로는 위도로 펴서 그리는데,
+    // 정면에서 봤을 때 그림과 같은 자리에 오게 위쪽·아래쪽일수록 경도를 넓혀요 (안 그러면 눈썹 끝이 안쪽으로 오그라들어요)
     function faceMesh(key) {
       const { a, b, c: cz, al, be, draw, bun } = BIG3[key], TILT = 0.12; // 카메라가 위에서 내려다보니 얼굴을 살짝 위로 올려 정면처럼 보이게
       const g = gc("faceG" + key, () => { const sg = new T.SphereGeometry(1, 40, 24, Math.PI / 2 - al, 2 * al, Math.PI / 2 - be, 2 * be); return bun ? toBun(sg) : sg; });
@@ -4483,7 +3743,7 @@ body.modal { overflow: hidden; }
       if (ph) g.drawImage(ph, 8, 6, 240, 240); else drawIcon(g, k, 128, 128, 210, false);
       g.restore();
     }
-    // 재료 상자 그림: 게임 속 재료를 위에서 찍은 사진. 사진이 오기 전엔 2D 그림
+    // 재료 상자 그림: 게임 속 재료를 위에서 찍은 사진. 사진이 오기 전엔 아이콘 그림
     function crateCanvas(k) {
       const c = document.createElement("canvas"); c.width = c.height = 256;
       crateDraw(c.getContext("2d"), k, snapCache.get(itemSig({ k }) + "^"));
@@ -6120,18 +5380,18 @@ body.modal { overflow: hidden; }
     return { el, render: render3, resize, portrait, posePic, itemPic, firePic, info, snapURLAsync };
   }
 
-  // 화면은 3D만 써요. 2D 그림은 3D가 아예 안 되는 기기(WebGL 없음·3D 오류)에서만 대신 그려요 (고르는 버튼은 없어요). ?local&2d는 테스트용
-  const FORCE2D = IS_LOCAL && /[?&]2d(&|$)/.test(location.search);
+  // 화면은 3D로만 그려요. 3D가 안 되는 기기(WebGL 없음)는 게임을 못 해요: 첫 화면에 알려 주고 방 만들기·들어가기·관전을 숨겨요 (?local&no3d는 테스트용)
+  const NO3D = IS_LOCAL && /[?&]no3d(&|$)/.test(location.search);
   $("testNote").hidden = !TEST_OPEN;
   let R3 = null;
-  if (!FORCE2D) { try { R3 = make3D(); } catch (e) { console.error(e); R3 = null; } }
-  if (R3) $("viewBox").insertBefore(R3.el, $("viewBox").firstChild);
-  const use3D = () => !!R3;
-  function applyView() {
-    $("viewBox").classList.toggle("three", use3D());
-    if (!$("game").hidden) layout();
+  if (!NO3D) { try { R3 = make3D(); } catch (e) { console.error(e); R3 = null; } }
+  if (R3) { $("viewBox").insertBefore(R3.el, $("viewBox").firstChild); $("viewBox").classList.add("three"); }
+  function noGame(msg) {
+    if (msg) $("no3dNote").textContent = msg;
+    $("no3dNote").hidden = false;
+    ["hostBtn", "joinForm", "watchBtn", "hostStatus", "joinStatus"].forEach((id) => { $(id).hidden = true; });
   }
-  applyView();
+  if (!R3) noGame();
   // 대시 키: 기본은 W (위로는 방향키). Q·시프트도 고를 수 있어요. 시프트 연타는 윈도우 고정 키 창이 떠요
   const DASH_KEY = "bunsik.dash";
   const DASH_LABEL = { w: "W", q: "Q", shift: "시프트" };
@@ -6154,15 +5414,15 @@ body.modal { overflow: hidden; }
   $("dashShift").addEventListener("click", () => setDash("shift"));
   try { $("dashRow").hidden = !matchMedia("(any-pointer: fine)").matches; } catch (e) {} // 폰엔 키보드가 없으니 숨겨요
   applyDash();
-  function drop3D(err) { // 3D에서 오류가 나면 2D로 바꿔요
-    console.error("3D 화면을 끄고 2D로 그려요", err);
-    if (R3) { try { R3.el.remove(); } catch (e) {} }
-    R3 = null;
-    applyView();
-  }
-  function draw(now) {
-    if (use3D()) { try { R3.render(now); return; } catch (e) { drop3D(e); } }
-    render(now);
+  function draw(now) { // 3D를 그리다 오류가 나면 더는 못 그려서 방을 나가고 첫 화면에 알려요
+    if (!R3) return;
+    try { R3.render(now); } catch (e) {
+      console.error("3D 화면 오류", e);
+      try { R3.el.remove(); } catch (e2) {}
+      R3 = null;
+      if (role) leave();
+      noGame("화면을 그리다 오류가 났어요. 새로고침해 주세요.");
+    }
   }
   function portraitOf(k, slot) {
     if (!R3) return null;
@@ -6484,10 +5744,10 @@ body.modal { overflow: hidden; }
     else drawCont(g, { k, items: [], st: "idle" }, k === "pot" ? 26 : 32, k === "pot" ? 32 : 36, k === "pot" ? 44 : 50, 0, false);
     return (iconCache[key] = c.toDataURL());
   }
-  // 3D 화면이면 게임 속 모델을 찍은 사진(준비되면 바꿔 끼워요), 아니면 2D 그림
+  // 게임 속 모델을 찍은 사진 (준비되면 아이콘 그림을 바꿔 끼워요)
   function setPic(img, it, fallback) {
     img.src = fallback;
-    if (use3D() && R3.snapURLAsync) { try { R3.snapURLAsync(it, false, (u) => { if (u) img.src = u; }); } catch (e) {} }
+    if (R3 && R3.snapURLAsync) { try { R3.snapURLAsync(it, false, (u) => { if (u) img.src = u; }); } catch (e) {} }
   }
   function ticketEl(o) {
     const d = DISH[o.dish];
@@ -6524,7 +5784,7 @@ body.modal { overflow: hidden; }
     const s = Math.ceil(view.left);
     $("time").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
     $("timeBox").classList.toggle("low", view.phase === "play" && s <= 30);
-    const key = view.phase + ":" + (use3D() ? 3 : 2) + ":" + view.orders.map((o) => o.id).join(","); // 화면 방식이 바뀌면 그림도 다시
+    const key = view.phase + ":" + view.orders.map((o) => o.id).join(",");
     const box = $("orders");
     const maxId = view.orders.reduce((m, o) => Math.max(m, o.id), 0);
     if (maxId > lastOid) { if (view.phase === "play") sfx.order(); lastOid = maxId; }
@@ -6660,7 +5920,7 @@ body.modal { overflow: hidden; }
     c.closePath(); c.fillStyle = "#ffe066"; c.fill(); c.lineWidth = Math.max(2, s * 0.06); c.strokeStyle = "#fff"; c.stroke();
     c.restore();
   }
-  // 말풍선·번쩍 (2D/3D 공통). pos(i) → [x, y, 머리 위 y, 크기]
+  // 말풍선·번쩍 (3D 화면 위 캔버스에 그려요). pos(i) → [x, y, 머리 위 y, 크기]
   function drawTalk(c, now, pos, posXY) {
     for (let k = hits.length - 1; k >= 0; k--) {
       const h = hits[k], ag = (now - h.t0) / 1000;
@@ -6778,7 +6038,6 @@ body.modal { overflow: hidden; }
       const c2 = document.createElement("canvas"); c2.width = c2.height = 176;
       const sl = taken ? by.i : myIdx, pic = portraitOf(k, sl); // 남이 고른 캐릭터는 그 사람 앞치마 색으로
       if (pic) c2.getContext("2d").drawImage(pic, 0, 0, 176, 176);
-      else drawChar(c2.getContext("2d"), 150, 88, 116, { ch: k, slot: sl, fx: 0, fy: 1, now: 0 });
       const nm = document.createElement("span"); nm.textContent = CHARS[k].name;
       const sm = document.createElement("small"); sm.textContent = taken ? iga(nameOf(st, by.i)) + " 골랐어요" : mine.ch === k ? "내 캐릭터" : "";
       b.append(c2, nm, sm);
@@ -6804,7 +6063,6 @@ body.modal { overflow: hidden; }
       const c2 = document.createElement("canvas"); c2.width = c2.height = 176;
       const pic = portraitOf(k, Math.max(0, who));
       if (pic) c2.getContext("2d").drawImage(pic, 0, 0, 176, 176);
-      else drawChar(c2.getContext("2d"), 150, 88, 116, { ch: k, slot: Math.max(0, who), fx: 0, fy: 1, now: 0 });
       const nm = document.createElement("span"); nm.textContent = CHARS[k].name;
       const sm = document.createElement("small"); sm.textContent = who >= 0 ? nameOf(st, who) : "";
       b.append(c2, nm, sm);
@@ -7536,7 +6794,7 @@ body.modal { overflow: hidden; }
   });
 
   // ===== 첫 화면 포스터 =====
-  // 게임 모델로 찍은 일하는 모습(3D가 안 되면 2D 그림)을 햇살·김 구름·날아다니는 음식·주문서 줄과 함께 한 장으로 그려요.
+  // 게임 모델로 찍은 일하는 모습을 햇살·김 구름·날아다니는 음식·주문서 줄과 함께 한 장으로 그려요.
   // 제목과 방 만들기 판은 HTML이라, 둘의 자리를 재서 그 사이(가운데 그림 자리)와 판 양옆에 배치해요
   const Poster = (() => {
     const CAST = { // 캐릭터: 앞치마 색(slot)과 자세, 든 물건
@@ -7561,21 +6819,14 @@ body.modal { overflow: hidden; }
       return x1 < 0 ? { x0: 0, x1: w, y0: 0, y1: h } : { x0, x1, y0, y1 };
     }
     const pic = (cv) => ({ cv, b: bbox(cv) });
-    function pose2D(k, c, size) { // 3D가 안 될 때: 게임 2D 그림으로
-      const cv = document.createElement("canvas"); cv.width = cv.height = size;
-      const S = size * 0.62, fx = c.o.yaw > 0.2 ? 1 : c.o.yaw < -0.2 ? -1 : 0;
-      drawChar(cv.getContext("2d"), S, size / 2, size * 0.6, { ch: k, slot: c.slot, fx, fy: 1, now: 0, moving: !!c.o.moving, phase: c.o.phase || 0, chop: !!c.o.chop, hold: c.o.hold || null, reach: c.o.reach || 0 });
-      return cv;
-    }
-    function item2D(it, size) { const cv = document.createElement("canvas"); cv.width = cv.height = size; drawItem(cv.getContext("2d"), it, size / 2, size / 2, size * 0.78, 0); return cv; }
-    function fire2D(size) { const cv = document.createElement("canvas"); cv.width = cv.height = size; drawFire(cv.getContext("2d"), size / 2, size * 0.62, size * 0.8, 0, 1, 3); return cv; }
     function sprites() {
       if (SP) return SP;
       SP = { cast: {}, fly: [], pot: null, fire: null };
-      for (const k of CHAR_KEYS) { const c = CAST[k] || { slot: 0, o: {} }; let cv = null; try { cv = R3 ? R3.posePic(k, c.slot, c.o, 512) : null; } catch (e) { cv = null; } SP.cast[k] = pic(cv || pose2D(k, c, 512)); }
-      FLY.forEach((f, n) => { let cv = null; try { cv = R3 ? R3.itemPic(f.it, 256, n * 0.7) : null; } catch (e) { cv = null; } SP.fly.push(pic(cv || item2D(f.it, 256))); });
-      let pc = null; try { pc = R3 ? R3.itemPic(POT, 512, Math.PI, true) : null; } catch (e) { pc = null; } SP.pot = pic(pc || item2D(POT, 512)); // 냄비 손잡이는 뒤로 (π 가까이 돌려서)
-      let fc = null; try { fc = R3 ? R3.firePic(256) : null; } catch (e) { fc = null; } SP.fire = pic(fc || fire2D(256));
+      const take = (f) => { try { const cv = R3 ? f() : null; return cv ? pic(cv) : null; } catch (e) { return null; } }; // 3D가 안 되면 그림 없이 바탕만
+      for (const k of CHAR_KEYS) { const c = CAST[k] || { slot: 0, o: {} }; SP.cast[k] = take(() => R3.posePic(k, c.slot, c.o, 512)); }
+      FLY.forEach((f, n) => { const p = take(() => R3.itemPic(f.it, 256, n * 0.7)); if (p) SP.fly.push(p); });
+      SP.pot = take(() => R3.itemPic(POT, 512, Math.PI, true)); // 냄비 손잡이는 뒤로 (π 가까이 돌려서)
+      SP.fire = take(() => R3.firePic(256));
       return SP;
     }
     // 그림을 놓아요: (cx, 아랫변 y)에 맞춰, 보이는 부분 높이가 h가 되게
@@ -7640,7 +6891,7 @@ body.modal { overflow: hidden; }
       cloud(g, cx, potY - potH * 1.0, potH * 0.55, 10, 5, cw, cs);
       cloud(g, cx - potH * 0.45, potY - potH * 1.25, potH * 0.32, 7, 9, cw, null);
       cloud(g, cx + potH * 0.5, potY - potH * 1.2, potH * 0.3, 7, 13, cw, null);
-      place(g, sp.pot, cx, potY, potH);
+      if (sp.pot) place(g, sp.pot, cx, potY, potH);
       [[-0.62, -0.55, 0.09], [0.6, -0.7, 0.07], [0.42, -1.05, 0.06], [-0.4, -1.1, 0.05], [0.75, -0.25, 0.05]].forEach(([dx, dy, r]) => star(g, cx + dx * potH, potY + dy * potH, r * potH * 1.3, "#fff7c2"));
 
       // 날아다니는 음식 (꼬리 선과 함께)
@@ -7648,6 +6899,7 @@ body.modal { overflow: hidden; }
         ? [[0.3, 0.18, 0.13], [0.7, 0.14, 0.13], [0.86, 0.36, 0.11], [0.2, 0.42, 0.09], [0.4, 0.06, 0.08], [0.6, 0.04, 0.08], [0.1, 0.18, 0.08], [0.93, 0.12, 0.09], [0.78, 0.6, 0.1]]
         : [[0.2, 0.12, 0.2], [0.82, 0.1, 0.2], [0.9, 0.42, 0.17], [0.08, 0.4, 0.14], [0.36, 0.02, 0.12], [0.64, 0.0, 0.12], [0.1, 0.62, 0.12], [0.9, 0.68, 0.13], [0.5, 0.26, 0.11]];
       flySpots.forEach(([fx, fy, fs], n) => {
+        if (!sp.fly.length) return;
         const p = sp.fly[n % sp.fly.length], x = W * fx, y = top + Ha * fy + Ha * fs * 0.5, s = (land ? H : W) * fs * 0.62;
         g.save(); g.strokeStyle = "rgba(255,255,255,.7)"; g.lineWidth = Math.max(2, s * 0.06); g.lineCap = "round";
         const dir = fx < 0.5 ? -1 : 1;
@@ -7672,7 +6924,7 @@ body.modal { overflow: hidden; }
       // 불 + 소화기 거품 (곰 왼쪽)
       const bp = at("bear"), fire = { x: bp.x - bp.h * 0.55, y: bp.y - bp.h * 0.05 };
       if (fire.x > -bp.h * 0.2) {
-        place(g, sp.fire, fire.x, fire.y, bp.h * 0.45);
+        if (sp.fire) place(g, sp.fire, fire.x, fire.y, bp.h * 0.45);
         cloud(g, fire.x + bp.h * 0.18, fire.y - bp.h * 0.25, bp.h * 0.22, 7, 61, "rgba(255,255,255,.92)", null);
       }
       // 뛰어오른 토끼: 바닥 그림자
@@ -7740,7 +6992,7 @@ body.modal { overflow: hidden; }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  if (IS_LOCAL) window.__bunsik = { get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get mode() { return use3D() ? "3d" : "2d"; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom(), truckSegs: () => truckSegs(view), truckNow: () => truckNow(view) };
+  if (IS_LOCAL) window.__bunsik = { get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom(), truckSegs: () => truckSegs(view), truckNow: () => truckNow(view) };
   if (document.fonts && document.fonts.load) document.fonts.load('20px "Jua"', "가나다 내는 곳 버리기 방장 친구 반납 개수대");
 })();
 </script>
