@@ -647,6 +647,9 @@ body.modal { overflow: hidden; }
   const MISS = 1000, TIP = 1000, MAX_ORDERS = 4;
   const COLS = 15, ROWS = 9;
   const FONT_UI = '"Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+  // 한글 웹 글꼴은 글자 묶음별로 따로 받아요. 캔버스에 처음 쓰는 글자(이름·채팅)는 미리 받아 두지 않으면 그 글자만 다른 글꼴로 나와요
+  const fontAsked = new Set();
+  function wantFont(text) { if (!text || fontAsked.has(text) || !document.fonts || !document.fonts.load) return; fontAsked.add(text); document.fonts.load("20px " + FONT_UI, text).catch(() => {}); }
   const PROG_KEY = "bunsik.v2.stars";
 
   const ING = {
@@ -5976,6 +5979,7 @@ body.modal { overflow: hidden; }
       if (!q || !q.nm) return;
       const fs = Math.max(11, s * 0.24), tg = q.tg; // 상점 이름표: 금테·별·하트·무지개
       const text = tg === "star" ? "★ " + q.nm + " ★" : tg === "heart" ? "♥ " + q.nm + " ♥" : q.nm;
+      wantFont(q.nm);
       c.save();
       c.font = Math.round(fs) + "px " + FONT_UI;
       const w = c.measureText(text).width + fs * 0.9, h = fs * 1.35;
@@ -5993,6 +5997,7 @@ body.modal { overflow: hidden; }
   const chatClean = (t) => Array.from(String(t || "").replace(/[\u0000-\u001f]/g, "").trim()).slice(0, CHAT_MAX).join("");
   // 말풍선: (x, y) = 꼬리 끝 (머리 위)
   function drawBubble(c, x, y, text, fs, alpha, loud) {
+    wantFont(text);
     c.save(); c.globalAlpha = alpha;
     c.font = Math.round(fs) + "px " + FONT_UI;
     const w = Math.max(fs * 1.6, c.measureText(text).width + fs * 0.9), h = fs * 1.45, x0 = x - w / 2, y0 = y - h - fs * 0.38;
