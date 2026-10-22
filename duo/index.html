@@ -1156,7 +1156,7 @@ body.modal { overflow: hidden; }
     rabbit: { name: "토끼",   fur: "#ecd49e", dark: "#c2a46c", ear: "#f1a7b0", nose: "#e8798a" }, // 노란 몸, 머리가 크고 귀가 긴 토끼, 큰 호 눈썹, 혀 보이는 입
     bear:   { name: "곰",     fur: "#9a6440", dark: "#5e3a24", ear: "#d1a57c", nose: "#2b1d16" },
     otter:  { name: "해달",   fur: "#f4f1ec", body: "#6e5547", body3: "#5a4337", dark: "#4e3b30", ear: "#5a4033", nose: "#4a2e22", tail: "#5e4739", tail3: "#4b3529" }, // 하얀 머리(얼굴 전체 흰색), 갈색 몸·귀·두툼한 꼬리. body3·tail3: 3D는 조명이 밝아서 더 진하게
-    poro:   { name: "포로",   fur: "#f3f0f6", dark: "#4a4462", ear: "#e8899b", nose: "#ec8fac", hand: "#4a4462", face: "#f8eeb0", tongue: "#ef8e9b", udder: "#e8798a" } // 젖소 옷을 입은 동그란 포로: 하얀 바탕에 남색 무늬, 분홍 코·젖, 크림색 얼굴과 콧수염, 길게 내민 분홍 혀. 앞치마 대신 귀표가 내 색
+    poro:   { name: "포로",   fur: "#f3f0f6", dark: "#4a4462", ear: "#e8899b", nose: "#e98aa2", hand: "#4a4462", face: "#f8eeb0", tongue: "#f4a3ae", udder: "#e8798a" } // 젖소 옷을 입은 동그란 포로: 하얀 바탕에 남색 무늬, 분홍 코·젖, 크림색 얼굴과 콧수염, 길게 내민 분홍 혀. 앞치마 대신 귀표가 내 색
   };
   const CHAR_KEYS = Object.keys(CHARS);
   // 머리가 큰 캐릭터 (2D): [머리 반너비, 반높이, 머리 가운데 y] (칸 크기 S 배). 몸은 작게, 얼굴은 그림으로 그려요
@@ -1338,16 +1338,9 @@ body.modal { overflow: hidden; }
     if (!closed) out.push(pts[n - 1]);
     return out;
   }
-  // 포로 콧수염 [윗선, 아랫선]: 가운데가 살짝 파이고 양 끝이 위로 말려 올라간 통통한 띠. 2D와 3D가 같은 모양을 써요
-  // (x: 가로 -1~1, y: 아랫선 가운데가 0, 말려 올라간 끝이 1. 3D는 경도 ±47도·위도 8.5~27도로, 2D는 얼굴 너비에 맞춰 옮겨요)
-  const PORO_MUST = [[[-1, 1], [-0.87, 0.75], [-0.64, 0.62], [-0.36, 0.64], [-0.13, 0.59], [0, 0.49], [0.13, 0.59], [0.36, 0.64], [0.64, 0.62], [0.87, 0.75], [1, 1]],
-    [[0.94, 0.65], [0.79, 0.3], [0.53, 0.08], [0.28, 0.03], [0.11, 0.08], [0, 0], [-0.11, 0.08], [-0.28, 0.03], [-0.53, 0.08], [-0.79, 0.3], [-0.94, 0.65]]];
-  // 포로 (2D): 몸 전체가 동그란 공이에요. 위는 둥글고 아래로 갈수록 조금 넓어요 (가운데 줄이 y = -0.05)
-  function poroPath(c, S) {
-    c.beginPath();
-    for (let i = 0; i <= 64; i++) { const a = (i / 64) * Math.PI * 2, s = Math.sin(a), x = Math.cos(a) * 0.3 * S * (1 + 0.06 * Math.max(0, s)), y = (-0.05 + s * (s > 0 ? 0.27 : 0.31)) * S; if (i) c.lineTo(x, y); else c.moveTo(x, y); }
-    c.closePath();
-  }
+  // 포로 (2D): 젖소 옷 몸통 위에 모자 쓴 머리가 반쯤 묻혀 있어요 (자리는 칸 크기 S 배, 아래가 +). 머리 가운데 y = -0.2, 몸통 가운데 y = 0.07
+  const poroBodyPath = (c, S) => { c.beginPath(); c.ellipse(0, 0.07 * S, 0.33 * S, 0.19 * S, 0, 0, Math.PI * 2); };
+  const poroHeadPath = (c, S) => { c.beginPath(); c.ellipse(0, -0.2 * S, 0.27 * S, 0.2 * S, 0, 0, Math.PI * 2); };
   // 혀 끝이 걸음마다 좌우로 덜렁, 튈 때 앞으로 펄럭 (2D는 짧아 보여요). 서 있으면 헥헥. [좌우 각, 길이 배]
   function poroTongue(o, t) {
     const dash = o.dash || 0;
@@ -1357,63 +1350,68 @@ body.modal { overflow: hidden; }
     return [Math.sin(t * 1.7) * 0.06, 1 + Math.sin(t * 6) * 0.04];
   }
   function drawPoro(c, S, o, back, t, fx) {
-    const C = CHARS.poro, ox = back ? 0 : fx * 0.06, ink = "#1f1612";
+    const C = CHARS.poro, ox = back ? 0 : fx * 0.05, ink = "#1f1612";
     const el = (x, y, rx, ry, col, rot) => { c.beginPath(); c.ellipse(x * S, y * S, rx * S, ry * S, rot || 0, 0, Math.PI * 2); c.fillStyle = col; c.fill(); };
+    const curve = (pts) => { c.beginPath(); catmull(pts, true).forEach(([x, y], i) => { if (i) c.lineTo(x * S, y * S); else c.moveTo(x * S, y * S); }); c.closePath(); };
     const blob = (x, y, rx, ry, seed, col) => { // 울퉁불퉁한 젖소 무늬
-      c.beginPath();
-      for (let i = 0; i <= 40; i++) { const a = (i / 40) * Math.PI * 2, k = 1 + 0.16 * Math.sin(3 * a + seed) + 0.08 * Math.sin(5 * a + seed * 2); if (i) c.lineTo((x + Math.cos(a) * rx * k) * S, (y + Math.sin(a) * ry * k) * S); else c.moveTo((x + Math.cos(a) * rx * k) * S, (y + Math.sin(a) * ry * k) * S); }
-      c.closePath(); c.fillStyle = col; c.fill();
+      curve(Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * Math.PI * 2, k = 1 + 0.18 * Math.sin(3 * a + seed) + 0.08 * Math.sin(5 * a + seed * 2); return [x + Math.cos(a) * rx * k, y + Math.sin(a) * ry * k]; }));
+      c.fillStyle = col; c.fill();
     };
-    [-1, 1].forEach((sd) => { // 귀: 머리 양옆으로 비스듬히 처진 남색 귀, 앞에서는 안쪽이 분홍
-      el(sd * 0.33, -0.17, 0.095, 0.045, C.dark, sd * 0.32);
-      if (!back) el(sd * 0.345, -0.165, 0.06, 0.025, C.ear, sd * 0.32);
+    const clipped = (path, draw) => { c.save(); path(c, S); c.clip(); draw(); c.restore(); path(c, S); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke(); };
+    // 몸통: 앞판은 남색, 옆구리는 하양, 배에 큼직한 분홍 젖 (뒤에서는 젖소 무늬)
+    poroBodyPath(c, S); c.fillStyle = C.fur; c.fill();
+    clipped(poroBodyPath, () => {
+      c.fillStyle = C.dark; c.fillRect(-S, 0.21 * S, 2 * S, S);
+      if (back) { blob(0.12, 0.02, 0.12, 0.08, 4, C.dark); blob(-0.18, 0.12, 0.08, 0.06, 2, C.dark); }
+      else {
+        rrect(c, (ox - 0.22) * S, -0.14 * S, 0.44 * S, 0.5 * S, 0.12 * S); c.fillStyle = C.dark; c.fill();
+        blob(-0.31, 0.02, 0.05, 0.07, 2, C.dark); blob(0.31, 0.0, 0.045, 0.065, 5, C.dark);
+        rrect(c, (ox - 0.085) * S, 0.075 * S, 0.17 * S, 0.12 * S, 0.045 * S); c.fillStyle = C.udder; c.fill();
+        [-1, 1].forEach((sd) => el(ox + sd * 0.035, 0.105, 0.01, 0.013, "#c4506c"));
+      }
     });
-    const tx = back ? 0.37 : -0.37; // 화면 왼쪽 귀에 귀표: 앞치마 대신 내 색이에요
-    rrect(c, (tx - 0.03) * S, -0.15 * S, 0.06 * S, 0.08 * S, 0.015 * S); c.fillStyle = APRON[o.slot] || APRON[0]; c.fill(); c.strokeStyle = "rgba(0,0,0,.35)"; c.lineWidth = 1; c.stroke();
-    [-1, 1].forEach((sd) => { // 뿔: 머리 위 양쪽에서 바깥으로 휘어 올라가요 (밑동은 몸 뒤에 숨어요)
-      c.beginPath(); c.moveTo(sd * 0.17 * S, -0.31 * S); c.quadraticCurveTo(sd * 0.26 * S, -0.34 * S, sd * 0.25 * S, -0.45 * S); c.quadraticCurveTo(sd * 0.21 * S, -0.37 * S, sd * 0.1 * S, -0.31 * S); c.closePath();
-      c.fillStyle = C.dark; c.fill();
-    });
-    poroPath(c, S); c.fillStyle = C.fur; c.fill();
-    c.save(); poroPath(c, S); c.clip();
-    c.fillStyle = C.dark; c.fillRect(-0.4 * S, 0.17 * S, 0.8 * S, 0.2 * S); // 아래쪽은 남색
-    if (back) { // 등: 큰 무늬 몇 개
-      blob(-0.12, -0.17, 0.13, 0.09, 1, C.dark); blob(0.16, 0.03, 0.1, 0.11, 4, C.dark); blob(-0.2, 0.08, 0.06, 0.06, 2, C.dark);
-    } else {
-      el(ox, -0.17, 0.25, 0.15, C.dark); // 얼굴을 두른 모자 테두리와 가슴은 남색
-      rrect(c, (ox - 0.17) * S, -0.17 * S, 0.34 * S, 0.45 * S, 0.1 * S); c.fillStyle = C.dark; c.fill();
-      blob(-0.29, 0.03, 0.05, 0.09, 2, C.dark); blob(0.29, -0.01, 0.045, 0.08, 5, C.dark); blob(0.2, -0.27, 0.07, 0.05, 3, C.dark); // 옆구리·모자 위 무늬
-      el(ox, -0.2, 0.165, 0.085, C.face); // 이마 (크림색)
-      el(ox, -0.09, 0.1, 0.035, "#ffffff"); // 혀 둘레 하얀 턱
-      el(ox, -0.095, 0.045, 0.022, "#5a2a34"); // 벌린 입
-      const mp = (q, dy) => { c.beginPath(); q.forEach(([x, y], i) => { const px = (ox + x * 0.2) * S, py = (-0.098 - y * 0.092 + (dy || 0)) * S; if (i) c.lineTo(px, py); else c.moveTo(px, py); }); };
-      const must = catmull(PORO_MUST[0].concat(PORO_MUST[1]), true); // 콧수염: 아래로 그림자를 깔고, 이마와 만나는 윗선을 그어요
-      mp(must, 0.008); c.fillStyle = "rgba(150,120,40,.5)"; c.fill();
-      mp(must); c.fillStyle = C.face; c.fill();
-      mp(catmull(PORO_MUST[0])); c.strokeStyle = "rgba(170,140,55,.6)"; c.lineWidth = Math.max(1, 0.008 * S); c.lineCap = "round"; c.stroke();
-      [-1, 1].forEach((sd) => { dot(c, (ox + sd * 0.062) * S, -0.222 * S, 0.02 * S, ink); dot(c, (ox + sd * 0.062 + 0.007) * S, -0.229 * S, 0.007 * S, "#ffffff"); }); // 까만 점 눈
-      el(ox * 0.6, -0.315, 0.1, 0.045, C.nose); // 모자 위 분홍 코 + 콧구멍
-      [-1, 1].forEach((sd) => el(ox * 0.6 + sd * 0.04, -0.312, 0.013, 0.017, "#c4506c"));
-      rrect(c, (ox - 0.095) * S, 0.05 * S, 0.19 * S, 0.1 * S, 0.042 * S); c.fillStyle = C.udder; c.fill(); // 배에 분홍 젖
-      [-1, 1].forEach((sd) => el(ox + sd * 0.045, 0.125, 0.012, 0.016, "#c4506c"));
-    }
-    c.restore();
-    poroPath(c, S); c.strokeStyle = C.dark; c.lineWidth = 1; c.stroke();
     if (back) { // 꼬리: 가는 하얀 꼬리 끝에 남색 털뭉치, 살랑살랑
-      c.save(); c.translate(0, 0.1 * S); c.rotate(Math.sin(t * (o.moving ? 8 : 2)) * (o.moving ? 0.45 : 0.18));
+      c.save(); c.translate(0, 0.12 * S); c.rotate(Math.sin(t * (o.moving ? 8 : 2)) * (o.moving ? 0.45 : 0.18));
       c.strokeStyle = C.dark; c.lineWidth = 0.032 * S; c.lineCap = "round"; c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(0.05 * S, 0.06 * S, 0.03 * S, 0.12 * S); c.stroke();
       c.strokeStyle = C.fur; c.lineWidth = 0.02 * S; c.stroke();
       el(0.03, 0.14, 0.028, 0.038, C.dark);
       c.restore();
-      return;
     }
-    const [ang, len] = poroTongue(o, t), L = 0.135 * len, Ls = Math.max(0.01, L - 0.085); // 혀: 입에 매달려 흔들려요. 아래는 둥근 U자
-    c.save(); c.translate(ox * S, -0.092 * S); c.rotate(ang);
-    c.beginPath(); c.moveTo(-0.056 * S, 0); c.bezierCurveTo(-0.064 * S, Ls * 0.45 * S, -0.085 * S, Ls * 0.75 * S, -0.085 * S, Ls * S);
-    c.arc(0, Ls * S, 0.085 * S, Math.PI, 0, true); c.bezierCurveTo(0.085 * S, Ls * 0.75 * S, 0.064 * S, Ls * 0.45 * S, 0.056 * S, 0); c.closePath();
-    c.fillStyle = C.tongue; c.fill(); c.strokeStyle = "#c95b6c"; c.lineWidth = Math.max(1, 0.01 * S); c.stroke();
-    c.beginPath(); c.moveTo(0, 0.02 * S); c.lineTo(0, L * 0.62 * S); c.strokeStyle = "rgba(190,70,90,.7)"; c.lineWidth = Math.max(1, 0.012 * S); c.lineCap = "round"; c.stroke();
-    c.restore();
+    [-1, 1].forEach((sd) => { // 뿔: 머리 위 양쪽에서 바깥으로 나갔다가 위로 휘어 올라가요 (밑동은 머리 뒤에 숨어요)
+      c.beginPath(); c.moveTo(sd * 0.16 * S, -0.33 * S); c.quadraticCurveTo(sd * 0.27 * S, -0.36 * S, sd * 0.22 * S, -0.48 * S); c.quadraticCurveTo(sd * 0.2 * S, -0.39 * S, sd * 0.08 * S, -0.36 * S); c.closePath();
+      c.fillStyle = C.dark; c.fill();
+    });
+    [-1, 1].forEach((sd) => { // 귀: 머리 양옆으로 뻗은 남색 귀, 앞에서는 안쪽이 분홍
+      el(sd * 0.33, -0.17, 0.09, 0.045, C.dark, sd * 0.25);
+      if (!back) el(sd * 0.345, -0.168, 0.06, 0.026, C.ear, sd * 0.25);
+    });
+    // 머리(모자): 얼굴을 두른 남색 테두리, 크림색 얼굴, 위에 분홍 소 코 (뒤에서는 무늬와 정수리 너머 코)
+    poroHeadPath(c, S); c.fillStyle = C.fur; c.fill();
+    clipped(poroHeadPath, () => {
+      if (back) { blob(-0.1, -0.25, 0.12, 0.08, 1, C.dark); blob(0.14, -0.12, 0.08, 0.07, 3, C.dark); el(0, -0.4, 0.1, 0.03, C.nose); return; }
+      el(ox, -0.17, 0.235, 0.15, C.dark);
+      el(ox, -0.2, 0.2, 0.115, C.face);
+      el(ox, -0.07, 0.13, 0.04, "#ffffff"); // 콧수염 밑 하얀 턱과 벌린 입
+      el(ox, -0.095, 0.035, 0.015, "#5a2a34");
+    });
+    if (!back) {
+      rrect(c, (ox * 0.6 - 0.1) * S, -0.4 * S, 0.2 * S, 0.09 * S, 0.035 * S); c.fillStyle = C.nose; c.fill(); // 모자 위 분홍 소 코 + 콧구멍
+      [-1, 1].forEach((sd) => el(ox * 0.6 + sd * 0.04, -0.355, 0.012, 0.016, "#d45f78"));
+      const [ang, len] = poroTongue(o, t), L = 0.16 * len, Ls = Math.max(0.01, L - 0.08); // 혀: 콧수염 밑 입에 매달려 가슴까지 늘어져요. 넓적하고 아래는 둥근 U자
+      c.save(); c.translate(ox * S, -0.1 * S); c.rotate(ang);
+      c.beginPath(); c.moveTo(-0.058 * S, 0); c.bezierCurveTo(-0.066 * S, Ls * 0.45 * S, -0.08 * S, Ls * 0.75 * S, -0.08 * S, Ls * S);
+      c.arc(0, Ls * S, 0.08 * S, Math.PI, 0, true); c.bezierCurveTo(0.08 * S, Ls * 0.75 * S, 0.066 * S, Ls * 0.45 * S, 0.058 * S, 0); c.closePath();
+      c.fillStyle = C.tongue; c.fill(); c.strokeStyle = "#c95b6c"; c.lineWidth = Math.max(1, 0.008 * S); c.stroke();
+      c.beginPath(); c.moveTo(0, 0.025 * S); c.lineTo(0, L * 0.55 * S); c.strokeStyle = "rgba(190,70,90,.7)"; c.lineWidth = Math.max(1, 0.01 * S); c.lineCap = "round"; c.stroke();
+      c.restore();
+      // 콧수염: 작은 눈 바로 아래, 양 끝이 뾰족하게 뻗은 통통한 덩어리 (아래로 그림자를 깔아요)
+      const must = [[-0.27, -0.12], [-0.21, -0.165], [-0.12, -0.18], [-0.045, -0.17], [0, -0.155], [0.045, -0.17], [0.12, -0.18], [0.21, -0.165], [0.27, -0.12], [0.2, -0.095], [0.13, -0.075], [0.06, -0.075], [0, -0.092], [-0.06, -0.075], [-0.13, -0.075], [-0.2, -0.095]];
+      curve(must.map(([x, y]) => [x + ox, y + 0.012])); c.fillStyle = "rgba(150,120,40,.45)"; c.fill();
+      curve(must.map(([x, y]) => [x + ox, y])); c.fillStyle = C.face; c.fill(); c.strokeStyle = "rgba(170,140,55,.55)"; c.lineWidth = Math.max(1, 0.006 * S); c.stroke();
+      [-1, 1].forEach((sd) => { el(ox + sd * 0.08, -0.215, 0.018, 0.024, ink); el(ox + sd * 0.08 + 0.006, -0.223, 0.007, 0.007, "#ffffff"); }); // 작고 까만 눈 (반짝)
+    }
+    const tx = back ? 0.38 : -0.38; // 화면 왼쪽 귀에 매단 귀표: 앞치마 대신 내 색이에요
+    rrect(c, (tx - 0.023) * S, -0.15 * S, 0.046 * S, 0.062 * S, 0.012 * S); c.fillStyle = APRON[o.slot] || APRON[0]; c.fill(); c.strokeStyle = "rgba(0,0,0,.35)"; c.lineWidth = 1; c.stroke();
   }
 
   // 캐릭터 한 명. (X, Y) = 발 딛는 자리 중심, S = 칸 크기
@@ -1435,7 +1433,7 @@ body.modal { overflow: hidden; }
       [-0.12, 0, 0.12].forEach((k) => { const ox = -(o.ddx || 0) * S * 0.32 + -(o.ddy || 0) * k * S, oy = -(o.ddy || 0) * S * 0.32 + (o.ddx || 0) * k * S; c.moveTo(X + ox, by + oy); c.lineTo(X + ox - (o.ddx || 0) * S * 0.35 * dash, by + oy - (o.ddy || 0) * S * 0.35 * dash); });
       c.stroke();
     }
-    const poro = o.ch === "poro", fw = poro ? 0.13 : 0.1, fr = poro ? 0.07 : 0.062; // 포로는 몸이 넓어서 발도 벌어지고 커요
+    const poro = o.ch === "poro", fw = poro ? 0.19 : 0.1, fr = poro ? 0.072 : 0.062; // 포로는 몸이 넓어서 발도 벌어지고 커요
     c.beginPath(); c.ellipse(X, Y + 0.27 * S, (poro ? 0.3 : 0.26) * S - bob * 0.5, 0.085 * S, 0, 0, Math.PI * 2); c.fillStyle = "rgba(0,0,0,.18)"; c.fill();
     dot(c, X - fw * S + (fx ? step * fx : 0), Y + 0.24 * S + (fx ? 0 : step), fr * S, C.dark);
     dot(c, X + fw * S - (fx ? step * fx : 0), Y + 0.24 * S - (fx ? 0 : step), fr * S, C.dark);
@@ -1460,7 +1458,7 @@ body.modal { overflow: hidden; }
     } else {
       const sw = o.moving ? Math.sin(o.phase * Math.PI) * 0.05 * S : 0;
       const r = reach * 0.18 * S;
-      const hw = (poro ? 0.31 : 0.25) * S, hy = by + (poro ? 0.07 : 0.13) * S; // 포로: 동그란 몸 양옆에 붙은 짧은 팔
+      const hw = (poro ? 0.33 : 0.25) * S, hy = by + (poro ? 0.06 : 0.13) * S; // 포로: 동그란 몸통 양옆에 붙은 짧은 팔
       hands = [[X - hw + fx * r, hy + sw + fy * r], [X + hw + fx * r, hy - sw + fy * r]];
     }
     const front = () => {
@@ -3906,7 +3904,7 @@ body.modal { overflow: hidden; }
     // 머리가 큰 캐릭터 (3D): 머리 크기 a×b×c, 얼굴 그림, 얼굴 그림이 덮는 범위 (가로 ±al, 세로 ±be 라디안)
     const BIG3 = { mochi: { a: 0.33, b: 0.28, c: 0.3, al: 1.15, be: 0.7, draw: drawMochiFace }, rabbit: { a: 0.33, b: 0.245, c: 0.29, al: 1.15, be: 1.05, draw: drawUsagiFace, bun: true },
       otter: { a: 0.35, b: 0.215, c: 0.3, al: 1.2, be: 0.95, draw: drawRakkoFace, bun: true, body: [0.26, 0.2, 0.23], hy: 0.55 },
-      poro: { a: 0.34, b: 0.31, c: 0.31, hy: 0.36, ball: true } }; // 포로: 몸 전체가 머리인 공 (얼굴은 공을 덮는 그림에, poroHead)
+      poro: { hy: 0.57, hz: 0.03, ball: true, lean: 0.12, rest: 0 } }; // 포로: 젖소 옷 몸통 위에 모자 쓴 머리가 반쯤 묻혀 있어요. 머리를 살짝 젖혀 올려다봐요 (poroBody·poroHead)
     // 찐빵 머리 점의 법선: 공 위에서 두 방향으로 조금씩 움직여 본 차이로 구해요 (이음매에서도 똑같이 나와서 금이 안 가요)
     function bunNormal(x, y, z) {
       let t1 = Math.abs(y) < 0.99 ? [-z, 0, x] : [1, 0, 0];
@@ -3970,64 +3968,82 @@ body.modal { overflow: hidden; }
       if (!bun) mesh.rotation.x = -TILT; // 찐빵 머리는 얼굴 자리를 셈할 때 이미 올렸어요
       return mesh;
     }
-    // 포로: 공 모양 몸 전체가 머리예요 (머리 그룹에 붙어서 같이 기울어요). 젖소 옷 무늬·얼굴·콧수염·젖은 공을 덮는 그림 한 장에
-    // 가로는 경도(0이 앞, +가 +x 쪽), 세로는 위도로 그리고, 뿔·귀·귀표·분홍 소 코·혀·팔·발은 입체로 붙여요
-    const PORO = BIG3.poro, DEG = Math.PI / 180;
-    function poroPt(lon, lat, k) { // 포로 몸 겉면 위의 점 (경도·위도는 도). k: 겉면에서 바깥으로 몇 배
-      const y = Math.sin(lat * DEG), q = Math.cos(lat * DEG), w = 1 - 0.07 * y, s = k || 1;
-      return [PORO.a * w * q * Math.sin(lon * DEG) * s, PORO.b * (y < 0 ? y + 0.08 * y * y : y) * s, PORO.c * w * q * Math.cos(lon * DEG) * s];
+    // 포로: 젖소 옷을 입은 포로. 몸통(옷)과 머리(모자)가 따로예요. 머리는 몸통 위에 반쯤 묻혀 있고 살짝 뒤로 젖혀 올려다봐요.
+    // 둘 다 공을 덮는 그림 한 장(가로 경도: 0이 앞, +가 +x 쪽 / 세로 위도)에 젖소 무늬를 그리고, 머리 앞은 크림색 얼굴이 볼록해요.
+    // 콧수염·눈·혀·코·젖·뿔·귀는 따로 붙여요. 자리는 사진에서 잰 값이에요
+    const DEG = Math.PI / 180;
+    const PB = { a: 0.36, b: 0.28, c: 0.32, y: 0.28 }; // 몸통 (bodyG): 반지름 a·b·c, 가운데 높이 y
+    const PH = { a: 0.28, b: 0.25, c: 0.27, lat: 28, u: 44, v: 20, h: 0.1 }; // 머리 (headG): 얼굴 가운데 위도, 가로·세로 반지름 (얼굴 가운데에서 잰 각, 도), 볼록한 높이 (반지름 배)
+    const pDir = (lon, lat) => new T.Vector3(Math.sin(lon * DEG) * Math.cos(lat * DEG), Math.sin(lat * DEG), Math.cos(lon * DEG) * Math.cos(lat * DEG));
+    const lonLat = (d) => [Math.atan2(d.x, d.z) / DEG, Math.asin(Math.max(-1, Math.min(1, d.y))) / DEG];
+    const PFc = pDir(0, PH.lat), PFe = new T.Vector3(1, 0, 0), PFn = new T.Vector3(0, Math.cos(PH.lat * DEG), -Math.sin(PH.lat * DEG));
+    const faceUV = (d) => { const z = d.dot(PFc); return z > 0.05 ? [Math.atan2(d.dot(PFe), z) / DEG, Math.atan2(d.dot(PFn), z) / DEG] : [180, 180]; };
+    const faceLL = (u, v) => lonLat(PFc.clone().addScaledVector(PFe, Math.tan(u * DEG)).addScaledVector(PFn, Math.tan(v * DEG)).normalize()); // 얼굴 (가로, 세로) 각 → 경도·위도
+    function ePt(P, lon, lat, k) { // 몸통·머리 겉면 위의 점 (경도·위도는 도). 머리는 얼굴이 볼록. k: 겉면에서 바깥으로 몇 배
+      const d = pDir(lon, lat); let s = k || 1;
+      if (P.h) { const [u, v] = faceUV(d), q = Math.hypot(u / P.u, v / P.v); if (q < 1) s *= 1 + P.h * Math.pow(1 - q * q, 0.6); }
+      return new T.Vector3(P.a * d.x * s, P.b * d.y * s + (P.y || 0), P.c * d.z * s);
     }
-    // 위는 둥글고 아래로 갈수록 조금 넓으며 바닥은 살짝 납작한 공. 돌려 만든 모양이라 법선은 옆모습 곡선(반지름 w·q, 높이 h)의 기울기로 바로 구해요
-    const poroBallG = () => gc("poroBall", () => {
-      const g = new T.SphereGeometry(1, 56, 36), pa = g.attributes.position, na = g.attributes.normal;
+    function eN(P, lon, lat) { // 겉면 법선 (가까운 점들의 차이로)
+      const e = 0.3, a = ePt(P, lon + e, lat).sub(ePt(P, lon - e, lat)), b = ePt(P, lon, lat + e).sub(ePt(P, lon, lat - e));
+      return a.cross(b).normalize();
+    }
+    function eF(P, lon, lat, k, tlon, tlat) { // 겉면 (lon, lat) 자리의 틀: z는 바깥(법선), x는 (tlon, tlat) 쪽. k만큼 띄워요
+      const p = ePt(P, lon, lat, k), n = eN(P, lon, lat), t = ePt(P, tlon, tlat).sub(ePt(P, lon, lat));
+      t.addScaledVector(n, -t.dot(n)).normalize();
+      return new T.Matrix4().makeBasis(t, new T.Vector3().crossVectors(n, t), n).setPosition(p);
+    }
+    function smoothN(g) { // 법선을 구하고, 이음매에 겹친 점들은 평균해서 금이 안 가게
+      g.computeVertexNormals();
+      const pa = g.attributes.position, na = g.attributes.normal, m = new Map();
+      for (let i = 0; i < pa.count; i++) { const k = [pa.getX(i), pa.getY(i), pa.getZ(i)].map((v) => v.toFixed(5)).join(); if (m.has(k)) m.get(k).push(i); else m.set(k, [i]); }
+      m.forEach((ids) => { if (ids.length < 2) return; let x = 0, y = 0, z = 0; ids.forEach((i) => { x += na.getX(i); y += na.getY(i); z += na.getZ(i); }); const l = Math.hypot(x, y, z) || 1; ids.forEach((i) => na.setXYZ(i, x / l, y / l, z / l)); });
+      return g;
+    }
+    // 그림을 입히는 공: 점마다 ePt로 옮기고 법선도 거기서 구해요 (이음매에서도 똑같이 나와서 금이 안 가요)
+    const partG = (P, key, w, h) => gc(key, () => {
+      const g = new T.SphereGeometry(1, w, h), pa = g.attributes.position, na = g.attributes.normal, d = new T.Vector3();
       for (let i = 0; i < pa.count; i++) {
-        const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i), q = Math.hypot(x, z), w = 1 - 0.07 * y;
-        pa.setXYZ(i, x * w, y < 0 ? y + 0.08 * y * y : y, z * w);
-        const dr = -0.07 * q - (w * y) / Math.max(q, 1e-6), dh = y < 0 ? 1 + 0.16 * y : 1, l = Math.hypot(dr, dh);
-        na.setXYZ(i, q > 1e-6 ? (dh * x) / q / l : 0, -dr / l, q > 1e-6 ? (dh * z) / q / l : 0);
+        d.set(pa.getX(i), pa.getY(i), pa.getZ(i));
+        const [lon, lat] = lonLat(d), p = ePt(P, lon, lat), n = Math.abs(d.y) > 0.9999 ? new T.Vector3(0, Math.sign(d.y), 0) : eN(P, lon, lat);
+        pa.setXYZ(i, p.x, p.y, p.z); na.setXYZ(i, n.x, n.y, n.z);
       }
+      g.computeBoundingSphere();
       return g;
     });
-    const poroMat = () => gc("poroMat", () => {
-      const C0 = CHARS.poro, W = 2048, H = 1024, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
-      const g = cv.getContext("2d"), col = (h) => vivid(h, 1.1, 0.97), fur = col(C0.fur), dark = col(C0.dark), cream = col(C0.face);
-      const E = (lon, lat) => [(0.25 + lon / 360) * W, (0.5 - lat / 180) * H];
-      const shape = (pts, fill, line, lw) => { // 경도·위도 점들로 그린 도형. 이음매(왼쪽 옆)를 넘어도 이어지게 세 번 그려요
-        for (const dx of [-W, 0, W]) {
-          g.beginPath(); pts.forEach(([lo, la], i) => { const [x, y] = E(lo, la); if (i) g.lineTo(x + dx, y); else g.moveTo(x + dx, y); }); g.closePath();
-          if (fill) { g.fillStyle = fill; g.fill(); }
-          if (line) { g.strokeStyle = line; g.lineWidth = lw; g.stroke(); }
-        }
+    const skinMat = (key, draw) => gc(key, () => { // 공을 덮는 그림 (경도·위도로 그려요)
+      const W = 2048, H = 1024, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+      const g = cv.getContext("2d"), E = (lon, lat) => [(0.25 + lon / 360) * W, (0.5 - lat / 180) * H];
+      const shape = (pts, fill) => { // 경도·위도 점들로 그린 도형. 이음매(왼쪽 옆)를 넘어도 이어지게 세 번 그려요
+        for (const dx of [-W, 0, W]) { g.beginPath(); pts.forEach(([lo, la], i) => { const [x, y] = E(lo, la); if (i) g.lineTo(x + dx, y); else g.moveTo(x + dx, y); }); g.closePath(); g.fillStyle = fill; g.fill(); }
       };
-      // 둥근 도형: 가운데 (lo0, la0), 반지름 ru·rv (도). n이 크면 네모에 가깝게, wob이면 울퉁불퉁, rot만큼 돌려요. 공 위에서 둥글어 보이게 위도에 맞춰 가로를 늘려요
-      const blob = (lo0, la0, ru, rv, o) => Array.from({ length: 96 }, (_, i) => {
-        const t = (i / 96) * Math.PI * 2, n = (o && o.n) || 2, sd = (o && o.seed) || 0, k = 1 + ((o && o.wob) || 0) * (Math.sin(3 * t + sd) + 0.5 * Math.sin(5 * t + 2 * sd));
-        const cu = Math.cos(t), su = Math.sin(t), u0 = ru * k * Math.sign(cu) * Math.pow(Math.abs(cu), 2 / n), v0 = rv * k * Math.sign(su) * Math.pow(Math.abs(su), 2 / n), r = (o && o.rot) || 0;
-        const u = u0 * Math.cos(r) - v0 * Math.sin(r), la = Math.max(-89, Math.min(89, la0 + u0 * Math.sin(r) + v0 * Math.cos(r)));
-        return [lo0 + (u * Math.cos(la0 * DEG)) / Math.max(0.15, Math.cos(la * DEG)), la];
+      const blob = (lo0, la0, ru, rv, sd) => Array.from({ length: 72 }, (_, i) => { // 울퉁불퉁한 무늬 (sd 없으면 매끈한 타원). 공 위에서 둥글어 보이게 위도에 맞춰 가로를 늘려요
+        const t = (i / 72) * Math.PI * 2, k = sd == null ? 1 : 1 + 0.12 * (Math.sin(3 * t + sd) + 0.5 * Math.sin(5 * t + 2 * sd)), la = Math.max(-89, Math.min(89, la0 + rv * k * Math.sin(t)));
+        return [lo0 + (ru * k * Math.cos(t) * Math.cos(la0 * DEG)) / Math.max(0.15, Math.cos(la * DEG)), la];
       });
-      g.fillStyle = fur; g.fillRect(0, 0, W, H);
-      [[150, 35, 34, 26, 1], [-140, 5, 30, 30, 2], [175, -32, 26, 20, 3], [100, -20, 16, 20, 4], [70, 50, 18, 12, 6], [-125, 58, 22, 13, 7], [-88, -10, 13, 17, 5], [88, -6, 12, 15, 8]] // 젖소 무늬: 등·옆구리·모자 위
-        .forEach(([lo, la, ru, rv, sd]) => shape(blob(lo, la, ru, rv, { wob: 0.11, seed: sd }), dark));
-      g.fillStyle = dark; g.fillRect(0, E(0, -58)[1], W, H); // 아래쪽 둘레
-      shape(blob(0, 25, 50, 28), dark); // 얼굴을 두른 모자 테두리
-      shape(blob(0, -24, 31, 38, { n: 4 }), dark); // 가슴과 배
-      shape(blob(0, 30, 36, 15), cream); // 이마 (크림색)
-      shape(blob(0, 6, 20, 5.5), "#ffffff"); // 혀 둘레 하얀 턱
-      shape(blob(0, 7, 8, 4), "#5a2a34"); // 벌린 입
-      // 콧수염 (PORO_MUST): 아래로 그림자를 깔고, 이마와 만나는 윗선을 그어요
-      const ml = (q) => q.map(([x, y]) => [x * 47, 8.5 + y * 18.5]), must = ml(catmull(PORO_MUST[0].concat(PORO_MUST[1]), true));
-      shape(must.map(([lo, la]) => [lo, la - 1.8]), "rgba(150,120,40,.5)");
-      shape(must, cream);
-      g.beginPath(); ml(catmull(PORO_MUST[0])).forEach(([lo, la], i) => { const [x, y] = E(lo, la); if (i) g.lineTo(x, y); else g.moveTo(x, y); });
-      g.strokeStyle = "rgba(170,140,55,.5)"; g.lineWidth = 5; g.lineCap = "round"; g.stroke();
-      for (const sd of [-1, 1]) { shape(blob(sd * 14, 34, 3.8, 4.2), "#1f1612"); shape(blob(sd * 14 + 1.4, 35.5, 1.3, 1.4), "#ffffff"); } // 까만 점 눈
-      shape(blob(0, -31, 20, 11, { n: 3 }), col(C0.udder)); // 배에 분홍 젖 + 젖꼭지 둘
-      for (const sd of [-1, 1]) shape(blob(sd * 9, -37, 2.2, 2.6), "#c4506c");
+      const C0 = CHARS.poro, col = (h) => vivid(h, 1.1, 0.97);
+      g.fillStyle = col(C0.fur); g.fillRect(0, 0, W, H);
+      draw({ g, E, shape, blob, col, dark: col(C0.dark), W, H });
       return std({ map: canvasTex(cv), roughness: 0.72 });
     });
-    const poroHornG = (sd) => gc("poroHorn" + sd, () => { // 뿔: 원뿔을 바깥(sd 쪽)으로 휘어요 (earG처럼)
-      const L = 0.13, R = sd * 0.11, g = new T.ConeGeometry(0.036, L, 12, 8), pa = g.attributes.position, na = g.attributes.normal;
+    // 몸통 그림: 앞판은 남색, 옆구리는 하양, 등에 젖소 무늬, 아래쪽 둘레는 남색
+    const bodyMat = () => skinMat("poroBodyM", ({ g, E, shape, blob, dark, W, H }) => {
+      [[150, 20, 30, 24, 1], [-150, -5, 26, 22, 2], [175, 52, 22, 14, 3], [112, -28, 18, 14, 4], [-105, 32, 16, 14, 5], [-82, -18, 13, 16, 6], [84, -14, 12, 15, 7]].forEach(([lo, la, ru, rv, sd]) => shape(blob(lo, la, ru, rv, sd), dark));
+      g.fillStyle = dark; g.fillRect(0, E(0, -36)[1], W, H);
+      shape([[-62, 72], [62, 72], [58, 42], [50, 14], [46, -20], [50, -40], [-50, -40], [-46, -20], [-50, 14], [-58, 42]], dark);
+    });
+    // 머리(모자) 그림: 하얀 모자에 무늬, 얼굴을 두른 남색 테두리, 크림색 얼굴, 콧수염 밑 하얀 턱과 벌린 입
+    const headMat = () => skinMat("poroHeadM", ({ shape, blob, col, dark }) => {
+      const ring = (s) => Array.from({ length: 96 }, (_, i) => { const t = (i / 96) * Math.PI * 2; return faceLL(s * PH.u * Math.cos(t), s * PH.v * Math.sin(t)); });
+      [[125, 28, 26, 20, 1], [-140, 22, 24, 18, 2], [175, -12, 22, 16, 3], [74, 46, 15, 11, 6]].forEach(([lo, la, ru, rv, sd]) => shape(blob(lo, la, ru, rv, sd), dark));
+      shape(ring(1.18), dark);
+      shape(blob(0, 5, 64, 13), dark); // 콧수염 둘레
+      shape(ring(1), col(CHARS.poro.face));
+      shape(blob(0, 4, 26, 7), "#ffffff");
+      shape(blob(0, 11, 9, 3.5), "#5a2a34");
+    });
+    const poroHornG = (sd) => gc("poroHorn" + sd, () => { // 뿔: 원뿔을 안쪽(-sd 쪽)으로 휘어요 (earG처럼). 바깥으로 눕혀 달면 위로 휘어 올라가요
+      const L = 0.14, R = -sd * 0.16, g = new T.ConeGeometry(0.038, L, 12, 8), pa = g.attributes.position, na = g.attributes.normal;
       for (let i = 0; i < pa.count; i++) {
         const x = pa.getX(i), y = pa.getY(i) + L / 2, nx = na.getX(i), ny = na.getY(i), th = y / R, cs = Math.cos(th), sn = Math.sin(th);
         pa.setXYZ(i, R - (R - x) * cs, (R - x) * sn, pa.getZ(i));
@@ -4035,42 +4051,65 @@ body.modal { overflow: hidden; }
       }
       return g;
     });
-    const pillowG = () => gc("pillow", () => { // 앞에서 보면 둥근 네모인 납작한 베개 모양 (소 코)
+    const pillowG = () => gc("pillow", () => { // 앞에서 보면 둥근 네모인 납작한 베개 모양 (소 코·젖)
       const g = new T.SphereGeometry(1, 24, 16), pa = g.attributes.position, sq = (v) => Math.sign(v) * Math.pow(Math.abs(v), 0.6);
       for (let i = 0; i < pa.count; i++) pa.setXYZ(i, sq(pa.getX(i)), sq(pa.getY(i)), pa.getZ(i));
-      g.computeVertexNormals();
-      return g;
+      return smoothN(g);
+    });
+    const lobeG = () => gc("poroLobe", () => { // 콧수염 한쪽: 안쪽은 통통하고 +x 끝으로 갈수록 뾰족해지는 덩어리
+      const g = new T.SphereGeometry(1, 28, 18), pa = g.attributes.position;
+      for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), k = x > 0 ? 1 - 0.78 * Math.pow(x, 1.6) : 1; pa.setXYZ(i, x, pa.getY(i) * k, pa.getZ(i) * k); }
+      return smoothN(g);
     });
     const poroTailG = () => gc("poroTail", () => new T.TubeGeometry(new T.CatmullRomCurve3([new T.Vector3(0, 0, 0), new T.Vector3(0, -0.02, -0.05), new T.Vector3(0.02, -0.08, -0.08), new T.Vector3(0.03, -0.14, -0.07)]), 12, 0.014, 8, false));
-    const poroTongueG = () => gc("poroTongue", () => { // 혀: 아래로 갈수록 넓적해지는 납작한 혀, 앞쪽 가운데가 살짝 오목한 골
-      const g = new T.SphereGeometry(1, 24, 16), pa = g.attributes.position;
-      for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i); pa.setXYZ(i, x * (1 - 0.12 * y), y, z > 0 ? z * (1 - 0.3 * Math.exp(-x * x * 40)) : z); }
-      g.computeVertexNormals();
-      return g;
-    });
-    function poroHead(headG, H, C) { // 그림을 입힌 공 + 뿔·귀·귀표·분홍 소 코 (H에 합쳐요). 혀는 따로 매달아 돌려줘요
-      const ball = new T.Mesh(poroBallG(), poroMat());
-      ball.scale.set(PORO.a, PORO.b, PORO.c); ball.castShadow = true; ball.receiveShadow = true; headG.add(ball);
-      for (const sd of [-1, 1]) {
-        H.add(poroHornG(sd), mtx(...poroPt(sd * 48, 56, 0.95), -0.25, 0, -sd * 0.3), C.dark); // 뿔: 모자 위 양쪽에서 바깥으로 휘어 올라가요
-        const F = mtx(...poroPt(sd * 82, 30), 0, -sd * 0.35, -sd * 0.25).clone(); // 귀: 양옆으로 살짝 처진 남색 귀, 앞쪽 안은 분홍
-        H.add(sphG(14), F.clone().multiply(mtx(sd * 0.065, 0, 0, 0, 0, 0, 0.088, 0.046, 0.026)), C.dark);
-        H.add(sphG(12), F.clone().multiply(mtx(sd * 0.074, 0.002, 0.014, 0, 0, 0, 0.06, 0.028, 0.014)), C.ear);
-        if (sd < 0) H.add(rboxG(0.056, 0.074, 0.016, 0.013, 1), F.clone().multiply(mtx(sd * 0.085, -0.066, 0.012, 0, 0, sd * 0.25)), C.tag); // 화면 왼쪽 귀에 귀표 (앞치마 색)
+    // 혀: 뿌리는 좁고 끝은 넓적하게 둥근 납작한 혀 (가운데에 골). 입에서 아래(-y)로 늘어지며 턱을 넘어 가슴에 닿게 뒤(-z)로 휘어요
+    const tongueG = () => gc("poroTongue", () => {
+      const L = 0.25, Rb = 0.3, g = new T.SphereGeometry(1, 24, 18), pa = g.attributes.position;
+      for (let i = 0; i < pa.count; i++) {
+        const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i), s = (1 - y) / 2, a = (s * L) / Rb;
+        const X = Math.sign(x) * Math.pow(Math.abs(x), 0.6) * (0.08 + 0.045 * s), Z = z * 0.018 * (z > 0 ? 1 - 0.35 * Math.exp(-x * x * 30) : 1);
+        pa.setXYZ(i, X, -(Rb + Z) * Math.sin(a), (Rb + Z) * Math.cos(a) - Rb);
       }
-      for (const sd of [-1, 1]) H.add(sphG(16), mtx(...poroPt(sd * 21, 14, 0.992), -14 * DEG, sd * 21 * DEG, sd * 0.22, 0.09, 0.034, 0.018), C.face); // 콧수염을 살짝 도톰하게 (그림 위에 겹쳐요)
-      const M = mtx(...poroPt(0, 59, 0.985), -1.06, 0, 0).clone(); // 모자 위 분홍 소 코: 겉면을 따라 눕힌 납작한 베개 모양, 콧구멍 둘
-      H.add(pillowG(), M.clone().multiply(mtx(0, 0, 0, 0, 0, 0, 0.115, 0.062, 0.032)), C.nose);
-      for (const sd of [-1, 1]) H.add(sphG(8), M.clone().multiply(mtx(sd * 0.052, -0.006, 0.027, 0, 0, sd * 0.35, 0.014, 0.02, 0.01)), "#c4506c");
-      const tongue = sub(headG, ...poroPt(0, 6, 0.985)); // 혀: 입에 매달려서 poseChar가 흔들어요
-      part(tongue, poroTongueG(), mat(C.tongue, "g"), 0, -0.058, 0.024, 0, 0, 0, 0.082, 0.064, 0.02);
-      part(tongue, sphG(8), mat("#d8697b"), 0, -0.052, 0.039, 0, 0, 0, 0.005, 0.04, 0.004);
+      return smoothN(g);
+    });
+    function poroBody(bodyG, B, C) { // 몸통: 그림을 입힌 공 (bodyG에) + 배에 큼직한 분홍 젖과 젖꼭지 둘 (B에 합쳐요)
+      const m = new T.Mesh(partG(PB, "poroBody", 64, 40), bodyMat());
+      m.castShadow = true; m.receiveShadow = true; bodyG.add(m);
+      const at = (F, x, y, z, sx, sy, sz) => F.clone().multiply(mtx(x, y, z, 0, 0, 0, sx, sy, sz)), Fu = eF(PB, 0, -6, 0.975, 20, -6);
+      B.add(pillowG(), at(Fu, 0, 0, 0, 0.11, 0.1, 0.03), C.udder);
+      for (const sd of [-1, 1]) B.add(sphG(8), at(Fu, sd * 0.04, 0.035, 0.025, 0.015, 0.019, 0.011), "#c4506c");
+    }
+    function poroHead(headG, H, C) { // 머리: 그림을 입힌 공 + 콧수염·눈·코·뿔·귀·귀표 (H에 합쳐요). 혀는 따로 매달아 돌려줘요
+      const m = new T.Mesh(partG(PH, "poroHead", 112, 72), headMat());
+      m.castShadow = true; m.receiveShadow = true; headG.add(m);
+      const at = (F, x, y, z, rx, ry, rz, sx, sy, sz) => F.clone().multiply(mtx(x, y, z, rx, ry, rz, sx, sy, sz));
+      for (const sd of [-1, 1]) {
+        H.add(lobeG(), at(eF(PH, sd * 27, 9, 1, sd * 58, 3), 0, 0, 0.006, 0, 0, 0, 0.13, 0.05, 0.045), C.face); // 콧수염: 가운데에서 양옆으로 통통하게 뻗어 끝이 뾰족해요
+        const [elo, ela] = faceLL(sd * 19.4, 7.5), Fe = eF(PH, elo, ela, 1, elo + 10, ela); // 눈: 콧수염 바로 위 작고 까만 눈 + 반짝
+        H.add(sphG(12), at(Fe, 0, 0, 0.004, 0, 0, 0, 0.026, 0.033, 0.014), "#1f1612");
+        H.add(sphG(8), at(Fe, 0.008, 0.012, 0.014, 0, 0, 0, 0.008, 0.009, 0.005), "#ffffff");
+        const ph = ePt(PH, sd * 62, 44, 0.96); // 뿔: 모자 위 양쪽에서 바깥으로 나갔다가 위로 휘어 올라가요
+        H.add(poroHornG(sd), mtx(ph.x, ph.y, ph.z, -0.1, 0, -sd * 0.55), C.dark);
+        const pe = ePt(PH, sd * 88, 12), L = eN(PH, sd * 88, 12).add(new T.Vector3(0, -0.1, 0.2)).normalize(); // 귀: 옆으로 뻗고, 분홍 안쪽이 앞·위를 봐요
+        const Fz = new T.Vector3(0, 0.55, 0.84); Fz.addScaledVector(L, -Fz.dot(L)).normalize();
+        const Fr = new T.Matrix4().makeBasis(L, new T.Vector3().crossVectors(Fz, L), Fz).setPosition(pe);
+        H.add(sphG(14), at(Fr, 0.07, 0, 0, 0, 0, 0, 0.095, 0.048, 0.024), C.dark);
+        H.add(sphG(12), at(Fr, 0.08, 0, 0.012, 0, 0, 0, 0.065, 0.03, 0.012), C.ear);
+        if (sd < 0) { const tp = pe.clone().addScaledVector(L, 0.085).add(new T.Vector3(0, -0.07, 0.015)); H.add(rboxG(0.052, 0.068, 0.015, 0.012, 1), mtx(tp.x, tp.y, tp.z, 0, -0.8, 0), C.tag); } // 화면 왼쪽 귀에 귀표 (앞치마 색)
+      }
+      const Fn = eF(PH, 0, 62, 0.97, 30, 62); // 모자 위 분홍 소 코: 겉면을 따라 눕힌 납작한 베개 모양, 콧구멍은 앞쪽에
+      H.add(pillowG(), at(Fn, 0, 0, 0, 0, 0, 0, 0.105, 0.065, 0.03), C.nose);
+      for (const sd of [-1, 1]) H.add(sphG(8), at(Fn, sd * 0.045, -0.012, 0.025, 0, 0, sd * 0.3, 0.013, 0.017, 0.009), "#d45f78");
+      // 혀: 콧수염 밑 입에 매달려 가슴까지 늘어져요 (poseChar가 흔들어요). 얼굴 볼록한 가장자리는 기울기가 커서 방향은 둥근 머리 그대로 잡아요
+      const mp = ePt(PH, 0, 11), base = sub(headG, mp.x, mp.y, mp.z); base.rotation.x = -11 * DEG;
+      const tongue = sub(base, 0, 0, 0.012);
+      part(tongue, tongueG(), mat(C.tongue, "g"));
       return tongue;
     }
     function buildChar(k, slot) {
       const C0 = CHARS[k] || CHARS.cat, AP = vivid(APRON[slot], 1.1, 0.95);
       const C = { fur: vivid(C0.fur), dark: vivid(C0.dark), ear: vivid(C0.ear, 1.15), nose: C0.nose, body: vivid(C0.body3 || C0.body || C0.fur), tail: vivid(C0.tail3 || C0.tail || C0.dark) };
-      C.hand = C0.hand ? vivid(C0.hand) : C.body; C.tongue = vivid(C0.tongue || C0.nose, 1.1); C.tag = AP; C.face = vivid(C0.face || C0.fur, 1.1, 0.97);
+      C.hand = C0.hand ? vivid(C0.hand) : C.body; C.tongue = vivid(C0.tongue || C0.nose, 1.1); C.tag = AP; C.face = vivid(C0.face || C0.fur, 1.1, 0.97); C.udder = vivid(C0.udder || C0.nose, 1.1, 0.97);
       const root = new T.Group();
       const blob = new T.Mesh(planeG(0.72, 0.72), blobMat());
       blob.rotation.x = -Math.PI / 2; blob.position.y = 0.006; blob.renderOrder = 1; root.add(blob);
@@ -4080,7 +4119,7 @@ body.modal { overflow: hidden; }
       // 몸통과 앞치마
       const big = BIG3[k]; // 치이카와·토끼·해달: 작은 몸 위에 옆으로 넓적한 큰 머리가 반쯤 묻혀 있어요
       const B = new Batch();
-      if (big && big.ball) { /* 포로: 몸이 곧 머리라서 몸통은 따로 없어요 (poroHead) */ }
+      if (big && big.ball) poroBody(bodyG, B, C); // 포로: 그림을 입힌 공 몸통
       else if (big) {
         const [bw, bh, bd] = big.body || [0.22, 0.19, 0.2];
         B.add(sphG(18), mtx(0, 0.23, 0, 0, 0, 0, bw, bh, bd), C.body);
@@ -4099,7 +4138,7 @@ body.modal { overflow: hidden; }
       const torso = B.p.length ? B.mesh(VSKIN) : null;
       if (torso) bodyG.add(torso);
       // 머리
-      const headG = new T.Group(); headG.position.y = big ? big.hy || 0.6 : 0.8; bodyG.add(headG);
+      const headG = new T.Group(); headG.position.set(0, big ? big.hy || 0.6 : 0.8, (big && big.hz) || 0); bodyG.add(headG);
       const H = new Batch();
       const tongue = k === "poro" ? poroHead(headG, H, C) : null;
       if (!tongue) H.add(big && big.bun ? bunG() : sphG(22), big ? mtx(0, 0, 0, 0, 0, 0, big.a, big.b, big.c) : mtx(0, 0, 0, 0, 0, 0, 0.25, 0.235, 0.24), C.fur);
@@ -4150,7 +4189,7 @@ body.modal { overflow: hidden; }
         tail = sub(bodyG, 0, 0.13, -0.17);
         part(tail, sphG(14), mat(C.tail), 0, -0.04, -0.2, -0.32, 0, 0, 0.11, 0.05, 0.22);
       } else if (k === "poro") { // 포로 꼬리: 엉덩이에서 가늘게 늘어진 하얀 꼬리 끝에 남색 털뭉치 (poseChar에서 살랑)
-        tail = sub(bodyG, 0, 0.2, -0.27);
+        tail = sub(bodyG, 0, 0.2, -0.29);
         part(tail, poroTailG(), mat(C.fur));
         part(tail, sphG(10), mat(C.dark), 0.03, -0.15, -0.07, 0, 0, 0, 0.032, 0.046, 0.032);
       } else if (big) part(bodyG, sphG(12), mat(C.fur), 0, 0.24, -0.215, 0, 0, 0, 0.055);
@@ -4163,15 +4202,14 @@ body.modal { overflow: hidden; }
       part(knife, boxG(0.011, 0.1, 0.27), mat("#e3e8eb", "p"), 0, -0.05, 0.16);
       part(knife, rboxG(0.032, 0.042, 0.12, 0.012, 1), mat("#6b4a2b"), 0, 0, -0.02);
       knife.visible = false;
-      const fw = poro ? 0.14 : 0.11, fs = poro ? 1.1 : 1;
+      const fw = poro ? 0.17 : 0.11, fs = poro ? 1.2 : 1;
       const footL = part(root, sphG(12), mat(C.dark), fw, 0.045, 0.03, 0, 0, 0, 0.075 * fs, 0.05 * fs, 0.1 * fs);
       const footR = part(root, sphG(12), mat(C.dark), -fw, 0.045, 0.03, 0, 0, 0, 0.075 * fs, 0.05 * fs, 0.1 * fs);
       const hold = sub(bodyG, 0, 0.6, 0.5);
       root.scale.setScalar(1.3);
       // 머리 큰 캐릭터(치이카와·토끼·해달)는 든 물건을 얼굴 앞으로 더 내밀어요. 다른 캐릭터 자리면 냄비 뒤쪽이 머리 안에 들어가서 냄비 속에 얼굴이 보여요
-      // 포로는 얼굴이 낮아서 배 앞에 들어요 (얼굴 높이에 들면 위에서 볼 때 접시가 얼굴을 가려요). 썰기·설거지 손도 조금 낮게 (도마보다는 위)
-      const holdZ = big ? 0.17 : 0, holdY = poro ? 0.34 : 0.47, workY = poro ? -0.06 : 0;
-      return { k, slot, root, bodyG, headG, handL, handR, footL, footR, tail, ears, tongue, knife, hold, holdZ, holdY, workY, ring, fw, hx: poro ? 0.355 : 0.26, hy: poro ? 0.29 : 0.33, held: null, heldSig: "", disp: torso ? [torso.geometry, head.geometry] : [head.geometry] };
+      const holdZ = big ? 0.17 : 0;
+      return { k, slot, root, bodyG, headG, handL, handR, footL, footR, tail, ears, tongue, knife, hold, holdZ, ring, fw, fz: poro ? 0.1 : 0.03, hx: poro ? 0.36 : 0.26, hy: poro ? 0.3 : 0.33, hz: poro ? 0.06 : 0, lean: -((big && big.lean) || 0), rest: (big && big.rest) || 0, held: null, heldSig: "", disp: torso ? [torso.geometry, head.geometry] : [head.geometry] };
     }
     function poseChar(c, o, now) {
       const tt = now / 1000;
@@ -4183,44 +4221,44 @@ body.modal { overflow: hidden; }
       c.bodyG.rotation.x = dash ? 0.38 * dash : o.moving ? 0.07 : o.chop ? 0.1 : o.reach * 0.16;
       c.bodyG.rotation.z = o.moving && !dash ? sw * 0.07 : 0;
       c.bodyG.scale.set(1 + 0.08 * dash, 1 - 0.1 * dash, 1 + 0.12 * dash);
-      c.headG.rotation.x = o.chop ? 0.2 : 0;
+      c.headG.rotation.x = c.lean + (o.chop ? 0.2 : 0);
       c.headG.rotation.z = o.moving ? sw * 0.04 : Math.sin(tt * 1.3) * 0.03;
-      c.footL.position.set(c.fw, 0.045 + Math.max(0, sw) * 0.05, 0.03 + sw * 0.09);
-      c.footR.position.set(-c.fw, 0.045 + Math.max(0, -sw) * 0.05, 0.03 - sw * 0.09);
+      c.footL.position.set(c.fw, 0.045 + Math.max(0, sw) * 0.05, c.fz + sw * 0.09);
+      c.footR.position.set(-c.fw, 0.045 + Math.max(0, -sw) * 0.05, c.fz - sw * 0.09);
       c.knife.visible = false;
       c.handR.rotation.x = 0;
       if (o.club) { // 몽둥이: 한 손. 휘두르는 각도대로 팔이 위아래로
         const a = o.swing == null ? -0.9 : o.swing;
         c.handR.position.set(-0.27, 0.57 - 0.14 * Math.sin(a), 0.2 + 0.17 * Math.cos(a));
-        c.handL.position.set(c.hx, c.hy, -sw * 0.08);
+        c.handL.position.set(c.hx, c.hy, c.hz - sw * 0.08);
       } else if (o.hold) {
         const r = o.reach * 0.08 + (c.holdZ || 0);
-        c.handL.position.set(0.24, c.holdY + 0.05, 0.36 + r); c.handR.position.set(-0.24, c.holdY + 0.05, 0.36 + r);
-        c.hold.position.set(0, c.holdY, 0.5 + r);
+        c.handL.position.set(0.24, 0.52, 0.36 + r); c.handR.position.set(-0.24, 0.52, 0.36 + r);
+        c.hold.position.set(0, 0.47, 0.5 + r);
       } else if (o.wash) {
         const a = tt * 12;
-        c.handL.position.set(0.13 + Math.cos(a) * 0.05, 0.56 + c.workY + Math.sin(a) * 0.03, 0.42);
-        c.handR.position.set(-0.13 + Math.cos(a + Math.PI) * 0.05, 0.56 + c.workY + Math.sin(a + Math.PI) * 0.03, 0.42);
+        c.handL.position.set(0.13 + Math.cos(a) * 0.05, 0.56 + Math.sin(a) * 0.03, 0.42);
+        c.handR.position.set(-0.13 + Math.cos(a + Math.PI) * 0.05, 0.56 + Math.sin(a + Math.PI) * 0.03, 0.42);
       } else if (o.chop) {
         const kk = Math.sin(now / 40), up = kk > 0 ? 0.11 * kk : 0;
-        c.handR.position.set(-0.1, 0.58 + c.workY + up, 0.4);
+        c.handR.position.set(-0.1, 0.58 + up, 0.4);
         c.handR.rotation.x = kk > 0 ? -0.5 * kk : 0.12;
         c.knife.visible = true;
-        c.handL.position.set(0.15, 0.55 + c.workY, 0.4);
+        c.handL.position.set(0.15, 0.55, 0.4);
       } else {
         const r = o.reach * 0.22;
-        c.handL.position.set(c.hx, c.hy + r * 0.9, -sw * 0.08 + r);
-        c.handR.position.set(-c.hx, c.hy + r * 0.9, sw * 0.08 + r);
+        c.handL.position.set(c.hx, c.hy + r * 0.9, c.hz - sw * 0.08 + r);
+        c.handR.position.set(-c.hx, c.hy + r * 0.9, c.hz + sw * 0.08 + r);
       }
       // 토끼 귀: 걸으면 발걸음에 맞춰 앞뒤로 흔들리고, 대시하면 뒤로 젖혀져요. 서 있으면 살랑살랑
       if (c.ears) c.ears.forEach((e, j) => { e.rotation.x = dash ? -0.6 * dash : o.moving ? -0.1 + Math.sin(o.phase * Math.PI + j * 0.7) * 0.32 : Math.sin(tt * 2.2 + j) * 0.05; });
       // 포로 혀: 걸으면 걸음마다 좌우로 덜렁거리고 튈 때마다 앞으로 펄럭, 대시하면 마구 펄럭. 썰 때는 칼질에 맞춰 들썩, 서 있으면 헥헥
       if (c.tongue) {
         const tg = c.tongue;
-        if (dash) { tg.rotation.x = -0.12 - 0.7 * dash; tg.rotation.z = Math.sin(tt * 26) * 0.45 * dash; }
-        else if (o.moving) { tg.rotation.x = -0.12 - Math.abs(Math.sin(o.phase * Math.PI - 0.5)) * 0.4; tg.rotation.z = Math.sin(o.phase * Math.PI - 0.9) * 0.42; }
-        else if (o.chop) { tg.rotation.x = -0.12 - Math.max(0, Math.sin(now / 40)) * 0.25; tg.rotation.z = 0; }
-        else { tg.rotation.x = -0.14 + Math.sin(tt * 6) * 0.06; tg.rotation.z = Math.sin(tt * 1.7) * 0.06; }
+        if (dash) { tg.rotation.x = c.rest - 0.9 * dash; tg.rotation.z = Math.sin(tt * 26) * 0.45 * dash; }
+        else if (o.moving) { tg.rotation.x = c.rest - 0.08 - Math.abs(Math.sin(o.phase * Math.PI - 0.5)) * 0.4; tg.rotation.z = Math.sin(o.phase * Math.PI - 0.9) * 0.42; }
+        else if (o.chop) { tg.rotation.x = c.rest - 0.2 - Math.max(0, Math.sin(now / 40)) * 0.2; tg.rotation.z = 0; } // 고개를 숙여도 혀가 가슴을 뚫지 않게 들어요
+        else { tg.rotation.x = c.rest - 0.04 + Math.sin(tt * 6) * 0.04; tg.rotation.z = Math.sin(tt * 1.7) * 0.06; }
       }
       if (c.tail) {
         if (c.k === "cat") c.tail.rotation.z = Math.sin(tt * 3) * 0.25;
@@ -5999,11 +6037,13 @@ body.modal { overflow: hidden; }
       if (pCache[key]) return pCache[key];
       const c = buildChar(k, slot);
       c.ring.visible = false;
-      poseChar(c, { x: 0, z: 0, yaw: 0.42, moving: false, phase: 0, reach: 0, dash: 0, chop: false, wash: false, hold: false }, 0);
+      poseChar(c, { x: 0, z: 0, yaw: k === "poro" ? 0.2 : 0.42, moving: false, phase: 0, reach: 0, dash: 0, chop: false, wash: false, hold: false }, 0); // 포로는 얼굴이 잘 보이게 덜 돌려요
       pScene.add(c.root);
       c.root.scale.setScalar(1);
-      const cy = k === "rabbit" ? 0.7 : k === "poro" ? 0.5 : 0.62; // 포로는 키가 작고 동글동글해서 조금 낮게, 가까이
-      pCam.position.set(0.12, cy + 0.38, k === "rabbit" ? 2.6 : k === "poro" ? 2.2 : 2.4); pCam.lookAt(0, cy, 0);
+      const cy = k === "rabbit" ? 0.7 : k === "poro" ? 0.5 : 0.62;
+      if (k === "poro") pCam.position.set(0.1, cy + 0.75, 2.25); // 포로는 사진처럼 조금 위에서 내려다봐요
+      else pCam.position.set(0.12, cy + 0.38, k === "rabbit" ? 2.6 : 2.4);
+      pCam.lookAt(0, cy, 0);
       const size = 256;
       gl.setPixelRatio(1); gl.setSize(size, size, false);
       gl.render(pScene, pCam);
@@ -6055,7 +6095,7 @@ body.modal { overflow: hidden; }
       c.root.position.y = o.lift || 0;
       c.root.rotation.z = o.lean || 0;
       const ly = o.lift || 0;
-      const out = shot(c.root, size, [0.15, 1.05 + ly, 3.2], [0, 0.6 + ly, 0.12], 30);
+      const out = k === "poro" ? shot(c.root, size, [0.12, 1.55 + ly, 3.0], [0, 0.5 + ly, 0.1], 30) : shot(c.root, size, [0.15, 1.05 + ly, 3.2], [0, 0.6 + ly, 0.12], 30); // 포로는 조금 위에서
       c.disp.forEach((g) => g.dispose());
       if (bd) bd.geometry.dispose();
       return out;
