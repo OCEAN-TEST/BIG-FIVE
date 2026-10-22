@@ -592,7 +592,7 @@ body.modal { overflow: hidden; }
   <div class="setbox">
     <div class="sethead"><h2 id="shopTitle">상점</h2><button class="setx" type="button" aria-label="상점 닫기">✕</button></div>
     <div class="shopmoney">내 돈 <b id="shopMoney">0원</b></div>
-    <small class="shopnote">판이 끝나면 번 돈의 10%가 모여요. 여럿이 하면 사람 수로 나눈 몫의 10%예요. 이 기기에만 저장돼요.</small>
+    <small class="shopnote" id="shopNote">판이 끝나면 번 돈의 10%가 모여요. 여럿이 하면 사람 수로 나눈 몫의 10%예요. 이 기기에만 저장돼요.</small>
     <div id="shopList"></div>
   </div>
 </div>
@@ -5914,13 +5914,15 @@ body.modal { overflow: hidden; }
   let wallet = (() => { try { const w = JSON.parse(localStorage.getItem(WALLET_KEY)) || {}; return { money: Math.max(0, Math.floor(+w.money || 0)), own: w.own || {}, tag: TAGS.includes(w.tag) ? w.tag : "" }; } catch (e) { return { money: 0, own: {}, tag: "" }; } })();
   function saveWallet() { try { localStorage.setItem(WALLET_KEY, JSON.stringify(wallet)); } catch (e) {} }
   const gearIn = (d) => ({ kn: d.kn ? 1 : 0, sp: d.sp ? 1 : 0, tg: TAGS.includes(d.tg) ? d.tg : "" }); // 친구가 보낸 물건 (모르는 값은 버려요)
-  const myGear = () => gearIn({ kn: wallet.own.kn, sp: wallet.own.sp, tg: wallet.tag });
+  const owns = (id) => TEST_OPEN || !!wallet.own[id]; // ?test: 물건을 다 가진 셈 (저장은 안 바뀌어요)
+  const myGear = () => gearIn({ kn: owns("kn"), sp: owns("sp"), tg: owns(wallet.tag) ? wallet.tag : "" });
   let paidKey = ""; // 같은 판 돈을 두 번 받지 않게
   function renderShop() {
     $("shopMoney").textContent = won(wallet.money);
+    $("shopNote").textContent = TEST_OPEN ? "테스트 화면이라 물건을 다 가진 셈이에요 (진짜 지갑·산 물건은 그대로)." : "판이 끝나면 번 돈의 10%가 모여요. 여럿이 하면 사람 수로 나눈 몫의 10%예요. 이 기기에만 저장돼요.";
     const box = $("shopList"); box.innerHTML = "";
     SHOP.forEach((x) => {
-      const own = !!wallet.own[x.id], using = x.kind === "tag" && wallet.tag === x.id;
+      const own = owns(x.id), using = x.kind === "tag" && wallet.tag === x.id;
       const row = document.createElement("div"); row.className = "setrow shoprow";
       const sp = document.createElement("span"), b = document.createElement("b"), sm = document.createElement("small");
       b.textContent = x.name; sm.textContent = x.desc + (own ? "" : " · " + won(x.price)); sp.append(b, sm);
