@@ -2794,16 +2794,18 @@ body.modal { overflow: hidden; }
       beltTex = canvasTex(c, true);
       return std({ map: beltTex, roughness: 0.72 });
     });
-    let serveTex = null;
-    const serveMat = () => gc("serveMat", () => { // 내는 곳 컨베이어: 까만 판 위 노란 화살표가 바깥쪽(그림 위쪽)으로 흘러가요. 밤에도 잘 보이게 살짝 빛나요
-      const c = document.createElement("canvas"); c.width = c.height = 128;
-      const g = c.getContext("2d");
-      g.fillStyle = "#2b2e31"; g.fillRect(0, 0, 128, 128);
-      g.fillStyle = "#3d4247"; for (const y of [0, 64]) g.fillRect(0, y, 128, 4); // 판 이음매
-      g.strokeStyle = "#ffcf33"; g.lineWidth = 13; g.lineCap = "round"; g.lineJoin = "round";
-      for (const y of [22, 86]) { g.beginPath(); g.moveTo(34, y + 26); g.lineTo(64, y); g.lineTo(94, y + 26); g.stroke(); }
-      serveTex = canvasTex(c, [1, 1]);
-      return std({ map: serveTex, roughness: 0.6, emissive: 0xffffff, emissiveMap: serveTex, emissiveIntensity: 0.3 });
+    const serveTexs = [];
+    const serveMat = (w, h) => gc("serveMat" + w + "x" + h, () => { // 내는 곳 컨베이어 (판 크기 w×h): 까만 판 위 큰 노란 화살표 하나가 바깥쪽(그림 위쪽)으로 흘러가요. 밤에도 잘 보이게 살짝 빛나요
+      const c = document.createElement("canvas"); c.height = 128; c.width = Math.max(128, Math.round((128 * w) / h / 32) * 32);
+      const g = c.getContext("2d"), W = c.width, H = 128;
+      g.fillStyle = "#2b2e31"; g.fillRect(0, 0, W, H);
+      g.fillStyle = "#3d4247"; g.fillRect(0, 0, W, 5); g.fillRect(0, 0, 8, H); g.fillRect(W - 8, 0, 8, H); // 판 이음매·옆 테
+      g.lineCap = "round"; g.lineJoin = "round";
+      const ch = () => { g.beginPath(); g.moveTo(W * 0.1, H * 0.84); g.lineTo(W * 0.5, H * 0.18); g.lineTo(W * 0.9, H * 0.84); g.stroke(); };
+      g.strokeStyle = "#b8860b"; g.lineWidth = 34; ch(); // 테두리
+      g.strokeStyle = "#ffcf33"; g.lineWidth = 24; ch();
+      const t = canvasTex(c, [1, 1]); serveTexs.push(t);
+      return std({ map: t, roughness: 0.6, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.3 });
     });
     const blobMat = () => gc("blobMat", () => {
       const c = document.createElement("canvas"); c.width = c.height = 64;
@@ -4085,7 +4087,26 @@ body.modal { overflow: hidden; }
       const m = SB.mesh(VSKIN); own(m.geometry); g.add(m);
       return g;
     }
-    function carModel(c) { // 옆 차선 자동차 (앞이 -z)
+    // 밤 불빛: 둥근 빛 번짐 (늘 카메라를 봐요) + 전조등이 앞 도로에 퍼지는 빛
+    const glowTex = () => gc("glowTex", () => {
+      const c = document.createElement("canvas"); c.width = c.height = 64;
+      const g = c.getContext("2d"), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.25, "rgba(255,255,255,.55)"); gr.addColorStop(1, "rgba(255,255,255,0)");
+      g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+      return canvasTex(c);
+    });
+    const haloM = (col) => gc("haloM" + col, () => new T.SpriteMaterial({ map: glowTex(), color: col, blending: T.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false }));
+    function glow(parent, x, y, z, size, col) { const sp = new T.Sprite(haloM(col)); sp.position.set(x, y, z); sp.scale.set(size, size, 1); sp.renderOrder = 3; parent.add(sp); return sp; }
+    const beamM = () => gc("beamM", () => { // 전조등 빛: 오른쪽 끝(차 앞)이 밝고 왼쪽으로 갈수록 넓게 퍼지며 흐려져요
+      const c = document.createElement("canvas"); c.width = 256; c.height = 128;
+      const g = c.getContext("2d");
+      for (let k = 0; k < 26; k++) {
+        const u = k / 25, x = 244 - u * 220, r = 16 + u * 50, a = 0.2 * (1 - u * 0.8), gr = g.createRadialGradient(x, 64, 0, x, 64, r);
+        gr.addColorStop(0, "rgba(255,236,190," + a + ")"); gr.addColorStop(1, "rgba(255,236,190,0)"); g.fillStyle = gr; g.fillRect(x - r, 64 - r, r * 2, r * 2);
+      }
+      return new T.MeshBasicMaterial({ map: canvasTex(c), blending: T.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false });
+    });
+    function carModel(c, night) { // 옆 차선 자동차 (앞이 -z). night: 앞뒤 불빛이 켜져요 (앞을 비추진 않아요)
       const g = new T.Group(), CB = new Batch(), CL = new Batch();
       CB.add(rboxG(0.88, 0.36, 1.6, 0.12, 2), mtx(0, 0.36, 0), c); // 몸통
       CB.add(rboxG(0.76, 0.3, 0.86, 0.12, 2), mtx(0, 0.66, 0.1), "#2f3a45"); // 유리창
@@ -4093,6 +4114,7 @@ body.modal { overflow: hidden; }
       for (const wx of [-0.44, 0.44]) for (const wz of [-0.52, 0.52]) CB.add(cylG(0.17, 0.17, 0.14, 14), mtx(wx, 0.17, wz, 0, 0, Math.PI / 2), "#1f2224");
       for (const lx of [-0.28, 0.28]) { CL.add(rboxG(0.2, 0.08, 0.03, 0.02, 1), mtx(lx, 0.42, 0.8), "#ff3b30"); CL.add(rboxG(0.2, 0.08, 0.03, 0.02, 1), mtx(lx, 0.42, -0.8), "#fff3c4"); }
       const cm = CB.mesh(VSKIN), cl = CL.mesh(gc("bulbMat", () => new T.MeshBasicMaterial({ vertexColors: true, toneMapped: false })), false); own(cm.geometry); own(cl.geometry); g.add(cm, cl);
+      if (night) for (const lx of [-0.28, 0.28]) { glow(g, lx, 0.42, -0.86, 0.55, 0xfff1c8); glow(g, lx, 0.42, 0.86, 0.38, 0xff3b30); }
       return g;
     }
     // ---- 가로 틈 도로 (사막을 달려요): 차선이 가로로 길게, 모두 오른쪽(+x)으로 흘러가요 ----
@@ -4172,7 +4194,7 @@ body.modal { overflow: hidden; }
       // 위·아래 차선 자동차 (트럭이 주방이라 커서 자동차도 크게). 앞이 -x
       const cars = [];
       [["#3f8fa0", -3.4, -4, 0.28], ["#efe7d6", 11.4, 6, -0.32], ["#c9873a", -3.4, 22, -0.2], ["#8a5a8f", 11.4, -18, 0.22]].forEach(([c, z, x, f]) => {
-        const g = carModel(c); g.position.set(x, ROAD_YR, z); g.rotation.y = Math.PI / 2; g.scale.setScalar(1.5);
+        const g = carModel(c, dark); g.position.set(x, ROAD_YR, z); g.rotation.y = Math.PI / 2; g.scale.setScalar(1.5);
         stageRoot.add(g); cars.push({ g, f });
       });
       road3 = { tex: [[roadTex, "x", -1 / 4], [sandTex, "y", 26 / 200]], scen, streaks, cars, speed: tk.speed, ax: "x", y: ROAD_YR, wrap: { scen: [38, 64.8], streaks: [34, 56], cars: [40, 72] } };
@@ -4322,6 +4344,7 @@ body.modal { overflow: hidden; }
     // 위 트럭은 먼 쪽에 초록 타일 벽(메뉴판·빨간 관·벽등)과 꺾인 굴뚝 연기, 아래 트럭은 가까운 쪽에 낮은 옆판 + 쇠 난간 (주방을 안 가리게)
     function buildTruckRow(tk, groups, wallCv) {
       const st = stageOf(curStage), row = tk.row, L = truckLen(st), X0 = -0.3, X1 = L + 0.3, CX = (X0 + X1) / 2, LEN = X1 - X0; // L: 트럭 길이 (칸)
+      const dark = !!(PAL[curStage] || {}).dark; // 깜깜한 밤: 전조등이 앞 도로를 비추고, 짐칸 주방엔 등이 켜져요
       const cols = truckColsOf(tk), CREAM = "#efe2c4", DARK = "#2f2d2a", GLASS = "#26323d", STEEL = "#c9ccce", FEND = "#3d3a35";
       const glowM = gc("bulbMat", () => new T.MeshBasicMaterial({ vertexColors: true, toneMapped: false }));
       const puffG = gc("puffG", () => new T.SphereGeometry(1, 10, 8));
@@ -4398,7 +4421,7 @@ body.modal { overflow: hidden; }
           fw.position.set(CX, HW / 2, z0 + 0.205); fw.receiveShadow = true; grp.add(fw);
           (wallCv.boards || []).forEach((bd) => snapLater({ k: "plate", items: [], dish: bd.d }, false, (ph) => { if (!ph || !fw.parent) return; bd.board(ph); wt.needsUpdate = true; }));
           MB.add(cylG(0.035, 0.035, LEN - 0.6, 10), mtx(CX, HW - 0.13, z0 + 0.25, 0, 0, Math.PI / 2), "#c0392b");
-          for (const lx of [X0 + LEN * 0.22, X0 + LEN * 0.78]) { B.add(rboxG(0.55, 0.15, 0.14, 0.04, 1), mtx(lx, HW - 0.28, z0 + 0.28), "#d99a35"); LB.add(boxG(0.46, 0.03, 0.06), mtx(lx, HW - 0.37, z0 + 0.3), "#fff2c4"); }
+          for (const lx of [X0 + LEN * 0.22, X0 + LEN * 0.78]) { B.add(rboxG(0.55, 0.15, 0.14, 0.04, 1), mtx(lx, HW - 0.28, z0 + 0.28), "#d99a35"); LB.add(boxG(0.46, 0.03, 0.06), mtx(lx, HW - 0.37, z0 + 0.3), "#fff2c4"); if (dark) glow(grp, lx, HW - 0.4, z0 + 0.36, 1.1, 0xffd68a); }
           B.add(rboxG(0.42, 0.5, 0.12, 0.03, 1), mtx(X1 - 1.4, 1.08, z0 + 0.27), "#9ea3a6"); // 전기함
         } else { // 가까운 쪽: 낮은 옆판 (조리대보다 낮게) + 쇠 난간
           const HP = CH - 0.06, pz = z1 - 0.09;
@@ -4406,6 +4429,7 @@ body.modal { overflow: hidden; }
           B.add(rboxG(LEN + 0.02, 0.05, 0.22, 0.02, 1), mtx(CX, HP + 0.02, pz), CREAM);
           for (let k = 0; k <= 10; k++) MB.add(cylG(0.028, 0.028, 0.28, 10), mtx(X0 + 0.16 + (k * (LEN - 0.32)) / 10, HP + 0.18, pz), STEEL);
           MB.add(cylG(0.036, 0.036, LEN - 0.24, 12), mtx(CX, HP + 0.31, pz, 0, 0, Math.PI / 2), STEEL);
+          if (dark) for (let k = 0; k < 10; k++) { const bx = X0 + 0.4 + (k * (LEN - 0.8)) / 9; LB.add(sphG(10), mtx(bx, HP + 0.36, pz, 0, 0, 0, 0.05), "#ffe2a0"); glow(grp, bx, HP + 0.36, pz, 0.32, 0xffcf70); } // 난간 위 전구 줄
         }
         // 운전석: 아래 덩어리 + 위 덩어리 + 비스듬한 덩어리(앞유리, 40°)
         const c0 = -2.9 + sh, c1 = -0.55 + sh, cw = cz1 - cz0, ccz = (cz0 + cz1) / 2, CB0 = -0.62, CT = 1.55;
@@ -4438,6 +4462,7 @@ body.modal { overflow: hidden; }
         }
         for (const hz of [cz0 + 0.5, cz1 - 0.5]) { // 앞: 둥근 전조등(은색 테)·깜빡이·그릴·은색 범퍼
           LB.add(cylG(0.14, 0.14, 0.03, 18), mtx(c0 - 0.012, 0.05, hz, 0, 0, Math.PI / 2), "#fff6d0");
+          if (dark) glow(grp, c0 - 0.06, 0.05, hz, 0.9, 0xfff3d0); // 켜진 전조등
           MB.add(torG(0.15, 0.03, 0, 6, 18), mtx(c0 - 0.012, 0.05, hz, 0, Math.PI / 2, 0), STEEL);
           BL.add(rboxG(0.03, 0.1, 0.18, 0.03, 1), mtx(c0 - 0.008, 0.05, hz + (hz < ccz ? 0.34 : -0.34)), "#ffa41b");
         }
@@ -4454,6 +4479,11 @@ body.modal { overflow: hidden; }
         }
         puff(grp, 0xb48a5c, 7, { x: AX[2] + 0.62, y: ROAD_YR + 0.14, z: z1 - 0.1, d: [2.6, 0.55, 0.35], wob: [0, 0.06, 0.08], s: [0.14, 0.46], op: 0.42, per: 700 }); // 뒷바퀴 흙먼지
         const a = B.mesh(VSKIN), m = MB.mesh(CLS_MAT.p), l = LB.mesh(glowM, false), bl = BL.mesh(glowM, false); own(a.geometry); own(m.geometry); own(l.geometry); own(bl.geometry); grp.add(a, m, l, bl); blink.push(bl);
+        if (dark) { // 전조등 빛이 트럭 앞 도로를 밝혀요 + 짐칸 주방 등
+          const bm = new T.Mesh(own(new T.PlaneGeometry(7, cw + 1.6)), beamM());
+          bm.rotation.x = -Math.PI / 2; bm.position.set(c0 - 0.1 - 3.5, ROAD_YR + 0.03, ccz); bm.renderOrder = 2; grp.add(bm);
+          const kl = new T.PointLight(0xffd59a, 1.5, 7.5, 1.4); kl.position.set(L / 2, 2.4, zc); grp.add(kl);
+        }
         // 트럭 사이 반 칸 바닥 (붙으면 맞닿아요)
         const pm = new T.Mesh(own(new T.PlaneGeometry(L, 0.5)), own(std({ map: own(canvasTex(plateRowCanvas(st, n, L))), roughness: 0.6 })));
         pm.rotation.x = -Math.PI / 2; pm.position.set(L / 2, 0, row + (n ? 0.75 : 0.25)); pm.receiveShadow = true; grp.add(pm);
@@ -4660,9 +4690,9 @@ body.modal { overflow: hidden; }
       });
       const dusk = !nightTime && !!P.dusk; // 노을: 따뜻한 주황 햇빛
       const dark = nightTime && !!P.dark; // 깜깜한 밤: 푸른 달빛 + 따뜻한 전등
-      hemi.intensity = (envTex ? 0.22 : 0.8) * (dark ? 0.32 : nightTime ? 0.8 : 1); hemi.color.set(dark ? 0xa8b6ff : dusk ? 0xffd2a4 : 0xfff6e6); hemi.groundColor.set(dark ? 0x241c18 : nightTime ? 0x4a3a2e : dusk ? 0x8f5a34 : 0x8a7563);
-      sun.intensity = dark ? 0.42 : nightTime ? 1.0 : dusk ? 1.3 : 1.2; sun.color.set(dark ? 0xb4c4ff : nightTime ? 0xffd2a0 : dusk ? 0xffb676 : 0xfff0dc);
-      lamp.intensity = dark ? 2.4 : nightTime ? 1.1 : 0; lamp.distance = dark ? 13 : 24; // 깜깜한 밤: 주방만 환하게
+      hemi.intensity = (envTex ? 0.22 : 0.8) * (dark ? 0.2 : nightTime ? 0.8 : 1); hemi.color.set(dark ? 0xa8b6ff : dusk ? 0xffd2a4 : 0xfff6e6); hemi.groundColor.set(dark ? 0x241c18 : nightTime ? 0x4a3a2e : dusk ? 0x8f5a34 : 0x8a7563);
+      sun.intensity = dark ? 0.26 : nightTime ? 1.0 : dusk ? 1.3 : 1.2; sun.color.set(dark ? 0xb4c4ff : nightTime ? 0xffd2a0 : dusk ? 0xffb676 : 0xfff0dc);
+      lamp.intensity = dark ? 0.9 : nightTime ? 1.1 : 0; lamp.distance = dark ? 13 : 24; // 깜깜한 밤: 주방은 트럭마다 켠 등으로 (buildTruckRow)
       Object.values(MC).concat(Object.values(CLS_MAT), [VMAT, VMET, VSKIN]).forEach((m) => { if (m.isMeshStandardMaterial) m.envMapIntensity = dark ? 0.35 : nightTime ? 0.6 : ENVI; });
       let A = new Batch(true), M = new Batch(true);
       const F = [], tGroups = st.truck ? [new T.Group(), new T.Group()] : null;
@@ -4832,20 +4862,23 @@ body.modal { overflow: hidden; }
             bub.visible = false; oils[t.i] = bub;
             return;
           }
-          case "serve": { // 내는 곳: 나란히 붙은 내는 곳은 한 덩어리로 (컨베이어 판 하나 + 종 하나). 판 위 화살표가 바깥쪽으로 흘러가요
-            cabinet(t, "#c8352a", "#ffcf33");
-            A.add(boxG(1.0, 0.012, 0.12), L(t, 0, CH + 0.002, 0.43), "#d7372b");
-            A.add(boxG(1.0, 0.012, 0.05), L(t, 0, CH + 0.002, -0.2), "#e9b521");
+          case "serve": { // 내는 곳: 나란히 붙은 내는 곳은 통째로 한 덩어리 (받침·윗판·띠·컨베이어 판·종 하나씩). 판 위 큰 화살표가 바깥쪽으로 흘러가요
             const d = openDir(t), ax = d[1] !== 0 ? [1, 0] : [0, 1]; // ax: 내는 곳이 늘어서는 쪽
             const same = (x, y) => { const q = at(x, y); if (!q || q.type !== "serve") return false; const e = openDir(q); return e[0] === d[0] && e[1] === d[1]; };
-            if (same(t.x - ax[0], t.y - ax[1])) return; // 덩어리 첫 칸이 판·종을 그려요
+            if (same(t.x - ax[0], t.y - ax[1])) return; // 덩어리 첫 칸이 다 그려요
             let n = 1;
             while (same(t.x + ax[0] * n, t.y + ax[1] * n)) n++;
-            const g = own(new T.PlaneGeometry(n - 0.1, 0.54)), uv = g.attributes.uv;
-            for (let j = 0; j < uv.count; j++) uv.setX(j, uv.getX(j) * n); // 칸마다 화살표 한 줄
-            const belt = new T.Mesh(g, serveMat());
+            const gx = cx + (ax[0] * (n - 1)) / 2, gz = cz + (ax[1] * (n - 1)) / 2;
+            const sz = (len, h, wd) => (ax[0] ? [len, h, wd] : [wd, h, len]); // 늘어선 쪽 길이·높이·앞뒤 폭 → x·y·z
+            const mid = (lz, y) => mtx(gx + d[0] * lz, y, gz + d[1] * lz); // 덩어리 가운데에서 요리사 쪽으로 lz
+            A.add(rboxG(...sz(n - 0.02, CH - 0.07, 0.98), 0.035, 1), mid(0, (CH - 0.07) / 2), "#c8352a");
+            A.add(rboxG(...sz(n, 0.075, 1), 0.03, 2), mid(0, CH - 0.0375), "#ffcf33");
+            if (floorAt(t.x + d[0], t.y + d[1])) { A.add(boxG(...sz(n - 0.06, 0.06, 0.02)), mid(0.492, 0.03), P.kick); A.add(rboxG(...sz(0.5, 0.035, 0.03), 0.012, 1), mid(0.5, CH - 0.17), P.knob); }
+            A.add(boxG(...sz(n, 0.012, 0.12)), mid(0.43, CH + 0.002), "#d7372b");
+            A.add(boxG(...sz(n, 0.012, 0.05)), mid(-0.2, CH + 0.002), "#e9b521");
+            const bw = n - 0.1, bh = 0.54, belt = new T.Mesh(own(new T.PlaneGeometry(bw, bh)), serveMat(bw, bh));
             belt.rotation.order = "YXZ"; belt.rotation.set(-Math.PI / 2, yawOf(t), 0); belt.receiveShadow = true;
-            belt.position.set(cx + (ax[0] * (n - 1)) / 2 + d[0] * 0.1, CH + 0.008, cz + (ax[1] * (n - 1)) / 2 + d[1] * 0.1); // 요리사 쪽으로 조금 (뒤쪽엔 종)
+            belt.position.set(gx + d[0] * 0.1, CH + 0.008, gz + d[1] * 0.1); // 요리사 쪽으로 조금 (뒤쪽엔 종)
             stageRoot.add(belt);
             const e = at(t.x + ax[0] * (n - 1), t.y + ax[1] * (n - 1)); // 종: 덩어리 끝 칸 뒤쪽 모서리
             M.add(cylG(0.09, 0.09, 0.02, 18), L(e, 0.27, CH + 0.01, -0.3), "#3a3a3a");
@@ -5107,7 +5140,7 @@ body.modal { overflow: hidden; }
         }
       });
       if (beltTex) beltTex.offset.x = -(((now / 1000) / BELT_STEP) % 1);
-      if (serveTex) serveTex.offset.y = -(((now / 1000) * 0.9) % 1); // 내는 곳 화살표가 바깥쪽으로 흘러가요
+      serveTexs.forEach((t) => (t.offset.y = -(((now / 1000) * 0.9) % 1))); // 내는 곳 화살표가 바깥쪽으로 흘러가요
       // 불
       const fires = view.fire || {};
       for (const k of [...extraO.keys()]) if (typeof k === "string" && k[0] === "f" && !fires[k.slice(1)]) sync(extraO, k, "", null);
