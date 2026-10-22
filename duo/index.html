@@ -585,10 +585,6 @@ body.modal { overflow: hidden; }
       <span><b id="sndLabel">게임 소리</b><small>끄면 효과음이 하나도 안 나요 (음소거). 컴퓨터는 <kbd>M</kbd> 키로도 바로 끄고 켜요.</small></span>
       <button class="switch" id="sndSwitch" type="button" role="switch" aria-checked="true" aria-labelledby="sndLabel"></button>
     </div>
-    <div class="setrow" id="viewRow">
-      <span><b>화면</b><small>버벅이면 2D로 바꿔요. 이 기기에만 저장돼요.</small></span>
-      <div class="seg" role="group" aria-label="화면 방식"><button type="button" id="view3d" aria-pressed="true">3D</button><button type="button" id="view2d" aria-pressed="false">2D</button></div>
-    </div>
     <div class="setrow" id="dashRow">
       <span><b>대시 키</b><small>W로 하면 위로는 방향키로 가요. 시프트는 여러 번 누르면 윈도우 '고정 키' 창이 떠요.</small></span>
       <div class="seg" role="group" aria-label="대시 키"><button type="button" id="dashW" aria-pressed="true">W</button><button type="button" id="dashQ" aria-pressed="false">Q</button><button type="button" id="dashShift" aria-pressed="false">시프트</button></div>
@@ -603,7 +599,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 51;
+  const VERSION = 52;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -6124,30 +6120,17 @@ body.modal { overflow: hidden; }
     return { el, render: render3, resize, portrait, posePic, itemPic, firePic, info, snapURLAsync };
   }
 
-  const VIEW_KEY = "bunsik.view";
-  const FORCE2D = /[?&]2d(&|$)/.test(location.search);
+  // 화면은 3D만 써요. 2D 그림은 3D가 아예 안 되는 기기(WebGL 없음·3D 오류)에서만 대신 그려요 (고르는 버튼은 없어요). ?local&2d는 테스트용
+  const FORCE2D = IS_LOCAL && /[?&]2d(&|$)/.test(location.search);
   $("testNote").hidden = !TEST_OPEN;
-  let want3D = (() => { try { return localStorage.getItem(VIEW_KEY) !== "2d"; } catch (e) { return true; } })();
   let R3 = null;
   if (!FORCE2D) { try { R3 = make3D(); } catch (e) { console.error(e); R3 = null; } }
   if (R3) $("viewBox").insertBefore(R3.el, $("viewBox").firstChild);
-  const use3D = () => !!R3 && want3D;
+  const use3D = () => !!R3;
   function applyView() {
-    const on = use3D();
-    $("viewBox").classList.toggle("three", on);
-    if (R3) R3.el.style.display = on ? "" : "none";
-    $("viewRow").hidden = !R3; // 3D가 안 되는 기기는 화면 고르기를 숨겨요
-    $("view3d").setAttribute("aria-pressed", String(on));
-    $("view2d").setAttribute("aria-pressed", String(!on));
+    $("viewBox").classList.toggle("three", use3D());
     if (!$("game").hidden) layout();
   }
-  function setView(on, save) {
-    want3D = on;
-    if (save) { try { localStorage.setItem(VIEW_KEY, on ? "3d" : "2d"); } catch (e) {} }
-    applyView();
-  }
-  $("view3d").addEventListener("click", () => setView(true, true));
-  $("view2d").addEventListener("click", () => setView(false, true));
   applyView();
   // 대시 키: 기본은 W (위로는 방향키). Q·시프트도 고를 수 있어요. 시프트 연타는 윈도우 고정 키 창이 떠요
   const DASH_KEY = "bunsik.dash";
@@ -6180,17 +6163,6 @@ body.modal { overflow: hidden; }
   function draw(now) {
     if (use3D()) { try { R3.render(now); return; } catch (e) { drop3D(e); } }
     render(now);
-  }
-  // 3D가 너무 버벅이는 기기면 (처음 몇 초 동안 중간값이 초당 11장 아래) 2D로 바꿔요
-  const AUTO_2D = !IS_LOCAL || /[?&]autofb(&|$)/.test(location.search);
-  let slowSamples = [], slowChecked = false;
-  function checkSlow(raw) {
-    if (slowChecked || !AUTO_2D || !use3D() || !view || view.phase !== "play") return;
-    slowSamples.push(raw);
-    if (slowSamples.length < 90) return;
-    slowChecked = true;
-    const sorted = slowSamples.slice().sort((a, b) => a - b), mid = sorted[sorted.length >> 1];
-    if (mid > 0.09) { setView(false, false); }
   }
   function portraitOf(k, slot) {
     if (!R3) return null;
@@ -7750,7 +7722,7 @@ body.modal { overflow: hidden; }
       smoothRats(dt);
       sprayFx(now);
       if ($("pauseCover").hidden) draw(now);
-      hud(); phaseUI(); watch(now); checkSlow(raw);
+      hud(); phaseUI(); watch(now);
       const ph = padHidden();
       if ($("pad").hidden !== ph) { $("pad").hidden = ph; if (ph) { touchIn.chop = false; endStick(); } else stickRest(); }
       const sn = role === "host" ? specs.size : specN;
@@ -7768,7 +7740,7 @@ body.modal { overflow: hidden; }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  if (IS_LOCAL) window.__bunsik = { get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get mode() { return use3D() ? "3d" : "2d"; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, setView: (on) => setView(on, false), info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom(), truckSegs: () => truckSegs(view), truckNow: () => truckNow(view) };
+  if (IS_LOCAL) window.__bunsik = { get W() { return W; }, get me() { return me; }, get bubbles() { return bubbles; }, get anim() { return anim; }, get view() { return view; }, get tiles() { return tiles; }, get mode() { return use3D() ? "3d" : "2d"; }, get role() { return role; }, get specs() { return specs.size; }, get specN() { return specN; }, info: () => (R3 ? R3.info() : null), STAGES, startRound: () => startRound(), toRoom: () => toRoom(), truckSegs: () => truckSegs(view), truckNow: () => truckNow(view) };
   if (document.fonts && document.fonts.load) document.fonts.load('20px "Jua"', "가나다 내는 곳 버리기 방장 친구 반납 개수대");
 })();
 </script>
