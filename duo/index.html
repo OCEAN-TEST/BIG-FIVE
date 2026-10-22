@@ -672,7 +672,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 60;
+  const VERSION = 61;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -5725,7 +5725,8 @@ body.modal { overflow: hidden; }
     fling() { noise(0.7, 0.14, 0, 900, 0.6); tone(700, 0.6, "sine", 0.07, 0, 200); },
     clunk() { tone(160, 0.12, "square", 0.08, 0, 90); noise(0.1, 0.1, 0, 700, 1.2); },
     swish() { noise(0.14, 0.07, 0, 2600, 0.7); },
-    squish() { noise(0.08, 0.12, 0, 900, 1.2); tone(2600, 0.07, "square", 0.05, 0.02, 3600); tone(3000, 0.09, "square", 0.04, 0.1, 2200); }
+    squish() { noise(0.08, 0.12, 0, 900, 1.2); tone(2600, 0.07, "square", 0.05, 0.02, 3600); tone(3000, 0.09, "square", 0.04, 0.1, 2200); },
+    fry() { noise(1.2, 0.12, 0, 4500, 0.45); noise(0.5, 0.06, 0, 1400, 0.8); for (let k = 0; k < 6; k++) noise(0.025, 0.04 + Math.random() * 0.04, 0.08 + k * 0.15 + Math.random() * 0.08, 2500 + Math.random() * 3000, 1.4); } // 튀김기에 넣으면 치이익 + 기름 튀는 타닥
   };
   ["pointerdown", "keydown"].forEach((t) => window.addEventListener(t, () => { if (sndOn) audio(); }, true));
   document.addEventListener("click", (e) => { const b = e.target.closest && e.target.closest("button"); if (b && !b.closest(".pbtns")) sfx.tap(); }, true); // 메뉴 버튼을 누르면 톡 (게임 조작 버튼은 빼고)
@@ -5933,7 +5934,7 @@ body.modal { overflow: hidden; }
   }, true);
 
   // 화구 위 그릇이 다 익고, 타기 시작하고, 다 탔을 때 소리 (두 화면 각자)
-  const contSeen = {};
+  const contSeen = {}, contN = {};
   let lastBeep = 0, lastChop = 0;
   function watch(now) {
     if (!view || view.phase !== "play") return;
@@ -5964,6 +5965,9 @@ body.modal { overflow: hidden; }
         contSeen[t.i] = key;
       }
       if (key === "warn") warnMax = Math.max(warnMax, (it.t - SAFE) / WARN);
+      const n = hot ? it.items.length : 0;
+      if (t.type === "fryer" && n > (contN[t.i] || 0)) sfx.fry(); // 튀김기 바구니에 재료가 들어가면 (재료 든 바구니를 올려도)
+      contN[t.i] = n;
     });
     if (warnMax >= 0 && now - lastBeep > 560 - 380 * Math.min(1, warnMax)) { lastBeep = now; sfx.warn(); }
     const mine = view.players[myIdx];
