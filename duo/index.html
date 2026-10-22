@@ -89,7 +89,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sign); outl
 .ppanel .lobbybar { gap: 8px; flex-wrap: nowrap; }
 .ppanel .lobbybar .btn { font-size: 16px; padding: 7px 6px; gap: 5px; }
 .ppanel .lobbybar svg { width: 17px; height: 17px; }
-@media (max-width: 380px) { .ppanel .lobbybar .btn { font-size: 14px; } .plabel { display: none; } }
+@media (max-width: 380px) { body:not(.side) .ppanel .lobbybar .btn { font-size: 14px; } body:not(.side) .plabel { display: none; } }
 @media (max-height: 520px) { /* 폰을 가로로 눕혔을 때: 제목·판을 줄여서 한 화면에 */
   .lobby { gap: 6px; padding-top: 6px; padding-bottom: 8px; }
   .ptitle h1 { font-size: clamp(34px, 11vh, 60px); }
@@ -100,6 +100,9 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sign); outl
   .ppanel .join input { font-size: 20px; padding: 2px 6px; }
   .ppanel .join .btn { font-size: 18px; padding: 6px 12px; }
   .ppanel .lobbybar .btn { font-size: 14px; padding: 4px 6px; }
+  #room .sign { display: none; }
+  #room.wrap { padding-block: 10px 16px; gap: 10px; }
+  #room .code { font-size: 56px; }
 }
 
 .card { background: var(--paper); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
@@ -144,7 +147,7 @@ kbd { font-family: var(--font-ui); background: #fff; border: 2px solid var(--pap
 .charbtn.ro:disabled[aria-pressed="true"] { opacity: 1; }
 .specnote { margin: 0; font-family: var(--font-ui); font-size: 16px; color: var(--ink); background: #fff1cc; border: 2px solid var(--sign); border-radius: 999px; padding: 3px 14px; }
 .charbtn small { font-family: var(--font-body); font-size: 11.5px; color: var(--soft); min-height: 1.4em; }
-@media (max-width: 480px) { .chars { gap: 5px; grid-template-columns: repeat(4, minmax(0, 1fr)); } .charbtn { padding: 4px 2px 6px; border-width: 2px; font-size: 13px; white-space: nowrap; } .charbtn small { font-size: 10px; white-space: nowrap; } }
+@media (max-width: 480px) { body:not(.side) .chars { gap: 5px; grid-template-columns: repeat(4, minmax(0, 1fr)); } body:not(.side) .charbtn { padding: 4px 2px 6px; border-width: 2px; font-size: 13px; white-space: nowrap; } body:not(.side) .charbtn small { font-size: 10px; white-space: nowrap; } }
 .namerow { display: flex; align-items: center; gap: 10px; margin: 2px 0 4px; }
 .namerow span { font-family: var(--font-ui); font-size: 18px; color: var(--ink); }
 .namerow input { width: 6.2em; font-family: var(--font-ui); font-size: 22px; text-align: center; padding: 5px 8px; border: 3px solid var(--paper-line); border-radius: 10px; background: #fff; color: var(--ink); }
@@ -164,8 +167,27 @@ kbd { font-family: var(--font-ui); background: #fff; border: 2px solid var(--pap
 /* 폰 화면 가장자리 여백 (노치·홈 막대). 눕혀 그릴 땐 게임의 위 = 폰의 오른쪽, 오른쪽 = 아래, 아래 = 왼쪽, 왼쪽 = 위 */
 #game { --sat: env(safe-area-inset-top, 0px); --sar: env(safe-area-inset-right, 0px); --sab: env(safe-area-inset-bottom, 0px); --sal: env(safe-area-inset-left, 0px); }
 body.side #game { --sat: env(safe-area-inset-right, 0px); --sar: env(safe-area-inset-bottom, 0px); --sab: env(safe-area-inset-left, 0px); --sal: env(safe-area-inset-top, 0px); }
-/* 세로로 든 폰: 게임 화면(과 게임 중 여는 창)을 시계 방향으로 90도 눕혀요. 폰만 가로로 돌리면 바로 가로 화면이에요 */
-body.side #game, body.side .setwrap, body.side .xl { position: fixed; inset: auto; left: 0; top: 0; width: var(--sw); height: var(--sh); max-width: none; margin: 0; transform-origin: 0 0; transform: translateX(var(--sh)) rotate(90deg); }
+/* 세로로 든 폰·태블릿: 첫 화면부터 모든 화면(첫 화면·대기실·게임·창)을 시계 방향으로 90도 눕혀요. 폰만 가로로 돌리면 바로 가로 화면이에요 */
+body.side #lobby, body.side #room, body.side #game, body.side .setwrap, body.side .xl { position: fixed; inset: auto; left: 0; top: 0; width: var(--sw); height: var(--sh); max-width: none; margin: 0; transform-origin: 0 0; transform: translateX(var(--sh)) rotate(90deg); }
+body.side #lobby, body.side #room { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+body.side .lobby { padding: max(6px, env(safe-area-inset-right, 0px)) max(14px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)) max(14px, env(safe-area-inset-top, 0px)); }
+body.side #room.wrap { padding: max(10px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-top, 0px)); }
+body.side .setbox, body.side .howbox { max-height: calc(var(--sh) - 32px); }
+/* 눕힌 화면은 화면 크기를 재는 규칙이 반대로 걸려요 (눕힌 화면의 가로 = 폰의 세로). 그래서 '낮은 화면' 규칙은 body.side 로 한 번 더 쓰고 (vw·vh도 서로 바꿔서), '좁은 화면' 규칙은 안 걸리게 해요 */
+@media (max-width: 520px) {
+  body.side .lobby { gap: 6px; }
+  body.side .ptitle h1 { font-size: clamp(34px, 11vw, 60px); }
+  body.side .pkick { font-size: 13px; margin-bottom: 2px; padding: 0 12px; }
+  body.side .pgap { min-height: 16vw; }
+  body.side .ppanel { padding: 8px 10px; gap: 6px; border-width: 3px; }
+  body.side .ppanel #hostBtn, body.side .pmain .btn { font-size: 19px; padding: 6px 10px; }
+  body.side .ppanel .join input { font-size: 20px; padding: 2px 6px; }
+  body.side .ppanel .join .btn { font-size: 18px; padding: 6px 12px; }
+  body.side .ppanel .lobbybar .btn { font-size: 14px; padding: 4px 6px; }
+  body.side #room .sign { display: none; }
+  body.side #room.wrap { gap: 10px; }
+  body.side .code { font-size: 56px; }
+}
 #game { max-width: 1240px; margin: 0 auto; padding-left: max(12px, var(--sal)); padding-right: max(12px, var(--sar)); padding-block: max(10px, var(--sat)) max(10px, var(--sab)); display: flex; flex-direction: column; gap: 8px; height: 100vh; height: 100dvh; }
 body.ingame { overflow: hidden; overscroll-behavior: none; }
 body.ingame #game { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
@@ -262,8 +284,8 @@ body.modal { overflow: hidden; }
 .howtips b { font-weight: 400; color: var(--chili); }
 .howtips small { color: var(--soft); font-family: var(--font-body); font-size: 13px; }
 .howtips kbd { font-size: 14px; }
-@media (max-width: 480px) { .howkeys, .recipes, .howtips { grid-template-columns: 1fr 1fr; } .hk { padding: 4px 5px; gap: 5px; min-width: 0; } .kspace { font-size: 0 !important; } .kspace::after { content: "Space"; font-size: 13px; } .howkeys { gap: 5px; } .hk kbd { font-size: 13px; padding: 0 5px; } .hk b { font-size: 15px; } .recipe { padding: 3px 6px; gap: 6px; } .recipe canvas { width: 32px; height: 32px; } .recipe b { font-size: 15px; } .recipe small { font-size: 11px; } .howtips li { font-size: 15px; padding: 4px 8px; } .howflow li { font-size: 15px; padding: 1px 8px; } }
-@media (max-width: 370px) { .hk b { font-size: 14px; letter-spacing: -0.02em; } .hk kbd { font-size: 12px; padding: 0 4px; } .kspace::after { font-size: 12px; } .recipe b { font-size: 14px; } .recipe small { font-size: 10.5px; } }
+@media (max-width: 480px) { body:not(.side) .howkeys, body:not(.side) .recipes, body:not(.side) .howtips { grid-template-columns: 1fr 1fr; } body:not(.side) .hk { padding: 4px 5px; gap: 5px; min-width: 0; } body:not(.side) .kspace { font-size: 0 !important; } body:not(.side) .kspace::after { content: "Space"; font-size: 13px; } body:not(.side) .howkeys { gap: 5px; } body:not(.side) .hk kbd { font-size: 13px; padding: 0 5px; } body:not(.side) .hk b { font-size: 15px; } body:not(.side) .recipe { padding: 3px 6px; gap: 6px; } body:not(.side) .recipe canvas { width: 32px; height: 32px; } body:not(.side) .recipe b { font-size: 15px; } body:not(.side) .recipe small { font-size: 11px; } body:not(.side) .howtips li { font-size: 15px; padding: 4px 8px; } body:not(.side) .howflow li { font-size: 15px; padding: 1px 8px; } }
+@media (max-width: 370px) { body:not(.side) .hk b { font-size: 14px; letter-spacing: -0.02em; } body:not(.side) .hk kbd { font-size: 12px; padding: 0 4px; } body:not(.side) .kspace::after { font-size: 12px; } body:not(.side) .recipe b { font-size: 14px; } body:not(.side) .recipe small { font-size: 10.5px; } }
 .howbody h3 { margin: 4px 0 0; padding-top: 8px; border-top: 2px dashed var(--paper-line); font-family: var(--font-ui); font-weight: 400; font-size: 21px; color: var(--chili); }
 .sethead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .sethead h2 { margin: 0; font-family: var(--font-ui); font-weight: 400; font-size: 24px; color: var(--chili); }
@@ -306,6 +328,8 @@ body.modal { overflow: hidden; }
 .result p { margin: 0; }
 @media (max-height: 560px) {
   .result { padding: 12px 20px; gap: 3px; }
+  .result .earn { margin: 2px auto 0; padding: 4px 12px; }
+  .result .earn .plus { font-size: 21px; }
   .result h2 { font-size: 30px; }
   .result .stars { font-size: 26px; }
   .result .big { font-size: 24px; }
@@ -314,6 +338,19 @@ body.modal { overflow: hidden; }
   .intro { padding: 10px 18px; gap: 3px; }
   .intro h2 { font-size: 28px; }
   .intro .count { font-size: 44px; }
+}
+@media (max-width: 560px) {
+  body.side .result { padding: 12px 20px; gap: 3px; }
+  body.side .result .earn { margin: 2px auto 0; padding: 4px 12px; }
+  body.side .result .earn .plus { font-size: 21px; }
+  body.side .result h2 { font-size: 30px; }
+  body.side .result .stars { font-size: 26px; }
+  body.side .result .big { font-size: 24px; }
+  body.side .result .note { display: none; }
+  body.side .result .btn { font-size: 17px; padding: 7px 14px; }
+  body.side .intro { padding: 10px 18px; gap: 3px; }
+  body.side .intro h2 { font-size: 28px; }
+  body.side .intro .count { font-size: 44px; }
 }
 .foot { display: flex; justify-content: space-between; gap: 12px; color: #cdbca8; font-size: 13px; flex-wrap: wrap; }
 .foot kbd { color: var(--ink); }
@@ -352,6 +389,12 @@ body.modal { overflow: hidden; }
   .pbtn.grab { width: 76px; height: 76px; font-size: 21px; }
   .pbtn.work { width: 64px; height: 64px; font-size: 17px; }
   .pbtn.dash { width: 54px; height: 54px; font-size: 15px; }
+}
+@media (max-width: 360px) {
+  body.side .pbtns { gap: 5px 6px; bottom: max(8px, var(--sab)); }
+  body.side .pbtn.grab { width: 76px; height: 76px; font-size: 21px; }
+  body.side .pbtn.work { width: 64px; height: 64px; font-size: 17px; }
+  body.side .pbtn.dash { width: 54px; height: 54px; font-size: 15px; }
 }
 #game.touch .hud { gap: 8px; }
 #game.touch .toast { font-size: 16px; bottom: 8px; }
@@ -627,7 +670,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 55;
+  const VERSION = 56;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -6244,7 +6287,7 @@ body.modal { overflow: hidden; }
     document.body.classList.toggle("ingame", name === "game");
     roundRow();
     if (name !== "game") { $("chatBar").hidden = true; bubbles.length = 0; hits.length = 0; }
-    if (name !== "game") { touchIn.chop = false; endStick(); $("pad").hidden = true; if (myCover) setMyCover(false); sideways = false; document.body.classList.remove("side"); }
+    if (name !== "game") { touchIn.chop = false; endStick(); $("pad").hidden = true; if (myCover) setMyCover(false); orient(); }
     if (name === "game") { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); requestAnimationFrame(layout); }
     if (name === "lobby") requestAnimationFrame(() => { try { Poster.paint(); } catch (e) {} }); // 다른 화면에 있는 동안 창 크기가 바뀌었을 수 있어요
   }
@@ -6919,21 +6962,24 @@ body.modal { overflow: hidden; }
   window.addEventListener("pointerdown", (e) => { if (e.pointerType === "touch" && !touchMode) { touchMode = true; layout(); } }, true);
 
   const padHidden = () => !touchMode || !me || $("game").hidden || !!(view && view.phase === "end");
-  document.addEventListener("touchmove", (e) => { if (document.body.classList.contains("ingame")) e.preventDefault(); }, { passive: false });
+  document.addEventListener("touchmove", (e) => { if (document.body.classList.contains("ingame") && !(e.target.closest && e.target.closest(".setbox, .result, .xlwin"))) e.preventDefault(); }, { passive: false }); // 게임 화면은 안 밀리게. 창·결과 카드 안은 밀어서 볼 수 있어요
   ["gesturestart", "dblclick"].forEach((t) => document.addEventListener(t, (e) => { if (document.body.classList.contains("ingame")) e.preventDefault(); }));
-  function layout() {
-    const g = $("game");
-    const portrait = window.innerHeight > window.innerWidth;
-    g.classList.toggle("touch", touchMode);
-    $("pad").hidden = padHidden();
-    $("rotateTip").hidden = true;
-    // 가로로만 해요: 폰·태블릿을 세로로 들고 있으면 게임을 옆으로 눕혀 그려요 (폰만 돌리면 가로 화면. 화면 회전 잠금을 켜 둬도 돼요)
-    sideways = touchMode && portrait && !g.hidden;
+  // 가로로만 해요: 폰·태블릿을 세로로 들고 있으면 첫 화면부터 모든 화면을 옆으로 눕혀 그려요 (폰만 돌리면 가로 화면. 화면 회전 잠금을 켜 둬도 돼요)
+  function orient() {
+    sideways = touchMode && window.innerHeight > window.innerWidth;
     document.body.classList.toggle("side", sideways);
     if (sideways) { // 아이폰 홈 화면 앱은 화면 맨 위(상태 막대 밑)부터 그리는데 innerHeight 가 상태 막대만큼 짧게 나올 때가 있어요 → 화면 끝까지 (아래에 빈 띠 안 남게)
       const bs = document.body.style, tall = navigator.standalone === true ? Math.max(window.innerHeight, screen.height) : window.innerHeight;
       bs.setProperty("--sw", tall + "px"); bs.setProperty("--sh", window.innerWidth + "px");
     }
+  }
+  orient();
+  function layout() {
+    const g = $("game");
+    g.classList.toggle("touch", touchMode);
+    $("pad").hidden = padHidden();
+    $("rotateTip").hidden = true;
+    orient();
     if (!g.hidden) {
       const hudB = crect(document.querySelector("#game .hud")).bottom;
       zone.style.top = Math.round(hudB + 4) + "px";
@@ -7018,7 +7064,7 @@ body.modal { overflow: hidden; }
     startRound(); showScreen("game");
   });
   $("leaveBtn").addEventListener("click", leave);
-  window.addEventListener("resize", () => { if (!$("game").hidden) layout(); });
+  window.addEventListener("resize", () => { if (!$("game").hidden) layout(); else orient(); });
   window.addEventListener("orientationchange", () => setTimeout(() => { if (!$("game").hidden) layout(); }, 250));
   const closeNet = () => { if (net) { try { net.close(); } catch (e) {} net = null; } };
   window.addEventListener("beforeunload", closeNet);
@@ -7107,7 +7153,7 @@ body.modal { overflow: hidden; }
       cv.width = Math.round(W * pr); cv.height = Math.round(H * pr);
       const g = cv.getContext("2d"); g.setTransform(pr, 0, 0, pr, 0, 0);
       const sp = sprites(), land = W > H * 1.15;
-      const tb = $("ptitle").getBoundingClientRect(), pb = $("ppanel").getBoundingClientRect();
+      const tb = crect($("ptitle")), pb = crect($("ppanel")); // 눕혀 그린 화면이면 눕힌 화면 기준 자리로
       const top = tb.bottom, base = Math.min(H, pb.top + 8), Ha = Math.max(120, base - top), U = Math.min(W, H);
 
       // 햇살 바탕
