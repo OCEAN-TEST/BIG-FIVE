@@ -290,6 +290,7 @@ body.modal { overflow: hidden; }
 .sethead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .sethead h2 { margin: 0; font-family: var(--font-ui); font-weight: 400; font-size: 24px; color: var(--chili); }
 .setx { width: 38px; height: 38px; border-radius: 50%; border: 0; background: transparent; color: var(--soft); font-size: 22px; line-height: 1; cursor: pointer; }
+.setinfo { margin: 6px 0 2px; font-size: 11px; color: var(--soft); text-align: center; }
 .setrow { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 0; border-top: 2px dashed var(--paper-line); }
 .setrow b { display: block; font-family: var(--font-ui); font-weight: 400; font-size: 19px; color: var(--ink); }
 .setrow small { display: block; font-size: 13px; color: var(--soft); line-height: 1.45; }
@@ -660,6 +661,7 @@ body.modal { overflow: hidden; }
       <span><b>대시 키</b><small>W로 하면 위로는 방향키로 가요. 시프트는 여러 번 누르면 윈도우 '고정 키' 창이 떠요.</small></span>
       <div class="seg" role="group" aria-label="대시 키"><button type="button" id="dashW" aria-pressed="true">W</button><button type="button" id="dashQ" aria-pressed="false">Q</button><button type="button" id="dashShift" aria-pressed="false">시프트</button></div>
     </div>
+    <p class="setinfo" id="setInfo"></p>
   </div>
 </div>
 
@@ -670,7 +672,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 56;
+  const VERSION = 57;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -6968,10 +6970,13 @@ body.modal { overflow: hidden; }
   function orient() {
     sideways = touchMode && window.innerHeight > window.innerWidth;
     document.body.classList.toggle("side", sideways);
-    if (sideways) { // 아이폰 홈 화면 앱은 화면 맨 위(상태 막대 밑)부터 그리는데 innerHeight 가 상태 막대만큼 짧게 나올 때가 있어요 → 화면 끝까지 (아래에 빈 띠 안 남게)
-      const bs = document.body.style, tall = navigator.standalone === true ? Math.max(window.innerHeight, screen.height) : window.innerHeight;
-      bs.setProperty("--sw", tall + "px"); bs.setProperty("--sh", window.innerWidth + "px");
-    }
+    if (sideways) { const bs = document.body.style; bs.setProperty("--sw", window.innerHeight + "px"); bs.setProperty("--sh", window.innerWidth + "px"); } // 브라우저가 그리게 해 주는 곳(innerHeight)까지만. 아이폰 홈 화면 앱은 그 아래가 남아도 거기는 그려도 잘려요
+    screenInfo();
+  }
+  function screenInfo() { // 설정 창 맨 아래: 버전과 이 기기가 알려 주는 화면 크기 (화면이 이상할 때 사진으로 보내 주면 원인을 찾기 쉬워요)
+    const sp = getComputedStyle($("safeProbe")), px = (k) => Math.round(parseFloat(sp["padding" + k]) || 0);
+    $("setInfo").textContent = "버전 " + VERSION + " · 그리는 곳 " + window.innerWidth + "×" + window.innerHeight + " · 화면 " + screen.width + "×" + screen.height +
+      " · 여백 위 " + px("Top") + " 아래 " + px("Bottom") + (navigator.standalone === true ? " · 홈 화면 앱" : "");
   }
   orient();
   function layout() {
