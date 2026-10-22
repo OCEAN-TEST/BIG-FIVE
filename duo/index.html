@@ -5906,8 +5906,8 @@ body.modal { overflow: hidden; }
     { id: "sp", kind: "gear", name: "뽀득 수세미", desc: "설거지가 10% 빨라져요", price: 50000 },
     { id: "kn", kind: "gear", name: "잘 드는 식칼", desc: "재료 썰기가 16% 빨라져요", price: 70000 },
     { id: "gold", kind: "tag", name: "금테 이름표", desc: "이름표 테두리가 반짝이는 금색", price: 20000 },
-    { id: "star", kind: "tag", name: "별 이름표", desc: "이름 양옆에 별", price: 25000 },
-    { id: "heart", kind: "tag", name: "하트 이름표", desc: "이름 양옆에 하트", price: 25000 },
+    { id: "star", kind: "tag", name: "별 이름표", desc: "금테에 양옆으로 반짝이는 금별", price: 25000 },
+    { id: "heart", kind: "tag", name: "하트 이름표", desc: "분홍 테에 양옆으로 분홍 하트", price: 25000 },
     { id: "rainbow", kind: "tag", name: "무지개 이름표", desc: "테두리가 무지개색", price: 35000 }
   ];
   const TAGS = SHOP.filter((x) => x.kind === "tag").map((x) => x.id);
@@ -5978,19 +5978,34 @@ body.modal { overflow: hidden; }
       const q = st.players[i];
       if (!q || !q.nm) return;
       const fs = Math.max(11, s * 0.24), tg = q.tg; // 상점 이름표: 금테·별·하트·무지개
-      const text = tg === "star" ? "★ " + q.nm + " ★" : tg === "heart" ? "♥ " + q.nm + " ♥" : q.nm;
       wantFont(q.nm);
       c.save();
       c.font = Math.round(fs) + "px " + FONT_UI;
-      const w = c.measureText(text).width + fs * 0.9, h = fs * 1.35;
+      const deco = tg === "star" || tg === "heart", w = c.measureText(q.nm).width + fs * (deco ? 2.3 : 0.9), h = fs * 1.35, cy = y + h / 2; // 별·하트는 양 끝에 그림 자리만큼 넓게
       c.globalAlpha = 0.93;
       rrect(c, x - w / 2, y, w, h, h / 2); c.fillStyle = APRON[i]; c.fill();
       let line = "#fff";
-      if (tg === "gold") line = "#ffd23f";
+      if (tg === "gold" || tg === "star") line = "#ffd23f";
+      else if (tg === "heart") line = "#ff8fc0";
       else if (tg === "rainbow") { line = c.createLinearGradient(x - w / 2, 0, x + w / 2, 0); ["#ff4d4d", "#ffa63d", "#ffe14d", "#4cd964", "#4da6ff", "#a66bff"].forEach((col, k) => line.addColorStop(k / 5, col)); }
-      c.lineWidth = Math.max(1.5, fs * (tg === "gold" || tg === "rainbow" ? 0.2 : 0.12)); c.strokeStyle = line; c.stroke();
+      c.lineWidth = Math.max(1.5, fs * (tg ? 0.2 : 0.12)); c.strokeStyle = line; c.stroke();
       c.globalAlpha = 1; c.fillStyle = "#fff"; c.textAlign = "center"; c.textBaseline = "middle";
-      c.fillText(text, x, y + h / 2 + 1);
+      c.fillText(q.nm, x, cy + 1);
+      if (tg === "star") [-1, 1].forEach((sd) => { // 별: 양 끝에 큼직한 금별 + 작은 별, 반짝이는 점
+        drawStar(c, x + sd * (w / 2 - fs * 0.5), cy + fs * 0.02, fs * 0.55, "#ffd23f");
+        drawStar(c, x + sd * (w / 2 + fs * 0.12), y - fs * 0.12, fs * 0.25, "#fff2a8");
+        c.beginPath(); c.arc(x + sd * (w / 2 - fs * 1.1), y - fs * 0.06, fs * 0.08, 0, Math.PI * 2); c.fillStyle = "#fff8d0"; c.fill();
+      });
+      if (tg === "heart") [-1, 1].forEach((sd) => { // 하트: 양 끝에 분홍 하트 (하얀 테두리) + 작은 하트
+        const heart = (hx, hy, r, col) => {
+          c.beginPath(); c.moveTo(hx, hy + r * 0.85);
+          c.bezierCurveTo(hx - r * 1.25, hy, hx - r * 0.75, hy - r * 1.05, hx, hy - r * 0.35);
+          c.bezierCurveTo(hx + r * 0.75, hy - r * 1.05, hx + r * 1.25, hy, hx, hy + r * 0.85); c.closePath();
+          c.fillStyle = col; c.fill(); c.lineWidth = Math.max(1, r * 0.22); c.strokeStyle = "#fff"; c.stroke();
+        };
+        heart(x + sd * (w / 2 - fs * 0.5), cy + fs * 0.06, fs * 0.5, "#ff4f8b");
+        heart(x + sd * (w / 2 + fs * 0.12), y - fs * 0.08, fs * 0.24, "#ff9ec4");
+      });
       c.restore();
     });
   }
