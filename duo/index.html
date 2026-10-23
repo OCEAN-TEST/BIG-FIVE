@@ -672,7 +672,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 66;
+  const VERSION = 67;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -6658,10 +6658,9 @@ body.modal { overflow: hidden; }
     switch (type) {
       case "peer-unavailable": return "그 코드의 방이 없어요. 코드를 다시 확인해주세요.";
       case "browser-incompatible": return "이 브라우저에서는 연결 기능이 안 돼요. 크롬이나 사파리로 열어주세요.";
-      case "timeout": return "연결이 안 돼요. 둘 다 같은 와이파이면 더 잘 붙어요. 다시 시도해주세요.";
       case "network": case "server-error": case "socket-error": case "socket-closed": return "연결 서버에 접속하지 못했어요. 인터넷 연결을 확인하고 다시 해주세요.";
       case "nolib": return "연결 기능을 불러오지 못했어요. 새로고침해서 다시 해주세요.";
-      case "timeout": return "방장과 연결하지 못했어요. 방장 화면이 켜져 있는지 확인하고 다시 해주세요. 계속 안 되면 둘 다 같은 와이파이에서 해보세요.";
+      case "timeout": return "방장과 연결하지 못했어요. 방장 화면이 켜져 있는지 확인하고 다시 해주세요.";
       default: return "연결에 문제가 생겼어요. 다시 시도해주세요. (" + type + ")";
     }
   }
@@ -6682,7 +6681,14 @@ body.modal { overflow: hidden; }
   })();
   const peerOpts = () => ({ debug: 0, config: { iceServers: ICE } });
 
-  // 방장 연결: 친구 세 명 + 관전 여러 명이 붙어요. 연결마다 번호(id)가 있어요.
+  // 우리 중계 서버 (Cloudflare, relay/ 폴더): 각자 다른 인터넷(LTE·다른 집 와이파이)이어도 모두 이 서버로 붙어서 잘 들어가져요.
+  // 비어 있거나 안 되면(서버 고장, 무료 한도 넘은 날) 예전처럼 PeerJS로 붙어요. 방장은 두 길을 다 열어 둬요.
+  const RELAY_HOME = ""; // Cloudflare에 올린 중계 서버 주소 (wss://bunsik-relay.….workers.dev). 비어 있으면 PeerJS만 써요
+  const RELAY_TEST = new URLSearchParams(location.search).get("relay") || ""; // ?relay=ws://localhost:8787: 이 컴퓨터에서 중계 서버를 띄워 시험할 때만
+  const RELAY = /^wss?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(RELAY_TEST) ? RELAY_TEST : RELAY_HOME;
+  const relayURL = (code, role) => RELAY + "/room/" + PREFIX + code + "?role=" + role;
+
+  // 방장 연결: 친구 세 명 + 관전 여러 명이 붙어요. 연결마다 번호(id)가 있어요 (PeerJS "c…", 중계 서버 "r…").
   function hostTransport(code, h) {
     if (IS_LOCAL) {
       const bc = new BroadcastChannel("bunsik-local-" + code);
@@ -6700,8 +6706,71 @@ body.modal { overflow: hidden; }
         close: () => { bc.postMessage({ from: "h", bye: true }); bc.close(); }
       };
     }
-    const none = { send() {}, drop() {}, close() {} };
-    if (typeof window.Peer !== "function") { setTimeout(() => h.error("nolib"), 0); return none; }
+    const ways = [];
+    let ready = false, over = false;
+    const way = (kind, make) => {
+      const w = { kind, dead: false };
+      ways.push(w);
+      w.t = make({
+        ready() { if (!ready) { ready = true; h.ready(); } },
+        data: h.data, leave: h.leave,
+        error(type) { // 한 길이 막혔어요: 다른 길이 살아 있으면 그대로 가요 (코드가 겹치면 새 코드로 다시 열어요)
+          if (over) return;
+          w.dead = true;
+          if (type === "unavailable-id" || ways.every((x) => x.dead)) { over = true; h.error(type); }
+        }
+      });
+    };
+    if (RELAY && window.WebSocket) way("r", (g) => relayHost(code, g));
+    if (typeof window.Peer === "function") way("c", (g) => peerHost(code, g));
+    if (!ways.length) { setTimeout(() => h.error("nolib"), 0); return { send() {}, sendMany() {}, drop() {}, close() {} }; }
+    const by = (id) => ways.find((w) => w.kind === id[0]);
+    return {
+      send: (id, d) => { const w = by(id); if (w) w.t.send([id], d); },
+      sendMany: (ids, d) => ways.forEach((w) => { const mine = ids.filter((id) => id[0] === w.kind); if (mine.length) w.t.send(mine, d); }), // 관전처럼 같은 내용은 한 번에
+      drop: (id) => { const w = by(id); if (w) w.t.drop(id); },
+      close: () => { over = true; ways.forEach((w) => w.t.close()); }
+    };
+  }
+  // 중계 서버로 여는 방: 친구가 말없이 사라지면(폰 꺼짐) 30초 뒤 내보내요
+  function relayHost(code, h) {
+    const live = new Map(); // 친구 id → 마지막으로 소식이 온 때
+    let ws = null, open = false, done = false;
+    const out = (id) => { if (live.delete(id)) h.leave(id); };
+    const tick = setInterval(() => {
+      if (!open) return;
+      ws.send("ping");
+      const now = Date.now();
+      live.forEach((t, id) => { if (now - t > 30000) { ws.send("d" + id); out(id); } });
+    }, 10000);
+    try { ws = new WebSocket(relayURL(code, "host")); } catch (e) { clearInterval(tick); setTimeout(() => h.error("network"), 0); return { send() {}, drop() {}, close() {} }; }
+    ws.onopen = () => { open = true; h.ready(); };
+    ws.onmessage = (e) => {
+      const s = String(e.data), c = s[0];
+      if (c === "j") live.set(s.slice(1), Date.now());
+      else if (c === "l") out(s.slice(1));
+      else if (c === "m") {
+        const nl = s.indexOf("\n"), id = s.slice(1, nl);
+        if (!live.has(id)) return;
+        live.set(id, Date.now());
+        let d = null;
+        try { d = JSON.parse(s.slice(nl + 1)); } catch (err) { return; }
+        h.data(id, d);
+      }
+    };
+    ws.onclose = () => {
+      open = false; clearInterval(tick);
+      [...live.keys()].forEach(out);
+      if (!done) h.error("network");
+    };
+    return {
+      send: (ids, d) => { if (open) ws.send("s" + ids.join(",") + "\n" + JSON.stringify(d)); },
+      drop: (id) => { if (live.delete(id) && open) ws.send("d" + id); },
+      close: () => { done = true; clearInterval(tick); try { ws.close(); } catch (e) {} }
+    };
+  }
+  // PeerJS로 여는 방
+  function peerHost(code, h) {
     const peer = new window.Peer(PREFIX + code, peerOpts());
     const conns = new Map();
     let n = 0;
@@ -6717,7 +6786,7 @@ body.modal { overflow: hidden; }
     peer.on("error", (e) => h.error(e.type));
     peer.on("disconnected", () => { try { peer.reconnect(); } catch (e) {} });
     return {
-      send: (id, d) => { const c = conns.get(id); if (c && c.open) c.send(d); },
+      send: (ids, d) => ids.forEach((id) => { const c = conns.get(id); if (c && c.open) c.send(d); }),
       drop: (id) => { const c = conns.get(id); if (!c) return; conns.delete(id); setTimeout(() => { try { c.close(); } catch (e) {} }, 500); },
       close: () => { try { peer.destroy(); } catch (e) {} }
     };
@@ -6736,6 +6805,45 @@ body.modal { overflow: hidden; }
       setTimeout(() => h.ready(), 0);
       return { send: (d) => bc.postMessage({ from: "g", id, d }), close: () => { bc.postMessage({ from: "g", id, bye: true }); bc.close(); } };
     }
+    return RELAY && window.WebSocket ? relayGuest(code, h) : peerGuest(code, h);
+  }
+  // 중계 서버로 먼저 들어가 봐요. 그 코드 방이 중계에 없거나(예전 화면 방장) 서버가 안 되면 PeerJS로 다시 찾아요
+  function relayGuest(code, h) {
+    let ws = null, open = false, done = false, alt = null, last = 0;
+    const toPeer = () => {
+      if (done || alt) return;
+      clearTimeout(wait); clearInterval(tick);
+      try { if (ws) ws.close(); } catch (e) {}
+      alt = peerGuest(code, h);
+    };
+    const bye = () => { // 방장이 나갔거나 끊겼어요
+      if (done || !open) return;
+      open = false; clearInterval(tick);
+      try { ws.close(); } catch (e) {}
+      h.leave();
+    };
+    const wait = setTimeout(toPeer, 6000);
+    const tick = setInterval(() => { if (!open) return; ws.send("ping"); if (Date.now() - last > 30000) bye(); }, 10000); // 방장 소식이 30초 없으면 끊긴 걸로
+    try { ws = new WebSocket(relayURL(code, "guest")); } catch (e) { setTimeout(toPeer, 0); }
+    if (ws) {
+      ws.onopen = () => { open = true; last = Date.now(); clearTimeout(wait); h.ready(); };
+      ws.onmessage = (e) => {
+        const s = String(e.data);
+        if (s === "pong") return;
+        if (s === "bye" || s === "drop") { bye(); return; }
+        last = Date.now();
+        let d = null;
+        try { d = JSON.parse(s); } catch (err) { return; }
+        h.data(d);
+      };
+      ws.onclose = () => { if (!last) toPeer(); else bye(); };
+    }
+    return {
+      send: (d) => { if (alt) alt.send(d); else if (open) ws.send(JSON.stringify(d)); },
+      close: () => { done = true; clearTimeout(wait); clearInterval(tick); try { if (ws) ws.close(); } catch (e) {} if (alt) alt.close(); }
+    };
+  }
+  function peerGuest(code, h) {
     if (typeof window.Peer !== "function") { setTimeout(() => h.error("nolib"), 0); return { send() {}, close() {} }; }
     const peer = new window.Peer(peerOpts());
     let conn = null, opened = false;
@@ -6910,7 +7018,7 @@ body.modal { overflow: hidden; }
       if (!W || !net || (!guestOn && !specs.size)) return;
       const s = snapshot();
       for (let k = 1; k < MAX_P; k++) if (seats[k]) net.send(seats[k], Object.assign({}, s, { ev: pendingEv[k].splice(0) }));
-      if (specs.size) { const s2 = Object.assign({}, s, { ev: pendingSpecEvents.splice(0) }); specs.forEach((id) => net.send(id, s2)); }
+      if (specs.size) { const s2 = Object.assign({}, s, { ev: pendingSpecEvents.splice(0) }); if (net.sendMany) net.sendMany([...specs], s2); else specs.forEach((id) => net.send(id, s2)); }
     }, 50));
     // 관전 화면이 말없이 사라지면(폰 잠김, 앱 종료) 12초 뒤 자리를 비워요
     timers.push(setInterval(() => {
