@@ -11,3 +11,12 @@ class_name = "Room"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Room"]
+
+# 운영자 페이지(/stats)용: 열린 방 코드와 인원 숫자를 모아 두는 곳
+[[durable_objects.bindings]]
+name = "STATS"
+class_name = "Stats"
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Stats"]
