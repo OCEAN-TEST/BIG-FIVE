@@ -27,3 +27,12 @@ cd relay && npx wrangler dev --port 8787
 ```
 
 그다음 게임 주소 끝에 `?relay=ws://localhost:8787` 을 붙여서 열어요.
+
+## 운영자 페이지
+
+`https://bunsik-relay.alamguy.workers.dev/stats?k=열쇠` 에서 지금 열린 방 코드·인원, 오늘 연 방 수를 볼 수 있어요.
+방 코드·인원 숫자만 모으고 이름·채팅은 안 모아요. 방마다 "관전" 버튼을 누르면 운영자 관전(`?watch=코드&mod`)으로 열리고,
+그 방 모두의 화면 오른쪽 위에 "Mod Spectating"이 떠요.
+
+열쇠 자체는 저장소에 없고 SHA-256 값만 있어요. 열쇠를 바꾸려면 Cloudflare 대시보드의 bunsik-relay →
+Settings → Variables and Secrets 에 비밀 값(Secret) `STATS_KEY`를 넣으면 그 값으로도 열려요.
