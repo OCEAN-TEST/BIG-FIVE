@@ -672,7 +672,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 67;
+  const VERSION = 68;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -6683,7 +6683,7 @@ body.modal { overflow: hidden; }
 
   // 우리 중계 서버 (Cloudflare, relay/ 폴더): 각자 다른 인터넷(LTE·다른 집 와이파이)이어도 모두 이 서버로 붙어서 잘 들어가져요.
   // 비어 있거나 안 되면(서버 고장, 무료 한도 넘은 날) 예전처럼 PeerJS로 붙어요. 방장은 두 길을 다 열어 둬요.
-  const RELAY_HOME = ""; // Cloudflare에 올린 중계 서버 주소 (wss://bunsik-relay.….workers.dev). 비어 있으면 PeerJS만 써요
+  const RELAY_HOME = "wss://bunsik-relay.alamguy.workers.dev"; // Cloudflare에 올린 중계 서버 주소 (relay/ 폴더). 비우면 PeerJS만 써요
   const RELAY_TEST = new URLSearchParams(location.search).get("relay") || ""; // ?relay=ws://localhost:8787: 이 컴퓨터에서 중계 서버를 띄워 시험할 때만
   const RELAY = /^wss?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(RELAY_TEST) ? RELAY_TEST : RELAY_HOME;
   const relayURL = (code, role) => RELAY + "/room/" + PREFIX + code + "?role=" + role;
