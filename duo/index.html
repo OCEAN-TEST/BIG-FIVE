@@ -1402,7 +1402,7 @@ body.modal { overflow: hidden; }
   const seats = [null, null, null, null]; // 방장: 자리별 친구 연결 번호 (0은 방장 자리)
   const specs = new Set(); // 방장: 관전 연결 번호들
   let specN = 0;          // 지금 관전하는 사람 수 (모두 화면에 표시)
-  const mods = new Set();  // 방장: 그중 운영자 관전 번호들 → 방 모두의 화면에 "Mod watching"이 떠요
+  const mods = new Set();  // 방장: 그중 운영자 관전 번호들 → 방 모두의 화면에 "Mod Spectating"이 떠요
   let modN = 0;           // 지금 관전하는 운영자 수
   // 남의 캐릭터는 받은 위치를 따라 부드럽게 움직여요 (관전은 둘 다)
   const remotes = [0, 1, 2, 3].map(() => ({ x: 0, y: 0, init: false }));
@@ -6578,7 +6578,7 @@ body.modal { overflow: hidden; }
     $("pickNote").textContent = ons.map(({ q, i }) => nameOf(st, i) + " " + CHARS[q.ch].name).join(" · ") + (ons.length < MAX_P ? " · 빈자리 " + (MAX_P - ons.length) + "개" : "") + ".";
   }
   // 운영자 관전 (?watch=코드&mod): 들어가 있는 동안 방 모두의 화면에 계속 떠요. 외국 친구도 알아보게 영어로 같이
-  const MOD_TEXT = "👀 Mod watching · 운영자 관전 중";
+  const MOD_TEXT = "👀 Mod Spectating · 운영자 관전 중";
   const modCount = () => (role === "host" ? [...mods].filter((id) => specs.has(id)).length : modN);
   // 대기실: 관전 인원, 빈자리 앉기 버튼
   function roomExtras() {
