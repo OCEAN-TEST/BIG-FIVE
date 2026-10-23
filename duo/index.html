@@ -145,7 +145,7 @@ kbd { font-family: var(--font-ui); background: #fff; border: 2px solid var(--pap
 .charbtn[aria-pressed="true"] { border-color: var(--chili); background: #fff1cc; }
 .charbtn:disabled { opacity: .45; cursor: default; }
 .charbtn.ro:disabled[aria-pressed="true"] { opacity: 1; }
-.modtag { position: absolute; right: 10px; top: 58px; z-index: 6; pointer-events: none; white-space: nowrap; font-family: var(--font-ui); font-size: 6px; line-height: 1.5; color: #fff; background: rgba(24, 20, 34, .5); border-radius: 999px; padding: 0 4px; }
+.modtag { position: absolute; right: 10px; top: 58px; z-index: 6; pointer-events: none; white-space: nowrap; font-family: var(--font-ui); font-size: 5px; line-height: 1.5; color: #fff; background: rgba(24, 20, 34, .5); border-radius: 999px; padding: 0 4px; }
 .specnote { margin: 0; font-family: var(--font-ui); font-size: 16px; color: var(--ink); background: #fff1cc; border: 2px solid var(--sign); border-radius: 999px; padding: 3px 14px; }
 .charbtn small { font-family: var(--font-body); font-size: 11.5px; color: var(--soft); min-height: 1.4em; }
 @media (max-width: 480px) { body:not(.side) .chars { gap: 5px; grid-template-columns: repeat(4, minmax(0, 1fr)); } body:not(.side) .charbtn { padding: 4px 2px 6px; border-width: 2px; font-size: 13px; white-space: nowrap; } body:not(.side) .charbtn small { font-size: 10px; white-space: nowrap; } }
@@ -674,7 +674,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 70;
+  const VERSION = 71;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
