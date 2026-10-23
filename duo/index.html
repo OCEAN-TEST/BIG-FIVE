@@ -6578,7 +6578,7 @@ body.modal { overflow: hidden; }
     $("pickNote").textContent = ons.map(({ q, i }) => nameOf(st, i) + " " + CHARS[q.ch].name).join(" · ") + (ons.length < MAX_P ? " · 빈자리 " + (MAX_P - ons.length) + "개" : "") + ".";
   }
   // 운영자 관전 (?watch=코드&mod): 들어가 있는 동안 방 모두의 화면 오른쪽 위 구석에 작게 떠요. 외국 친구도 알아보게 영어로 같이
-  const MOD_TEXT = "Mod Spectating · 운영자 관전 중";
+  const MOD_TEXT = "Mod Spectating";
   const modCount = () => (role === "host" ? [...mods].filter((id) => specs.has(id)).length : modN);
   // 대기실: 관전 인원, 빈자리 앉기 버튼
   function roomExtras() {
