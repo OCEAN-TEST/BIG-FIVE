@@ -672,7 +672,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 64;
+  const VERSION = 65;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -3288,7 +3288,8 @@ body.modal { overflow: hidden; }
         const auto = gl.shadowMap.autoUpdate;
         gl.shadowMap.autoUpdate = false;
         gl.setViewport(0, 0, S / curPR, S / curPR); gl.setScissor(0, 0, S / curPR, S / curPR); gl.setScissorTest(true);
-        gl.render(scene, snapCam);
+        setLights(PAL[1]); // 주문서 그림은 단계 빛(밤)과 상관없이 늘 같은 낮 빛으로
+        try { gl.render(scene, snapCam); } finally { setLights(PAL[builtStage] || PAL[1]); }
         gl.setScissorTest(false); gl.setViewport(0, 0, vw, vh);
         gl.shadowMap.autoUpdate = auto;
         c = document.createElement("canvas"); c.width = c.height = SNAP;
@@ -3724,24 +3725,41 @@ body.modal { overflow: hidden; }
     scene.add(hemi, amb, sun, sun.target, lamp);
     // 둘레에서 은은하게 들어오는 빛과 반사 (가상의 밝은 방을 한 번 찍어서 써요)
     let envTex = null;
-    function envFor(r) {
+    function envFor(r, night) { // night: 깜깜한 밤 (어두운 남색 하늘 + 희미한 달빛, 위엔 따뜻한 등)
       const pm = new T.PMREMGenerator(r), es = new T.Scene(), bx = new T.BoxGeometry(1, 1, 1);
       const box = (col, k, sx, sy, sz, x, y, z, back) => {
         const m = new T.MeshBasicMaterial({ color: col, side: back ? T.BackSide : T.FrontSide });
         m.color.multiplyScalar(k);
         const o = new T.Mesh(bx, m); o.scale.set(sx, sy, sz); o.position.set(x, y, z); es.add(o);
       };
-      box(0x9a8877, 1, 40, 24, 40, 0, 10, 0, true);
-      box(0xfff4e6, 7, 14, 0.2, 10, 0, 21, 0);
-      box(0xfff0dc, 3.2, 0.2, 8, 12, -19, 10, 2);
-      box(0xffffff, 1.8, 0.2, 6, 8, 19, 9, -4);
-      box(0xffe8d0, 2.4, 12, 6, 0.2, 0, 8, 19);
+      if (night) {
+        box(0x1c2238, 0.4, 40, 24, 40, 0, 10, 0, true);
+        box(0xffd59a, 0.9, 14, 0.2, 10, 0, 21, 0);
+        box(0x9fb2ff, 0.45, 0.2, 8, 12, -19, 10, 2);
+      } else {
+        box(0x9a8877, 1, 40, 24, 40, 0, 10, 0, true);
+        box(0xfff4e6, 7, 14, 0.2, 10, 0, 21, 0);
+        box(0xfff0dc, 3.2, 0.2, 8, 12, -19, 10, 2);
+        box(0xffffff, 1.8, 0.2, 6, 8, 19, 9, -4);
+        box(0xffe8d0, 2.4, 12, 6, 0.2, 0, 8, 19);
+      }
       const tex = pm.fromScene(es, 0.035).texture;
       es.traverse((o) => { if (o.material) o.material.dispose(); });
       bx.dispose(); pm.dispose();
       return tex;
     }
     try { envTex = envFor(gl); scene.environment = envTex; } catch (e) { hemi.intensity = 0.8; }
+    let nightEnv = null;
+    function setLights(P) { // 단계 빛: 낮 / 노을 / 밤 / 깜깜한 밤. 주문서 그림은 늘 낮 빛으로 찍어요 (snapStep)
+      const nightTime = !!P.night, dusk = !nightTime && !!P.dusk, dark = nightTime && !!P.dark;
+      hemi.intensity = (envTex ? 0.22 : 0.8) * (dark ? 0.12 : nightTime ? 0.8 : 1); hemi.color.set(dark ? 0xa8b6ff : dusk ? 0xffd2a4 : 0xfff6e6); hemi.groundColor.set(dark ? 0x241c18 : nightTime ? 0x4a3a2e : dusk ? 0x8f5a34 : 0x8a7563);
+      sun.intensity = dark ? 0.14 : nightTime ? 1.0 : dusk ? 1.3 : 1.2; sun.color.set(dark ? 0xb4c4ff : nightTime ? 0xffd2a0 : dusk ? 0xffb676 : 0xfff0dc);
+      lamp.intensity = dark ? 0.5 : nightTime ? 1.1 : 0; lamp.distance = dark ? 13 : 24; // 깜깜한 밤: 주방은 트럭마다 켠 등으로 (buildTruckRow)
+      Object.values(MC).concat(Object.values(CLS_MAT), [VMAT, VMET, VSKIN]).forEach((m) => { if (m.isMeshStandardMaterial) m.envMapIntensity = nightTime && !dark ? 0.6 : ENVI; });
+      if (!envTex) return;
+      if (dark && !nightEnv) try { nightEnv = envFor(gl, true); } catch (e) { nightEnv = envTex; }
+      scene.environment = dark ? nightEnv : envTex; // 깜깜한 밤엔 둘레(반사·은은한 빛)도 어두운 밤하늘로
+    }
     const STAGE = new T.Group(), dynRoot = new T.Group();
     let stageRoot = STAGE; // 트럭 맵: 트럭마다 묶음(그룹)에 그려서 통째로 움직여요. 그리는 동안만 잠깐 바꿔 끼워요
     scene.add(STAGE, dynRoot);
@@ -4690,10 +4708,7 @@ body.modal { overflow: hidden; }
       });
       const dusk = !nightTime && !!P.dusk; // 노을: 따뜻한 주황 햇빛
       const dark = nightTime && !!P.dark; // 깜깜한 밤: 푸른 달빛 + 따뜻한 전등
-      hemi.intensity = (envTex ? 0.22 : 0.8) * (dark ? 0.2 : nightTime ? 0.8 : 1); hemi.color.set(dark ? 0xa8b6ff : dusk ? 0xffd2a4 : 0xfff6e6); hemi.groundColor.set(dark ? 0x241c18 : nightTime ? 0x4a3a2e : dusk ? 0x8f5a34 : 0x8a7563);
-      sun.intensity = dark ? 0.26 : nightTime ? 1.0 : dusk ? 1.3 : 1.2; sun.color.set(dark ? 0xb4c4ff : nightTime ? 0xffd2a0 : dusk ? 0xffb676 : 0xfff0dc);
-      lamp.intensity = dark ? 0.9 : nightTime ? 1.1 : 0; lamp.distance = dark ? 13 : 24; // 깜깜한 밤: 주방은 트럭마다 켠 등으로 (buildTruckRow)
-      Object.values(MC).concat(Object.values(CLS_MAT), [VMAT, VMET, VSKIN]).forEach((m) => { if (m.isMeshStandardMaterial) m.envMapIntensity = dark ? 0.35 : nightTime ? 0.6 : ENVI; });
+      setLights(P);
       let A = new Batch(true), M = new Batch(true);
       const F = [], tGroups = st.truck ? [new T.Group(), new T.Group()] : null;
 
