@@ -140,7 +140,6 @@ h2 { font-size: 17px; margin: 18px 0 8px; }
 <p class="sub today" id="today"></p>
 <h2>방 목록</h2>
 <div id="list"></div>
-<p class="sub">중계 서버로 들어온 사람만 세요. 관전하면 그 방 모두의 화면 오른쪽 위에 "Mod Spectating"이 떠요. 10초마다 새로 불러와요.</p>
 <p class="sub" id="upd"></p>
 </main>
 <script>
