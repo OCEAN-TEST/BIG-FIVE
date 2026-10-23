@@ -145,7 +145,7 @@ kbd { font-family: var(--font-ui); background: #fff; border: 2px solid var(--pap
 .charbtn[aria-pressed="true"] { border-color: var(--chili); background: #fff1cc; }
 .charbtn:disabled { opacity: .45; cursor: default; }
 .charbtn.ro:disabled[aria-pressed="true"] { opacity: 1; }
-.modtag { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 6; pointer-events: none; white-space: nowrap; font-family: var(--font-ui); font-size: 15px; color: #fff; background: rgba(24, 20, 34, .78); border: 2px solid #ffcf33; border-radius: 999px; padding: 3px 14px; }
+.modtag { position: absolute; right: 10px; top: 58px; z-index: 6; pointer-events: none; white-space: nowrap; font-family: var(--font-ui); font-size: 12px; color: #fff; background: rgba(24, 20, 34, .6); border-radius: 999px; padding: 1px 9px; }
 .specnote { margin: 0; font-family: var(--font-ui); font-size: 16px; color: var(--ink); background: #fff1cc; border: 2px solid var(--sign); border-radius: 999px; padding: 3px 14px; }
 .charbtn small { font-family: var(--font-body); font-size: 11.5px; color: var(--soft); min-height: 1.4em; }
 @media (max-width: 480px) { body:not(.side) .chars { gap: 5px; grid-template-columns: repeat(4, minmax(0, 1fr)); } body:not(.side) .charbtn { padding: 4px 2px 6px; border-width: 2px; font-size: 13px; white-space: nowrap; } body:not(.side) .charbtn small { font-size: 10px; white-space: nowrap; } }
@@ -6577,8 +6577,8 @@ body.modal { overflow: hidden; }
     });
     $("pickNote").textContent = ons.map(({ q, i }) => nameOf(st, i) + " " + CHARS[q.ch].name).join(" · ") + (ons.length < MAX_P ? " · 빈자리 " + (MAX_P - ons.length) + "개" : "") + ".";
   }
-  // 운영자 관전 (?watch=코드&mod): 들어가 있는 동안 방 모두의 화면에 계속 떠요. 외국 친구도 알아보게 영어로 같이
-  const MOD_TEXT = "👀 Mod Spectating · 운영자 관전 중";
+  // 운영자 관전 (?watch=코드&mod): 들어가 있는 동안 방 모두의 화면 오른쪽 위 구석에 작게 떠요. 외국 친구도 알아보게 영어로 같이
+  const MOD_TEXT = "Mod Spectating · 운영자 관전 중";
   const modCount = () => (role === "host" ? [...mods].filter((id) => specs.has(id)).length : modN);
   // 대기실: 관전 인원, 빈자리 앉기 버튼
   function roomExtras() {
