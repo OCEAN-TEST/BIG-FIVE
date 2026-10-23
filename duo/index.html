@@ -672,7 +672,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 65;
+  const VERSION = 66;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -794,7 +794,7 @@ body.modal { overflow: hidden; }
       ext: [4, 0], floor: ["#c48e5a", "#b98450"], spawn: [[3.5, 6.5], [8.5, 2.5]],
       tip: "트럭 두 대가 위아래 차선에서 나란히 달려요. 아래 트럭엔 핫도그·감자·도마, 위 트럭엔 튀김기·소스·접시·내는 곳이 있어요. 트럭이 붙어 있을 땐 가운데 틈을 걸어서 건너고, 빵빵 소리가 나고 깜빡이가 켜지면 곧 벌어지니 틈에서 나와요. 벌어진 틈으로 떨어지면 뒤로 날아가서 5초 뒤에 돌아와요. 벌어져 있을 땐 재료를 던져서 넘겨요. 핫도그는 튀긴 다음 접시에 담고, 그 접시를 케첩이나 머스타드 통으로 들고 가서 뿌려요 (소스는 못 들어요).",
       map: ["CFFFCWWCPkyC   ", "C..........C   ", "T..........C   ", "C..........C   ", "////////////   ", "C..........C   ", "C..........C   ", "C..........T   ", "ChaCCCCCKKCC   "] },
-    { id: 13, name: "한밤의 푸드트럭", time: 200, menu: ["corndog_k", "corndog_m", "fries", "potatodog"], stars: [17000, 39000, 71000], plates: 0, gap: [8, 11], extra: 12, duo: false,
+    { id: 13, name: "한밤의 푸드트럭", time: 200, menu: ["corndog_k", "corndog_m", "fries", "potatodog"], feat: "potatodog", stars: [17000, 39000, 71000], plates: 0, gap: [8, 11], extra: 12, duo: false,
       // 12단계와 같은 트럭 두 대인데 깜깜한 밤이고, 감자핫도그(핫도그 + 썬 감자를 조리대 위에서 합쳐서 튀기기)가 더 있어요
       truck: { row: 4, first: [8, 16], join: [5, 19], apart: [6, 13], warn: 1.0, speed: 10 },
       ext: [4, 0], floor: ["#c48e5a", "#b98450"], spawn: [[3.5, 6.5], [8.5, 2.5]],
@@ -1456,8 +1456,9 @@ body.modal { overflow: hidden; }
   }
 
   function addOrder() {
-    const st = stageOf(W.stage), pt = partyOf(W.np);
-    const d = st.menu[Math.floor(Math.random() * st.menu.length)];
+    const st = stageOf(W.stage), pt = partyOf(W.np), f = st.feat; // feat: 이 단계 새 메뉴 — 첫 주문으로 나오고, 그 뒤에도 다른 메뉴보다 두 배 자주 나와요
+    const bag = f ? st.menu.concat(f) : st.menu;
+    const d = f && !W.orders.length && !W.served && !W.missed ? f : bag[Math.floor(Math.random() * bag.length)];
     const lim = Math.round((DISH[d].limit + (st.extra || 0)) * (pt ? pt.limit : 1));
     W.orders.push({ id: W.oid++, dish: d, left: lim, limit: lim });
   }
