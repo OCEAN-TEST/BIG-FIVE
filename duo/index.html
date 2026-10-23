@@ -674,7 +674,7 @@ body.modal { overflow: hidden; }
   "use strict";
 
   // ===== 기본 설정 =====
-  const VERSION = 72;
+  const VERSION = 73;
   const PREFIX = "oceantest-bunsik-v2-"; // 그대로 둬야 예전 화면과 붙었을 때 "새로고침해주세요"가 떠요
   const IS_LOCAL = new URLSearchParams(location.search).has("local"); // 같은 컴퓨터 창 두 개로 테스트할 때
   const TEST_OPEN = new URLSearchParams(location.search).has("test"); // 주소 끝에 ?test: 이 화면에서만 모든 단계 열림 (둘이서만 단계도 혼자 시작)
@@ -6227,12 +6227,13 @@ body.modal { overflow: hidden; }
   }
 
   let toastTimer = 0;
-  function toast(m, bad) {
+  function toast(m, bad, ms) {
     const t = $("toast");
     t.textContent = m; t.classList.toggle("bad", !!bad); t.classList.remove("hide");
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add("hide"), 1900);
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add("hide"), ms || 1900);
   }
   function showEvent(e) {
+    if (e.mod && e.m) toast(e.m, false, 1500); // 운영자 관전 알림 (이 알림만 화면에 띄워요)
     if (e.pop) { pops.push({ i: e.pop.i, text: e.pop.text, t0: performance.now() }); sfx.serve(); }
     if (e.snd && sfx[e.snd]) sfx[e.snd]();
     const now = performance.now();
@@ -6938,9 +6939,9 @@ body.modal { overflow: hidden; }
           if (specs.size >= MAX_SPEC && !mod) { net.send(id, { t: "full", spec: true }); net.drop(id); return; }
           specs.add(id); if (mod) mods.add(id);
           net.send(id, { t: "welcome", as: "spec", auto: d.want !== "spec" });
-          const hiMsg = mod ? MOD_TEXT + " 들어왔어요" : "관전하는 사람이 들어왔어요 (" + specs.size + "명)";
-          ev({ m: hiMsg, to: 0 });
-          if (guestOn) ev({ m: hiMsg, to: "guests" });
+          const hiMsg = mod ? "Mod joined to spectate" : "관전하는 사람이 들어왔어요 (" + specs.size + "명)";
+          ev({ m: hiMsg, to: 0, mod }); // 운영자 관전은 방장과 친구들 화면에 알림이 떠요
+          if (guestOn) ev({ m: hiMsg, to: "guests", mod });
           renderPicker();
           return;
         }
