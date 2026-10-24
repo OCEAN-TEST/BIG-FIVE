@@ -1237,7 +1237,7 @@ body.modal { overflow: hidden; }
     otter:  { name: "해달",   fur: "#f4f1ec", body: "#6e5547", body3: "#5a4337", dark: "#4e3b30", ear: "#5a4033", nose: "#4a2e22", tail: "#5e4739", tail3: "#4b3529" }, // 하얀 머리(얼굴 전체 흰색), 갈색 몸·귀·두툼한 꼬리. body3·tail3: 3D는 조명이 밝아서 더 진하게
     poro:   { name: "포로",   fur: "#f3f0f6", dark: "#4a4462", ear: "#e8899b", nose: "#e98aa2", hand: "#4a4462", face: "#f8eeb0", tongue: "#f4a3ae", udder: "#e8798a" }, // 젖소 옷을 입은 동그란 포로: 하얀 바탕에 남색 무늬, 분홍 코·젖, 크림색 얼굴과 콧수염, 길게 내민 분홍 혀. 앞치마 대신 귀표가 내 색
     hachi:  { name: "하치와레", fur: "#ffffff", dark: "#b0a6a0", ear: "#3d6f93", nose: "#3a2a24", cap: "#3d6f93", spear: "#2f78c8", teeth: "#1f2a44", price: 100000 }, // 치이카와 친구 고양이: 하얀 동글이 머리에 파란 무늬(넓적한 동그라미 두 개가 이마 가운데서 만나요), 끝이 둥근 파란 고양이 귀. 등에 파란 창. 상점에서 사요
-    hachiM: { name: "괴물 하치와레", fur: "#ffffff", dark: "#b0a6a0", ear: "#6497b8", nose: "#3a2a24", cap: "#6497b8", tail: "#6497b8", claw: "#cfe9f6", wing: "#2f2c36", price: 150000 } // 괴물이 된 하치와레: 머리와 몸이 한 덩어리인 커다란 털복숭이. 소용돌이 눈, 위로 든 굵은 팔에 푸른 수정 발톱, 가슴 털, 푸른 꼬리
+    hachiM: { name: "괴물 하치와레", fur: "#ffffff", dark: "#b0a6a0", ear: "#5585a8", nose: "#3a2a24", cap: "#5585a8", tail: "#5585a8", claw: "#cfe9f6", wing: "#2f2c36", price: 150000 } // 괴물이 된 하치와레: 머리와 몸이 한 덩어리인 커다란 털복숭이. 소용돌이 눈, 위로 든 굵은 팔에 푸른 수정 발톱, 가슴 털, 푸른 꼬리
   };
   const CHAR_KEYS = Object.keys(CHARS);
   // 토끼 머리 모양: 위는 둥근 지붕, 옆은 통통, 아래는 넓고 납작한 찐빵. 공 위의 점(위쪽이 +y)을 이 모양 위로 옮겨요.
@@ -1281,35 +1281,40 @@ body.modal { overflow: hidden; }
     c.strokeStyle = ink; c.lineWidth = lw(0.03); c.stroke();
     c.restore();
   }
-  // 괴물 하치와레 얼굴 (사진에서 잰 자리): 양옆으로 멀찍이 떨어진 큰 동그란 눈 (까만 테, 남보라 소용돌이), 눈 사이 미간에 회보라 그늘,
-  // 작게 벌린 입 (위에 송곳니 둘, 아래 분홍 혀), 볼 바깥에 짧은 수염 두 줄
+  // 괴물 하치와레 얼굴 (사진에서 잰 자리): 크고 하얀 눈 (가는 까만 테) 안쪽으로 몰린 큰 남색 눈동자에 보랏빛 낙서 같은 동그라미와 반짝이,
+  // 눈 안쪽 위에 짧은 눈썹, 두 눈 사이에 회보라 코 그늘, 위에 작은 이빨이 줄지어 난 벌린 고양이 입(분홍 혀), 왼볼 수염 셋·오른볼 둘
   function drawMonsterFace(c, P, k) {
     const ink = "#1f1612", lw = (w) => Math.max(1, w * k);
     c.save(); c.lineCap = "round"; c.lineJoin = "round";
-    const [nx, ny] = P(0, -0.02);
-    c.beginPath(); c.ellipse(nx, ny, 0.13 * k, 0.08 * k, 0, 0, Math.PI * 2); c.fillStyle = "rgba(150,138,176,.45)"; c.fill();
+    const [nx, ny] = P(0, 0.07), ng = c.createRadialGradient(nx, ny, 0, nx, ny, 0.14 * k); // 코: 가장자리가 번진 회보라 그늘
+    ng.addColorStop(0, "rgba(150,132,170,.75)"); ng.addColorStop(1, "rgba(150,132,170,0)");
+    c.beginPath(); c.ellipse(nx, ny, 0.14 * k, 0.11 * k, 0, 0, Math.PI * 2); c.fillStyle = ng; c.fill();
     [-1, 1].forEach((sd) => {
-      const [ex, ey] = P(sd * 0.4, -0.04), R = 0.22 * k; // 눈: 까만 굵은 테 → 얇은 하얀 테 → 남색 눈동자에 옅은 소용돌이 → 작은 하얀 점
-      c.beginPath(); c.arc(ex, ey, R, 0, Math.PI * 2); c.fillStyle = ink; c.fill();
-      c.beginPath(); c.arc(ex, ey, R * 0.86, 0, Math.PI * 2); c.fillStyle = "#ffffff"; c.fill();
-      c.beginPath(); c.arc(ex, ey, R * 0.74, 0, Math.PI * 2); c.fillStyle = "#29244c"; c.fill();
-      c.beginPath();
-      for (let i = 0; i <= 60; i++) { const t = i / 60, a = t * Math.PI * 6 * sd, r = (0.08 + t * 0.58) * R; const x = ex + Math.cos(a) * r, y = ey + Math.sin(a) * r; if (i) c.lineTo(x, y); else c.moveTo(x, y); }
-      c.strokeStyle = "#4b4485"; c.lineWidth = Math.max(0.8, 0.012 * k); c.stroke();
-      c.beginPath(); c.arc(ex - sd * 0.06 * k, ey - 0.07 * k, 0.026 * k, 0, Math.PI * 2); c.fillStyle = "#ffffff"; c.fill();
-      c.beginPath(); // 수염: 눈 바깥 아래 짧은 줄 둘
-      for (const [dy, w] of [[0.2, 0.09], [0.27, 0.07]]) { const [wx, wy] = P(sd * 0.72, dy); c.moveTo(wx - w * 0.5 * k, wy); c.lineTo(wx + w * 0.5 * k, wy); }
-      c.strokeStyle = ink; c.lineWidth = lw(0.022); c.stroke();
+      const [ex, ey] = P(sd * 0.41, 0.02), rx = 0.24 * k, ry = 0.21 * k, ix = ex - sd * 0.03 * k, iy = ey + 0.015 * k, R = 0.16 * k;
+      c.beginPath(); c.ellipse(ex, ey, rx, ry, 0, 0, Math.PI * 2); c.fillStyle = "#ffffff"; c.fill();
+      c.save(); c.clip();
+      c.beginPath(); c.arc(ix, iy, R, 0, Math.PI * 2); c.fillStyle = "#1e1938"; c.fill();
+      c.strokeStyle = "#7c72b4"; c.lineWidth = Math.max(0.7, 0.008 * k);
+      for (const [r, a0, a1] of [[0.2, 0.3, 4.6], [0.32, 2.6, 7.6], [0.44, -0.6, 3.2], [0.55, 1.4, 5.6], [0.66, 3.9, 8.4], [0.76, 0.2, 2.6], [0.84, 3.2, 5.4], [0.5, 5.2, 6.4]]) { c.beginPath(); c.arc(ix, iy, r * R, a0 * sd, a1 * sd, sd < 0); c.stroke(); } // 낙서처럼 끊긴 동그라미
+      c.fillStyle = "#ffffff";
+      for (const [dx, dy, r] of [[-0.35, -0.42, 0.13], [0.3, 0.25, 0.07], [-0.1, 0.45, 0.06]]) { c.beginPath(); c.arc(ix + dx * R, iy + dy * R, r * R, 0, Math.PI * 2); c.fill(); }
+      c.restore();
+      c.beginPath(); c.ellipse(ex, ey, rx, ry, 0, 0, Math.PI * 2); c.strokeStyle = ink; c.lineWidth = lw(0.022); c.stroke();
+      const [bx, by] = P(sd * 0.2, -0.26); // 눈썹: 눈 안쪽 위 짧은 줄
+      c.beginPath(); c.moveTo(bx - 0.045 * k, by); c.lineTo(bx + 0.045 * k, by); c.strokeStyle = ink; c.lineWidth = lw(0.02); c.stroke();
+      c.beginPath(); // 수염: 눈 바깥 아래 짧은 줄 (왼쪽 셋, 오른쪽 둘)
+      for (const [dy, w] of sd < 0 ? [[0.18, 0.09], [0.24, 0.1], [0.3, 0.08]] : [[0.26, 0.08], [0.32, 0.07]]) { const [wx, wy] = P(sd * 0.64, dy); c.moveTo(wx - w * 0.5 * k, wy); c.lineTo(wx + w * 0.5 * k, wy); }
+      c.strokeStyle = ink; c.lineWidth = lw(0.018); c.stroke();
     });
-    const [mx, my] = P(0, 0.26), rx = 0.15 * k, ry = 0.26 * k; // 얼굴 아래쪽은 둥글게 넘어가서 납작해 보이니 세로로 길게 그려요
-    const mouth = () => { c.beginPath(); c.moveTo(mx - rx, my - ry * 0.55); c.quadraticCurveTo(mx - rx * 0.5, my - ry * 0.95, mx, my - ry * 0.6); c.quadraticCurveTo(mx + rx * 0.5, my - ry * 0.95, mx + rx, my - ry * 0.55); c.bezierCurveTo(mx + rx * 1.05, my + ry * 0.7, mx + rx * 0.5, my + ry, mx, my + ry); c.bezierCurveTo(mx - rx * 0.5, my + ry, mx - rx * 1.05, my + ry * 0.7, mx - rx, my - ry * 0.55); c.closePath(); };
-    mouth(); c.fillStyle = "#a63a52"; c.fill();
+    const [mx, my] = P(0, 0.33), rx = 0.135 * k, ry = 0.2 * k; // 얼굴 아래쪽은 둥글게 넘어가서 납작해 보이니 세로로 길게 그려요
+    const mouth = () => { c.beginPath(); c.moveTo(mx - rx, my - ry * 0.6); c.quadraticCurveTo(mx - rx * 0.5, my - ry * 0.92, mx, my - ry * 0.62); c.quadraticCurveTo(mx + rx * 0.5, my - ry * 0.92, mx + rx, my - ry * 0.6); c.bezierCurveTo(mx + rx * 1.1, my + ry * 0.6, mx + rx * 0.55, my + ry, mx, my + ry); c.bezierCurveTo(mx - rx * 0.55, my + ry, mx - rx * 1.1, my + ry * 0.6, mx - rx, my - ry * 0.6); c.closePath(); };
+    mouth(); c.fillStyle = "#7d2a3e"; c.fill();
     c.save(); mouth(); c.clip();
-    c.beginPath(); c.ellipse(mx, my + ry * 0.35, rx * 1.1, ry * 0.75, 0, 0, Math.PI * 2); c.fillStyle = "#f29aae"; c.fill();
+    c.beginPath(); c.ellipse(mx, my + ry * 0.45, rx * 1.0, ry * 0.65, 0, 0, Math.PI * 2); c.fillStyle = "#f2a0b2"; c.fill();
     c.fillStyle = "#ffffff";
-    for (const sd of [-1, 1]) { const tx = mx + sd * rx * 0.55; c.beginPath(); c.moveTo(tx - 0.02 * k, my - ry); c.lineTo(tx + 0.02 * k, my - ry); c.lineTo(tx, my - ry * 0.45); c.closePath(); c.fill(); }
+    for (const f of [-0.72, -0.36, 0, 0.36, 0.72]) { const tx = mx + f * rx; c.beginPath(); c.moveTo(tx - 0.022 * k, my - ry); c.lineTo(tx + 0.022 * k, my - ry); c.lineTo(tx, my - ry * 0.55); c.closePath(); c.fill(); } // 위에 작은 이빨이 줄지어
     c.restore();
-    mouth(); c.strokeStyle = ink; c.lineWidth = lw(0.026); c.stroke();
+    mouth(); c.strokeStyle = ink; c.lineWidth = lw(0.022); c.stroke();
     c.restore();
   }
   // 토끼 얼굴 (피규어 사진에서 잰 자리). drawMochiFace 와 같은 좌표 (머리 가운데 (0, 0), 머리 반너비 1, 아래가 +)
@@ -3352,7 +3357,7 @@ body.modal { overflow: hidden; }
     // 머리가 큰 캐릭터 (3D): 머리 크기 a×b×c, 얼굴 그림, 얼굴 그림이 덮는 범위 (가로 ±al, 세로 ±be 라디안)
     const BIG3 = { mochi: { a: 0.33, b: 0.28, c: 0.3, al: 1.15, be: 0.7, draw: drawMochiFace },
       hachi: { a: 0.33, b: 0.28, c: 0.3, al: 1.15, be: 0.7, draw: (c, P, k) => drawMochiFace(c, P, k, true), skin: () => hachiHeadMat() }, // 머리는 파란 모자 무늬를 그린 공 (hachiHeadMat)
-      hachiM: { a: 0.32, b: 0.24, c: 0.27, al: 1.15, be: 0.7, draw: drawMonsterFace, skin: () => capSkin("monHeadM", CHARS.hachiM.cap), geo: () => monHeadG(), hy: 0.83, hz: 0.03, mon: true }, // 괴물 하치와레: 큰 종 모양 몸 위에 볼 털이 뾰족한 넓적한 머리 (monBody)
+      hachiM: { a: 0.32, b: 0.235, c: 0.235, al: 1.15, be: 1.0, draw: drawMonsterFace, skin: () => capSkin("monHeadM", "#4a7aa0", (t) => (t < 16 ? 70 - 40 * Math.pow(t / 16, 0.8) : t <= 90 ? 30 - 6 * ((t - 16) / 74) : 24 + 8 * ((t - 90) / 90))), geo: () => monHeadG(), hy: 0.83, hz: 0.03, mon: true }, // 괴물 하치와레: 큰 종 모양 몸 위에 볼 털이 뾰족한 넓적한 머리 (monBody)
       rabbit: { a: 0.33, b: 0.245, c: 0.29, al: 1.15, be: 1.05, draw: drawUsagiFace, bun: true },
       otter: { a: 0.35, b: 0.215, c: 0.3, al: 1.2, be: 0.95, draw: drawRakkoFace, bun: true, body: [0.26, 0.2, 0.23], hy: 0.55 },
       poro: { hy: 0.57, hz: 0.03, ball: true, lean: 0.12, rest: 0 } }; // 포로: 젖소 옷 몸통 위에 모자 쓴 머리가 반쯤 묻혀 있어요. 머리를 살짝 젖혀 올려다봐요 (poroBody·poroHead)
@@ -3495,11 +3500,11 @@ body.modal { overflow: hidden; }
     });
     // 하치와레 머리: 하얀 공 위를 파란 무늬가 덮어요. 앞에서 보면 넓적한 동그라미 두 개가 이마 가운데서 만나는 모양:
     // 양쪽 덩이 바닥이 경도 ±42도에서 위도 31도까지 둥글게 처지고, 둘이 만나는 가운데는 44도, 옆(경도 90도)은 37도, 뒤통수는 30도
-    const capSkin = (key, cap) => skinMat(key, ({ shape, col }) => {
+    const capSkin = (key, cap, edge) => skinMat(key, ({ shape, col }) => { // edge: 경도별 무늬 아래 끝 위도 (없으면 하치와레)
       const pts = [];
       for (let lo = -180; lo <= 180; lo++) {
         const t = Math.abs(lo), e = t < 42 ? (42 - t) / 51 : (t - 42) / 80, w = Math.max(0, (t - 90) / 90); // e: 덩이 가운데에서 떨어진 정도 (가운데 쪽이 더 빨리 올라가요), w: 뒤통수
-        pts.push([lo, t <= 90 ? 61 - 30 * Math.sqrt(1 - e * e) : 37 - 7 * Math.sin((w * Math.PI) / 2) ** 2]);
+        pts.push([lo, edge ? edge(t) : t <= 90 ? 61 - 30 * Math.sqrt(1 - e * e) : 37 - 7 * Math.sin((w * Math.PI) / 2) ** 2]);
       }
       pts.push([180, 90], [-180, 90]);
       shape(pts, col(cap));
@@ -3534,7 +3539,7 @@ body.modal { overflow: hidden; }
     };
     const monHeadG = () => { // 볼 양옆이 뾰족뾰족한 털 (얼굴 그림이 덮는 앞 ±66도 밖)
       const t = [];
-      for (const sd of [-1, 1]) for (const [lo, la, h] of [[76, -28, 0.3], [78, -8, 0.26], [90, -18, 0.36], [94, 8, 0.2], [106, -32, 0.28], [110, -4, 0.24], [124, -16, 0.18]]) t.push([sd * lo, la, 10, h, 0.12]);
+      for (const sd of [-1, 1]) for (const [lo, la, h] of [[74, -34, 0.14], [86, -26, 0.16], [98, -38, 0.12], [110, -22, 0.1]]) t.push([sd * lo, la, 9, h, 0.35]);
       return furG("monHead", t, 64);
     };
     const monChestG = () => gc("monChest", () => { // 가슴 털: 위는 둥글고 아래는 뾰족뾰족. 몸통 겉면에 맞춰 휘어 붙여요 (턱 밑에서 늘어져요)
@@ -3686,7 +3691,11 @@ body.modal { overflow: hidden; }
       if (k === "otter") for (const sd of [-1, 1]) { const [px, py, pz] = bunPt(sd * 0.8, 0.55, 0.12); H.add(sphG(12), mtx(px * big.a, py * big.b, pz * big.c, 0, 0, 0, 0.06, 0.058, 0.042), C.ear); } // 해달: 양옆 위쪽에 작은 갈색 귀
       if (k === "mochi") for (const sd of [-1, 1]) H.add(sphG(14), mtx(sd * 0.2, 0.215, -0.03, 0, 0, 0, 0.066, 0.063, 0.055), C.fur);
       if (k === "hachi") for (const sd of [-1, 1]) H.add(hachiEarG(), mtx(sd * 0.155, 0.14, -0.03, -0.1, 0, -sd * 0.12, 1, 1, 0.6), vivid(C0.cap)); // 하치와레: 끝이 둥근 파란 고양이 귀 (앞뒤로 납작)
-      if (k === "hachiM") for (const sd of [-1, 1]) H.add(monEarG(), mtx(sd * 0.2, 0.13, -0.02, -0.1, 0, -sd * 0.32), vivid(C0.ear)); // 괴물 하치와레: 밑동이 넓은 납작한 세모 귀 (옅은 파랑)
+      if (k === "hachiM") for (const sd of [-1, 1]) { // 괴물 하치와레: 밑동이 넓은 납작한 세모 귀 (옅은 파랑), 앞면에 털 줄 두 개 (< 모양)
+        const E = mtx(sd * 0.2, 0.13, -0.02, -0.1, 0, -sd * 0.32).clone();
+        H.add(monEarG(), E, vivid(C0.ear));
+        for (const [x, y, L, r] of [[sd * 0.01, 0.15, 0.11, -sd * 0.35], [sd * 0.01, 0.07, 0.07, sd * 1.0]]) H.add(boxG(0.008, 1, 0.004), E.clone().multiply(mtx(x, y, 0.036, 0, 0, r, 1, L, 1)), "#2e4660");
+      }
       if (k === "bear") for (const sd of [-1, 1]) {
         H.add(sphG(12), mtx(sd * 0.17, 0.18, -0.03, 0, 0, 0, 0.085, 0.085, 0.06), C.fur);
         H.add(sphG(10), mtx(sd * 0.17, 0.18, 0.02, 0, 0, 0, 0.05, 0.05, 0.02), C.ear);
