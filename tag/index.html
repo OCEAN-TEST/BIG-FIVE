@@ -273,7 +273,7 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
   // ===== 기본 설정 =====
-  const VERSION = 2;
+  const VERSION = 3;
   const $ = (id) => document.getElementById(id);
   const QS = new URLSearchParams(location.search);
   const IS_LOCAL = QS.has("local"); // 같은 컴퓨터 창 두 개로 시험할 때 (BroadcastChannel로 붙어요)
@@ -484,7 +484,7 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
     // 아래: 10줄 벽 아래로 체육관 | 마당(감옥) | 급식실
     hl(1, 34, 10, "#"); vl(13, 11, 24, "#"); vl(22, 11, 24, "#");
     [3, 4, 30, 31].forEach((x) => put(x, 10, ".")); hl(15, 20, 10, ".");
-    [17, 18].forEach((y) => put(13, y, ".")); [20, 21].forEach((y) => put(22, y, "."));
+    [17, 18].forEach((y) => { put(13, y, "."); put(22, y, "."); }); // 체육관·급식실에서 마당으로 가는 문 (점령전 두 팀 거리가 같게)
     [[5, 14], [6, 14], [8, 20], [9, 20]].forEach(([x, y]) => put(x, y, "x"));
     hl(16, 19, 15, "F"); hl(16, 19, 18, "F"); vl(16, 15, 18, "F"); vl(19, 15, 18, "F");
     [[17, 16], [18, 16], [17, 17], [18, 17]].forEach(([x, y]) => put(x, y, "J"));
@@ -776,13 +776,13 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
   }
   const myView = () => (role === "guest" ? (snap && snap.P[myIdx] ? snap.P[myIdx] : null) : null);
   function myState() { // 내 역할·감옥·멈춤 (방장은 G에서, 손님은 받은 자리에서)
-    if (role !== "guest") return me ? { role: me.role, jail: me.jail, frz: me.frz, inRound: me.inRound, phase: G.phase, dead: me.dead, buff: me.buff > 0, job: me.job, team: me.team, hp: me.hp } : null;
+    if (role !== "guest") return me ? { role: me.role, jail: me.jail, frz: me.frz, inRound: me.inRound, phase: G.phase, dead: me.dead, buff: me.buff > 0, job: me.job, team: me.team, hp: me.hp, stun: me.stun || 0 } : null;
     const v = myView();
-    return v ? { role: ROLE_K[v[4]], jail: !!v[5], frz: v[6] / 10, inRound: !!v[9], phase: snap.ph, hp: v[11], team: v[12], job: JOB_KEYS[v[13]], dead: v[14] / 10, buff: !!v[16] } : null;
+    return v ? { role: ROLE_K[v[4]], jail: !!v[5], frz: v[6] / 10, inRound: !!v[9], phase: snap.ph, hp: v[11], team: v[12], job: JOB_KEYS[v[13]], dead: v[14] / 10, buff: !!v[16], stun: (v[17] || 0) / 10 } : null;
   }
   function doDash() {
     const st = myState();
-    if (!me || !st || !st.inRound || st.phase !== "play" || st.frz > 0 || st.dead > 0 || me.dashCD > 0) return;
+    if (!me || !st || !st.inRound || st.phase !== "play" || st.frz > 0 || st.dead > 0 || st.stun > 0 || me.dashCD > 0) return;
     me.dashT = DASH_T; me.dashCD = DASH_CD[st.role]; me.ds = (me.ds || 0) + 1;
     sfx.dash();
     if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
@@ -792,6 +792,8 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
     me.dashCD = Math.max(0, (me.dashCD || 0) - dt); me.dashT = Math.max(0, (me.dashT || 0) - dt);
     const st = myState();
     if (!st || !st.inRound || st.phase !== "play" || st.frz > 0 || st.dead > 0) { me.mv = 0; me.dashT = 0; return; }
+    if (me.lunge && me.lunge.t > 0) { const h = Math.min(dt, me.lunge.t); moveBy(me, me.lunge.vx * h, me.lunge.vy * h); me.lunge.t -= dt; me.mv = 1; return; } // 소드맨 달려 나가기
+    if (st.stun > 0) { me.mv = 0; return; } // 메딕 주사기에 맞아 잠깐 멈춤
     const v = inputVec();
     let vx = v.x, vy = v.y;
     if (me.dashT > 0 && !vx && !vy) { vx = Math.sin(me.yaw); vy = Math.cos(me.yaw); }
@@ -804,17 +806,17 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
   // ===== 점령전 (PvP): 레드 팀 vs 블루 팀. 역할군(무기 + 직업)을 골라 마당 가운데 점령 구역을 차지해요 =====
   // 구역에 우리 팀만 3초 버티면 우리 구역이 되고, 지키는 동안 점령률이 올라요 (60초 = 100%면 승리). 기절하면 3초 뒤 우리 기지에서 다시 나와요
   const JOBS = {
-    archer: { name: "아처", kind: "원거리 딜러", desc: "화살을 쏴요. 세 방이면 기절", hp: 100, cd: 0.55, range: 7.5 },
-    sword: { name: "소드맨", kind: "근거리 딜러", desc: "칼을 크게 휘둘러 앞을 베어요", hp: 115, cd: 0.75, range: 1.45 },
-    medic: { name: "메딕", kind: "힐러", desc: "치료 공을 던져 우리 편을 고쳐요. 상대는 조금 아파요", hp: 90, cd: 0.8, range: 6.5 },
+    archer: { name: "아처", kind: "원거리 딜러", desc: "화살을 8칸 쏴요. 세 방이면 기절", hp: 100, cd: 0.55, range: 8 },
+    sword: { name: "소드맨", kind: "근거리 딜러", desc: "2칸 앞으로 달려 나가며 양옆 한 칸씩을 베어요 (바로 앞은 못 베요)", hp: 115, cd: 0.9, range: 2 },
+    medic: { name: "메딕", kind: "힐러", desc: "주사기를 5칸 던져요. 우리 편은 고치고, 상대는 조금 아프고 잠깐 못 움직여요", hp: 90, cd: 1, range: 5 },
     chair: { name: "체어맨", kind: "탱커", desc: "튼튼해요. 의자로 내리쳐 밀어내고, 앞에서 오는 화살은 막아요", hp: 170, cd: 0.95, range: 1.3 },
-    bomber: { name: "봄버맨", kind: "특수 딜러", desc: "폭탄을 던지면 떨어진 둘레가 한꺼번에 터져요", hp: 95, cd: 1.9, range: 5 },
+    bomber: { name: "봄버맨", kind: "특수 딜러", desc: "콜라 폭탄을 3칸 앞에 던져요. 1초 뒤 둘레 3×3칸이 터져요", hp: 95, cd: 1.8, range: 3 },
     cheer: { name: "치어리더", kind: "서포터", desc: "응원하면 둘레 우리 편이 4초 빨라지고 체력이 차요", hp: 100, cd: 4.5, range: 3.5 }
   };
   const JOB_KEYS = Object.keys(JOBS);
   const TEAM_NAME = ["레드", "블루"], TEAM_COL = ["#e0362c", "#2f6fe0"];
   const ZONE = { x: 18, y: 17, r: 1.9 }, CAP_T = 3, HOLD_T = 60, RESPAWN = 3;
-  const SHOT = { arrow: { sp: 13, dmg: 34 }, heal: { sp: 9, dmg: 10, heal: 35 }, bomb: { ft: 0.6, dmg: 46, r: 1.6 } };
+  const SHOT = { arrow: { sp: 14, dmg: 34 }, heal: { sp: 11, dmg: 12, heal: 30, stun: 0.7 }, bomb: { fly: 0.35, ft: 1, dmg: 50 } }; // heal = 메딕 주사기, bomb = 콜라 폭탄 (날아가는 0.35초 + 바닥에서 터질 때까지)
   const SHOT_I = { arrow: 0, heal: 1, bomb: 2 }, SHOT_K = ["arrow", "heal", "bomb"];
   const BASES = [FREE.filter((s) => s.z === "gym"), FREE.filter((s) => s.z === "cafe")]; // 레드는 체육관, 블루는 급식실에서 나와요
   const unitTo = (ax, ay, bx, by) => { const dx = bx - ax, dy = by - ay, l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l, Math.hypot(dx, dy)]; };
@@ -845,7 +847,7 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
     G.t -= dt;
     const ps = inRound();
     ps.forEach((p) => {
-      p.imm = Math.max(0, p.imm - dt); p.acd = Math.max(0, p.acd - dt); p.buff = Math.max(0, p.buff - dt);
+      p.imm = Math.max(0, p.imm - dt); p.acd = Math.max(0, p.acd - dt); p.buff = Math.max(0, p.buff - dt); p.stun = Math.max(0, (p.stun || 0) - dt);
       if (p.dead > 0) { p.dead -= dt; if (p.dead <= 0) respawn(p); }
     });
     pvpBots(dt, ps);
@@ -855,13 +857,13 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
   function respawn(p) {
     p.dead = 0;
     if (JOBS[p.jobPick] && !p.bot) p.job = p.jobPick; // 기절한 동안 고른 역할군으로
-    p.hp = JOBS[p.job].hp; p.imm = 1.5; p.buff = 0; p.acd = 0;
+    p.hp = JOBS[p.job].hp; p.imm = 1.5; p.buff = 0; p.acd = 0; p.stun = 0; p.lunge = null;
     const b = BASES[p.team], s = b[Math.floor(Math.random() * b.length)];
     place(p, s.x, s.y);
   }
   // 공격 (방장만 판정). ax, ay: 겨눈 곳. slack: 손님은 연결이 늦어서 쿨타임을 조금 봐줘요
   function attack(p, ax, ay, slack) {
-    if (!G || G.phase !== "play" || !p.inRound || p.dead > 0 || p.acd > (slack || 0)) return false;
+    if (!G || G.phase !== "play" || !p.inRound || p.dead > 0 || p.stun > 0.1 || p.acd > (slack || 0)) return false;
     const J = JOBS[p.job], i = G.players.indexOf(p);
     let [dx, dy, l] = unitTo(p.x, p.y, ax, ay);
     if (l < 0.05) { dx = Math.sin(p.yaw); dy = Math.cos(p.yaw); }
@@ -869,17 +871,27 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
     if (p.job === "archer" || p.job === "medic") {
       const k = p.job === "archer" ? "arrow" : "heal", sp = SHOT[k].sp;
       G.shots.push({ id: ++G.shotN, k, x: p.x + dx * 0.35, y: p.y + dy * 0.35, vx: dx * sp, vy: dy * sp, t: 0, life: J.range / sp, team: p.team, from: i });
-    } else if (p.job === "bomber") {
-      const d = Math.min(J.range, Math.max(1.2, l));
-      G.shots.push({ id: ++G.shotN, k: "bomb", x0: p.x, y0: p.y, tx: p.x + dx * d, ty: p.y + dy * d, t: 0, ft: SHOT.bomb.ft, team: p.team, from: i });
-    } else if (p.job === "sword" || p.job === "chair") {
-      const cone = p.job === "sword" ? 0.45 : 0.6; // 앞쪽 부채꼴 (칼이 더 넓게)
+    } else if (p.job === "bomber") { // 콜라 폭탄: 언제나 3칸 앞 (벽이 있으면 벽 앞)에 떨어져서 1초 뒤 3×3칸
+      let d = J.range;
+      while (d > 0.6 && (solid(Math.floor(p.x + dx * d), Math.floor(p.y + dy * d)) || !clearLine(p, { x: p.x + dx * d, y: p.y + dy * d }))) d -= 0.25;
+      G.shots.push({ id: ++G.shotN, k: "bomb", x0: p.x, y0: p.y, tx: p.x + dx * d, ty: p.y + dy * d, t: 0, fly: SHOT.bomb.fly, ft: SHOT.bomb.ft, team: p.team, from: i });
+    } else if (p.job === "sword") { // 2칸 앞으로 달려 나가며 지나는 길 양옆 한 칸씩 (바로 앞은 안 베요)
+      const e = { x: p.x, y: p.y };
+      moveBy(e, dx * J.range, dy * J.range);
+      const len = Math.hypot(e.x - p.x, e.y - p.y);
+      inRound().forEach((q) => {
+        if (q.team === p.team || q.dead > 0) return;
+        const rx = q.x - p.x, ry = q.y - p.y, along = rx * dx + ry * dy, side = Math.abs(rx * dy - ry * dx);
+        if (along >= -0.4 && along <= len + 0.6 && side >= 0.3 && side <= 1.5) hurt(q, 45, p, false);
+      });
+      if (!p.id) p.lunge = { t: 0.18, vx: (e.x - p.x) / 0.18, vy: (e.y - p.y) / 0.18 }; // 손님은 자기 기기에서 달려 나가요
+    } else if (p.job === "chair") { // 의자: 바로 앞을 내리쳐 밀어내요
       inRound().forEach((q) => {
         if (q.team === p.team || q.dead > 0) return;
         const [ux, uy, d] = unitTo(p.x, p.y, q.x, q.y);
-        if (d > J.range + 0.15 || (d > 0.35 && ux * dx + uy * dy < cone) || !clearLine(p, q)) return;
-        hurt(q, p.job === "sword" ? 45 : 30, p, false);
-        if (p.job === "chair" && q.dead <= 0) { const k = { x: q.x, y: q.y }; moveBy(k, ux * 1.1, uy * 1.1); place(q, k.x, k.y); } // 의자로 밀어내요
+        if (d > J.range + 0.15 || (d > 0.35 && ux * dx + uy * dy < 0.6) || !clearLine(p, q)) return;
+        hurt(q, 30, p, false);
+        if (q.dead <= 0) { const k = { x: q.x, y: q.y }; moveBy(k, ux * 1.1, uy * 1.1); place(q, k.x, k.y); }
       });
     } else if (p.job === "cheer") {
       inRound().forEach((q) => {
@@ -898,7 +910,7 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
     q.hp -= dmg;
     const i = G.players.indexOf(q), bi = by ? G.players.indexOf(by) : -1;
     if (q.hp <= 0) { q.hp = 0; q.dead = RESPAWN; q.deaths++; q.mv = 0; q.dashT = 0; if (by) by.kills++; evt({ k: "ko", i, by: bi }); }
-    else evt({ k: "hit", i, d: dmg });
+    else evt({ k: "hit", i, d: dmg, by: bi });
   }
   function heal(q, n) {
     const mx = JOBS[q.job].hp;
@@ -918,7 +930,9 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
         if (q.dead > 0 || G.players.indexOf(q) === s.from || Math.hypot(q.x - s.x, q.y - s.y) > 0.45) continue;
         if (q.team !== s.team) {
           const shield = q.job === "chair" && Math.sin(q.yaw) * s.vx + Math.cos(q.yaw) * s.vy < -0.5 * Math.hypot(s.vx, s.vy);
-          hurt(q, SHOT[s.k].dmg, from, shield); s.dead = true; break;
+          hurt(q, SHOT[s.k].dmg, from, shield); s.dead = true;
+          if (s.k === "heal" && q.dead <= 0) q.stun = SHOT.heal.stun; // 주사기 맞으면 잠깐 못 움직여요
+          break;
         }
         if (s.k === "heal" && q.hp < JOBS[q.job].hp) { heal(q, SHOT.heal.heal); s.dead = true; break; }
       }
@@ -927,12 +941,8 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
   }
   function boom(s, ps) {
     evt({ k: "boom", x: r2(s.tx), y: r2(s.ty) });
-    const from = G.players[s.from] || null;
-    ps.forEach((q) => {
-      if (q.team === s.team || q.dead > 0) return;
-      const d = Math.hypot(q.x - s.tx, q.y - s.ty);
-      if (d <= SHOT.bomb.r) hurt(q, Math.round(SHOT.bomb.dmg * (1 - (0.5 * d) / SHOT.bomb.r)), from, false);
-    });
+    const from = G.players[s.from] || null, cx = Math.floor(s.tx), cy = Math.floor(s.ty); // 떨어진 칸 둘레 3×3칸
+    ps.forEach((q) => { if (q.team !== s.team && q.dead <= 0 && Math.abs(Math.floor(q.x) - cx) <= 1 && Math.abs(Math.floor(q.y) - cy) <= 1) hurt(q, SHOT.bomb.dmg, from, false); });
   }
   function zoneTick(dt, ps) {
     const z = G.zone, here = [0, 0];
@@ -948,6 +958,10 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
     if (G.t <= 0) endRound(z.score[0] > z.score[1] ? "R" : z.score[1] > z.score[0] ? "B" : "D");
   }
 
+  function sideAim(p, q, sd) { // 소드맨: 상대가 내 길 옆 한 칸에 오도록 살짝 비껴 겨눠요
+    const [ux, uy, d] = unitTo(p.x, p.y, q.x, q.y), a = Math.asin(Math.min(1, 0.85 / Math.max(d, 0.9))) * (sd || 1), c = Math.cos(a), s = Math.sin(a);
+    return [p.x + (ux * c - uy * s) * 2, p.y + (ux * s + uy * c) * 2];
+  }
   // 점령전 봇: 가까운 상대를 노리고 (원거리는 거리를 두고 옆으로 비켜 가며 쏴요), 없으면 점령 구역으로
   let pvpF = null, pvpFT = 0, zoneF = null;
   function stepBy(p, ai, f, tgt, dt) {
@@ -968,6 +982,8 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
       const ai = p.ai || (p.ai = { next: null, re: 0, str: Math.random() < 0.5 ? 1 : -1, st: 0, react: 0.3, lazy: 0.9 + Math.random() * 0.08, wx: 0, wy: 0 });
       p.dashCD = Math.max(0, p.dashCD - dt); p.dashT = Math.max(0, p.dashT - dt);
       if (p.dead > 0 || G.phase !== "play") { p.mv = 0; continue; }
+      if (p.lunge && p.lunge.t > 0) { const h = Math.min(dt, p.lunge.t); moveBy(p, p.lunge.vx * h, p.lunge.vy * h); p.lunge.t -= dt; p.mv = 1; continue; } // 소드맨 달려 나가기
+      if (p.stun > 0) { p.mv = 0; continue; }
       const J = JOBS[p.job], ranged = J.range > 2;
       let foe = null, fd = 99, mate = null, md = 99;
       for (const q of ps) {
@@ -978,7 +994,7 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
       }
       let tgt = null, keep = 0, mx = 0, my = 0;
       if (mate && md < 7 && !(foe && fd < 2.5)) { tgt = mate; keep = 3.5; }
-      else if (foe && fd < 8.5) { tgt = foe; keep = ranged ? J.range * 0.7 : 0.5; }
+      else if (foe && fd < 8.5) { tgt = foe; keep = p.job === "bomber" ? 3 : p.job === "sword" ? 1.4 : ranged ? J.range * 0.7 : 0.5; }
       if (tgt) {
         const los = clearLine(p, tgt), [ux, uy, d] = unitTo(p.x, p.y, tgt.x, tgt.y);
         if (!los || d > keep + 0.6) { const st = stepBy(p, ai, tgt === foe ? pvpF[p.team] : null, tgt, dt); mx = st[0]; my = st[1]; }
@@ -986,11 +1002,14 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
         else { ai.st -= dt; if (ai.st <= 0) { ai.st = 0.6 + Math.random(); ai.str = -ai.str; } mx = -uy * ai.str * 0.8; my = ux * ai.str * 0.8; } // 옆으로 비켜 가며
         ai.react -= dt;
         if (los && p.acd <= 0 && ai.react <= 0) {
-          const near = p.job === "cheer" ? fd < 1.7 || ps.some((q) => q !== p && q.team === p.team && q.dead <= 0 && q.hp < JOBS[q.job].hp && Math.hypot(q.x - p.x, q.y - p.y) < J.range) : d <= J.range;
+          const near = p.job === "cheer" ? fd < 1.7 || ps.some((q) => q !== p && q.team === p.team && q.dead <= 0 && q.hp < JOBS[q.job].hp && Math.hypot(q.x - p.x, q.y - p.y) < J.range)
+            : p.job === "bomber" ? d >= 1.8 && d <= 4.2 : d <= J.range + (p.job === "sword" ? 0.3 : 0);
           if (near) {
             ai.react = 0.15 + Math.random() * 0.35;
             const lead = ranged && tgt.mv ? 0.35 : 0, wob = () => (Math.random() - 0.5) * 0.7;
-            attack(p, tgt.x + Math.sin(tgt.yaw) * lead + wob(), tgt.y + Math.cos(tgt.yaw) * lead + wob());
+            let ax = tgt.x + Math.sin(tgt.yaw) * lead + wob(), ay = tgt.y + Math.cos(tgt.yaw) * lead + wob();
+            if (p.job === "sword" && d > 0.3) { [ax, ay] = sideAim(p, tgt, ai.str); } // 칼은 옆으로 지나가며 베요
+            attack(p, ax, ay);
           }
         }
         if (foe && fd < 2 && p.dashCD <= 0 && Math.random() < dt * (ranged ? 1.5 : 0.8)) { p.dashT = DASH_T; p.dashCD = DASH_CD.p; p.ds++; }
@@ -1825,6 +1844,20 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
       chars[i] = null;
     }
     const sparkM = () => gc("sparkM", () => new T.MeshBasicMaterial({ color: "#ffb02e", toneMapped: false })); // 폭탄 심지 불꽃
+    function syringe(g, s) { // 주사기 (뾰족한 쪽이 +y)
+      part(g, cylG(0.035 * s, 0.035 * s, 0.2 * s, 10), new T.MeshStandardMaterial({ color: "#e8f6ff", transparent: true, opacity: 0.55, roughness: 0.15 }), 0, 0, 0);
+      part(g, cylG(0.026 * s, 0.026 * s, 0.13 * s, 10), mat("#5fe08a", "g"), 0, 0.02 * s, 0);
+      part(g, cylG(0.006 * s, 0.006 * s, 0.1 * s, 6), mat("#c9ced3", "p"), 0, 0.15 * s, 0);
+      part(g, boxG(0.1 * s, 0.015 * s, 0.03 * s), mat("#f4f4f2"), 0, -0.1 * s, 0);
+      part(g, cylG(0.008 * s, 0.008 * s, 0.07 * s, 6), mat("#f4f4f2"), 0, -0.14 * s, 0);
+    }
+    function cola(g, s) { // 콜라 병 폭탄 (밑이 0)
+      part(g, cylG(0.055 * s, 0.06 * s, 0.17 * s, 12), mat("#5a2a14", "g"), 0, 0.085 * s, 0);
+      part(g, cylG(0.062 * s, 0.062 * s, 0.06 * s, 12), mat("#e0362c"), 0, 0.09 * s, 0);
+      part(g, cylG(0.022 * s, 0.05 * s, 0.07 * s, 10), mat("#5a2a14", "g"), 0, 0.205 * s, 0);
+      part(g, cylG(0.024 * s, 0.024 * s, 0.025 * s, 10), mat("#e0362c"), 0, 0.25 * s, 0);
+      part(g, sphG(8), sparkM(), 0, 0.29 * s, 0, 0, 0, 0, 0.028 * s);
+    }
     function addWeapon(c, job) { // 역할군 무기를 오른손에 (칼·의자는 휘두를 때 같이 돌아요)
       const g = sub(c.handR); c.wpn = g;
       if (job === "archer") { // 활: 앞으로 휜 나무 활 + 하얀 시위
@@ -1835,18 +1868,15 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
         part(g, coneG(0.045, 0.1, 4), mat("#d9dee3", "p"), 0, 0.64, 0, 0, Math.PI / 4, 0, 1, 1, 0.4);
         part(g, boxG(0.18, 0.035, 0.06), mat("#e0b020", "p"), 0, 0.06, 0);
         part(g, cylG(0.025, 0.025, 0.12, 8), mat("#5a3a22"), 0, -0.01, 0);
-      } else if (job === "medic") { // 구급상자: 하얀 상자에 빨간 십자
-        part(g, rboxG(0.22, 0.16, 0.1, 0.02, 1), mat("#f4f4f2"), 0, 0.02, 0.04);
-        part(g, boxG(0.12, 0.035, 0.012), mat("#e0362c"), 0, 0.02, 0.095); part(g, boxG(0.035, 0.12, 0.012), mat("#e0362c"), 0, 0.02, 0.095);
+      } else if (job === "medic") { // 주사기: 투명한 통에 초록 약 + 바늘 + 누르개
+        syringe(g, 1.3); g.rotation.x = -0.9;
       } else if (job === "chair") { // 학교 의자: 나무 앉는 판·등받이 + 쇠 다리
         const ch = sub(g, 0, 0.2, 0);
         part(ch, rboxG(0.3, 0.035, 0.28, 0.01, 1), mat("#c48d54"), 0, 0, 0);
         part(ch, rboxG(0.3, 0.2, 0.03, 0.01, 1), mat("#c48d54"), 0, 0.14, -0.14);
         for (const [x, z] of [[-0.13, -0.12], [0.13, -0.12], [-0.13, 0.12], [0.13, 0.12]]) part(ch, cylG(0.012, 0.012, 0.24, 6), mat("#5c6670", "p"), x, -0.12, z);
-      } else if (job === "bomber") { // 폭탄: 까만 공 + 심지 + 불꽃
-        part(g, sphG(14), mat("#26262a", "g"), 0, 0.04, 0.05, 0, 0, 0, 0.12);
-        part(g, cylG(0.012, 0.012, 0.08, 6), mat("#b9a27e"), 0, 0.19, 0.05);
-        part(g, sphG(8), sparkM(), 0, 0.24, 0.05, 0, 0, 0, 0.03);
+      } else if (job === "bomber") { // 콜라 폭탄: 갈색 병에 빨간 띠 + 심지 불꽃
+        cola(g, 1); g.position.y += 0.02;
       } else if (job === "cheer") { // 치어리더: 두 손에 노란 응원 술
         for (const h of [c.handR, c.handL]) for (let k = 0; k < 7; k++) { const a = (k / 7) * Math.PI * 2; part(h, sphG(8), mat("#ffd23f"), Math.cos(a) * 0.06, 0.05 + (k % 2) * 0.04, Math.sin(a) * 0.06, 0, 0, 0, 0.07); }
       }
@@ -1876,11 +1906,14 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
       camInit = true;
       camT.x += (x - camT.x) * k; camT.z += (z - camT.z) * k;
       const far = vw && vh && vw / vh < 1.2 ? 1.35 : 1; // 세로로 긴 화면은 조금 더 멀리서
-      cam.position.set(camT.x, CAM_H * far, camT.z + CAM_D * far);
+      shakeA = Math.max(0, shakeA - dt * 1.6);
+      const sh = shakeA * shakeA * 1.2, t = performance.now() / 22; // 맞으면 화면이 잠깐 흔들려요
+      cam.position.set(camT.x + Math.sin(t) * sh, CAM_H * far + Math.cos(t * 1.3) * sh * 0.5, camT.z + CAM_D * far);
       cam.lookAt(camT.x, 0.3, camT.z - 0.6);
       sun.position.set(camT.x - 4, 15, camT.z + 9); sun.target.position.set(camT.x, 0, camT.z - 1);
     }
-    const _pv = new T.Vector3();
+    const _pv = new T.Vector3(), _flinch = new T.Vector3();
+    let shakeA = 0;
     function project(x, y, z) {
       _pv.set(x, y, z).project(cam);
       return { x: (_pv.x * 0.5 + 0.5) * vw, y: (-_pv.y * 0.5 + 0.5) * vh, vis: _pv.z < 1 };
@@ -1908,6 +1941,9 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
         else if (p.role === "p" && at < 0.3) reach = Math.sin((at / 0.3) * Math.PI);
         poseChar(c, { x: p.x, z: p.y, yaw: a.yaw, moving: a.mv > 0, phase: a.phase, reach, dash: a.dash, chop: false, wash: false, hold: p.role === "z", club, swing }, now);
         if (c.wpn && melee) c.wpn.rotation.x = swing * 0.9 + 0.2;
+        const ht = (now - (a.hitT || -1e9)) / 1000; // 맞으면 0.15초 움찔 (옆으로 떨고 납작)
+        if (ht < 0.15) { const k = 1 - ht / 0.15; c.bodyG.position.x += Math.sin(now / 18) * 0.06 * k; c.bodyG.scale.multiply(_flinch.set(1 + 0.12 * k, 1 - 0.12 * k, 1 + 0.12 * k)); }
+        if (p.stun > 0) c.headG.rotation.z += Math.sin(now / 60) * 0.25; // 주사기에 맞아 멈춘 동안 어질어질
         c.root.visible = !(p.dead > 0) && !(p.imm > 0 && Math.floor(now / 110) % 2); // 기절하면 안 보여요
       }
       for (let i = MAX_P; i < chars.length; i++) dropChar(i);
@@ -1978,12 +2014,12 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
         part(g, cylG(0.018, 0.018, 0.55, 6), mat("#8a5a2b"), 0, 0, 0, Math.PI / 2, 0, 0);
         part(g, coneG(0.045, 0.12, 8), mat("#c9ced3", "p"), 0, 0, 0.32, Math.PI / 2, 0, 0);
         part(g, boxG(0.1, 0.012, 0.12), mat("#ffffff"), 0, 0, -0.24);
-      } else if (k === "heal") {
-        g.add(new T.Mesh(sphG(12), new T.MeshBasicMaterial({ color: "#7dffa0", toneMapped: false }))); g.children[0].scale.setScalar(0.15);
-        part(g, boxG(0.18, 0.05, 0.05), mat("#ffffff", "b")); part(g, boxG(0.05, 0.18, 0.05), mat("#ffffff", "b"));
-      } else {
-        part(g, sphG(14), mat("#26262a", "g"), 0, 0, 0, 0, 0, 0, 0.13);
-        part(g, sphG(8), sparkM(), 0, 0.16, 0, 0, 0, 0, 0.045);
+      } else if (k === "heal") { // 날아가는 주사기 (바늘이 앞으로)
+        const sg = sub(g); sg.rotation.x = Math.PI / 2; syringe(sg, 1.5);
+      } else { // 콜라 폭탄 + 떨어진 뒤 둘레 3×3칸 빨간 표시 (mark)
+        cola(g, 1.3);
+        const mk = new T.Mesh(planeG(3, 3), zm({ color: "#ff3b30", opacity: 0.25 })); mk.rotation.x = -Math.PI / 2; mk.renderOrder = 2; g.add(mk); g.userData.mark = mk;
+        const ed = new T.Mesh(new T.RingGeometry(2.05, 2.15, 4, 1, Math.PI / 4), zm({ color: "#ff3b30", opacity: 0.8 })); ed.rotation.x = -Math.PI / 2; ed.renderOrder = 2; mk.add(ed); ed.rotation.set(0, 0, 0);
       }
       shotG.add(g); return g;
     }
@@ -1993,22 +2029,28 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
         const pl = pool[s.k], m = pl[used[s.k]] || (pl[used[s.k]] = shotMesh(s.k));
         used[s.k]++;
         m.visible = true; m.position.set(s.x, s.h, s.y); m.rotation.set(0, s.yaw || 0, 0);
+        if (s.k === "bomb") { // 떨어지면 바닥에 3×3칸 표시, 터질 때가 가까울수록 빨리 깜빡여요
+          const mk = m.userData.mark; mk.visible = !!s.down;
+          if (s.down) { mk.position.set(s.cx - s.x, -s.h + 0.02, s.cy - s.y); mk.material.opacity = 0.18 + 0.22 * (Math.sin(performance.now() / (40 + 120 * Math.max(0, s.left))) > 0 ? 1 : 0); m.scale.setScalar(1 + 0.15 * Math.max(0, Math.sin(performance.now() / 60))); }
+          else m.scale.setScalar(1);
+          if (!s.down) m.rotation.set(performance.now() / 90, 0, 0); // 날아가며 빙글빙글
+        }
       }
       for (const k in pool) for (let n = used[k]; n < pool[k].length; n++) pool[k][n].visible = false;
     }
     const fxs = [];
     function fx(kind, x, y, col) {
-      const boomy = kind === "boom";
-      const m = new T.Mesh(boomy ? sphG(16) : new T.RingGeometry(0.86, 1, 48), zm({ color: boomy ? "#ff8a2a" : col || "#ffcf33", opacity: 0.85 }));
-      if (!boomy) m.rotation.x = -Math.PI / 2;
-      m.position.set(x, boomy ? 0.45 : 0.06, y); m.renderOrder = 3;
-      scene.add(m); fxs.push({ m, boomy, t0: performance.now() });
+      const boomy = kind === "boom", spark = kind === "spark";
+      const m = new T.Mesh(boomy || spark ? sphG(16) : new T.RingGeometry(0.86, 1, 48), zm({ color: boomy ? "#ff8a2a" : spark ? "#ffffff" : col || "#ffcf33", opacity: 0.85 }));
+      if (!boomy && !spark) m.rotation.x = -Math.PI / 2;
+      m.position.set(x, boomy ? 0.45 : spark ? 0.75 : 0.06, y); m.renderOrder = 3;
+      scene.add(m); fxs.push({ m, boomy, spark, t0: performance.now() });
     }
     function fxTick(now) {
       for (let k = fxs.length - 1; k >= 0; k--) {
-        const f = fxs[k], dur = f.boomy ? 0.45 : 0.6, t = (now - f.t0) / 1000 / dur;
-        if (t >= 1) { scene.remove(f.m); f.m.material.dispose(); if (!f.boomy) f.m.geometry.dispose(); fxs.splice(k, 1); continue; }
-        f.m.scale.setScalar(f.boomy ? 0.3 + (SHOT.bomb.r - 0.3) * Math.sqrt(t) : 0.4 + (JOBS.cheer.range - 0.4) * t);
+        const f = fxs[k], dur = f.boomy ? 0.45 : f.spark ? 0.16 : 0.6, t = (now - f.t0) / 1000 / dur;
+        if (t >= 1) { scene.remove(f.m); f.m.material.dispose(); if (!f.boomy && !f.spark) f.m.geometry.dispose(); fxs.splice(k, 1); continue; }
+        f.m.scale.setScalar(f.boomy ? 0.3 + 1.6 * Math.sqrt(t) : f.spark ? 0.15 + 0.45 * t : 0.4 + (JOBS.cheer.range - 0.4) * t);
         f.m.material.opacity = 0.85 * (1 - t);
       }
     }
@@ -2019,7 +2061,12 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
       return _ray.ray.intersectPlane(_pl, _hit) ? { x: _hit.x, y: _hit.z } : null;
     }
     function setMode(m) { jailG.visible = m !== "pvp"; zoneG.visible = m === "pvp"; if (m !== "pvp") shots([]); }
-    return { el, frame, portrait, resize, project, setJailed(n) { jailedNow = n; }, reset() { camInit = false; }, setZone, shots, fx, ground, setMode };
+    function hit(i) { // 맞은 캐릭터: 움찔 + 하얀 번쩍
+      anims[i].hitT = performance.now();
+      const c = chars[i] && chars[i].c;
+      if (c) fx("spark", c.root.position.x, c.root.position.z);
+    }
+    return { el, frame, portrait, resize, project, setJailed(n) { jailedNow = n; }, reset() { camInit = false; }, setZone, shots, fx, ground, setMode, hit, shake(a) { shakeA = Math.max(shakeA, a); } };
   }
 
   const R3 = make3D();
@@ -2045,6 +2092,8 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
       swing: () => tone(320, 0.13, "sawtooth", 0.05, 140),
       boom: () => tone(120, 0.4, "sawtooth", 0.11, 38),
       heal: () => tone(700, 0.16, "sine", 0.07, 1150),
+      hitc: () => { tone(1500, 0.05, "square", 0.05); tone(260, 0.09, "sawtooth", 0.07, 120); }, // 내가 맞혔어요
+      ouch: () => tone(180, 0.14, "square", 0.08, 90), // 내가 맞았어요
       free: () => { tone(660, 0.1, "square", 0.06); setTimeout(() => tone(880, 0.1, "square", 0.06), 90); setTimeout(() => tone(1180, 0.16, "square", 0.06), 180); },
       win: () => [523, 659, 784, 1046].forEach((f, k) => setTimeout(() => tone(f, 0.18, "square", 0.06), k * 120)),
       lose: () => [392, 330, 262].forEach((f, k) => setTimeout(() => tone(f, 0.22, "triangle", 0.08), k * 150))
@@ -2209,9 +2258,9 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
   function snapOf() {
     return { t: "s", ph: G.phase, tl: Math.round(Math.max(0, G.t) * 10) / 10, cd: Math.round(G.cd * 10) / 10, w: G.win,
       P: G.players.map((p) => p && [r2(p.x), r2(p.y), r2(p.yaw), p.mv ? 1 : 0, ROLE_I[p.role], p.jail ? 1 : 0, Math.ceil(p.frz * 10), Math.ceil(p.imm * 10), p.ds | 0, p.inRound ? 1 : 0, p.dashT > 0 ? 1 : 0,
-        Math.max(0, Math.round(p.hp)), p.team, Math.max(0, JOB_KEYS.indexOf(p.job)), Math.ceil(p.dead * 10), p.ak | 0, p.buff > 0 ? 1 : 0]),
+        Math.max(0, Math.round(p.hp)), p.team, Math.max(0, JOB_KEYS.indexOf(p.job)), Math.ceil(p.dead * 10), p.ak | 0, p.buff > 0 ? 1 : 0, Math.ceil((p.stun || 0) * 10)]),
       Z: G.zone ? [G.zone.owner, r2(G.zone.cap[0]), r2(G.zone.cap[1]), Math.round(G.zone.score[0] * 10) / 10, Math.round(G.zone.score[1] * 10) / 10, G.zone.contest ? 1 : 0] : null,
-      S: G.mode === "pvp" && G.shots ? G.shots.map((s) => (s.k === "bomb" ? [s.id, 2, r2(s.x0), r2(s.y0), r2(s.tx), r2(s.ty), r2(s.t), s.ft] : [s.id, SHOT_I[s.k], r2(s.x), r2(s.y), r2(s.vx), r2(s.vy)])) : null };
+      S: G.mode === "pvp" && G.shots ? G.shots.map((s) => (s.k === "bomb" ? [s.id, 2, r2(s.x0), r2(s.y0), r2(s.tx), r2(s.ty), r2(s.t), s.ft, s.fly] : [s.id, SHOT_I[s.k], r2(s.x), r2(s.y), r2(s.vx), r2(s.vy)])) : null };
   }
   function freeSlot() {
     for (let i = 1; i < MAX_P; i++) if (!G.players[i]) return i;
@@ -2334,8 +2383,13 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
     else if (e.k === "end") endShown = false;
     else if (e.k === "ps") { feed("점령전 시작! 가운데 구역을 차지해요"); sfx.go(); }
     else if (e.k === "own") { feed(TEAM_NAME[e.tm] + " 팀이 구역을 차지했어요!"); sfx.free(); }
-    else if (e.k === "ko") { feed(mine(e.i) ? "기절했어요! " + RESPAWN + "초 뒤 다시 나와요" : e.by >= 0 ? josa(pName(e.by), "이", "가") + " " + josa(pName(e.i), "을", "를") + " 쓰러뜨렸어요" : josa(pName(e.i), "이", "가") + " 기절했어요"); sfx.tag(); }
-    else if (e.k === "hit") { floater(e.i, "-" + e.d, "#ff6b5e"); if (mine(e.i) && navigator.vibrate) { try { navigator.vibrate(25); } catch (er) {} } }
+    else if (e.k === "ko") { if (R3) R3.hit(e.i); if (mine(e.i) && R3) R3.shake(0.35); feed(mine(e.i) ? "기절했어요! " + RESPAWN + "초 뒤 다시 나와요" : e.by >= 0 ? josa(pName(e.by), "이", "가") + " " + josa(pName(e.i), "을", "를") + " 쓰러뜨렸어요" : josa(pName(e.i), "이", "가") + " 기절했어요"); sfx.tag(); }
+    else if (e.k === "hit") { // 맞으면: 숫자 + 번쩍·움찔, 내가 맞으면 화면이 흔들리고, 내가 맞히면 딱 소리
+      floater(e.i, "-" + e.d, "#ff6b5e");
+      if (R3) R3.hit(e.i);
+      if (mine(e.i)) { if (R3) R3.shake(0.22); sfx.ouch(); if (navigator.vibrate) { try { navigator.vibrate(30); } catch (er) {} } }
+      else if (e.by === myIdx) { if (R3) R3.shake(0.07); sfx.hitc(); }
+    }
     else if (e.k === "heal") { floater(e.i, "+" + e.d, "#7dffa0"); if (mine(e.i)) sfx.heal(); }
     else if (e.k === "boom") { if (R3) R3.fx("boom", e.x, e.y); sfx.boom(); }
     else if (e.k === "cheer") { if (R3) R3.fx("cheer", e.x, e.y, TEAM_COL[e.tm]); sfx.heal(); }
@@ -2506,7 +2560,7 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
         if (!p || !p.inRound) { smooth[i].ok = false; return; }
         const s = p.id ? sm(i, p.x, p.y, p.yaw) : { x: p.x, y: p.y };
         out[i] = { ch: p.ch, role: p.role, x: s.x, y: s.y, yaw: p.yaw, mv: p.mv, dash: p.dashT > 0, imm: p.imm, jail: p.jail, frz: p.frz, name: nameOfP(p, i), bot: p.bot,
-          team: p.team, job: p.job, hp: p.hp, maxhp: JOBS[p.job] ? JOBS[p.job].hp : 100, dead: p.dead, ak: p.ak, buff: p.buff > 0 };
+          team: p.team, job: p.job, hp: p.hp, maxhp: JOBS[p.job] ? JOBS[p.job].hp : 100, dead: p.dead, ak: p.ak, buff: p.buff > 0, stun: p.stun || 0 };
       });
       return out;
     }
@@ -2518,7 +2572,7 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
       const s = mine ? { x: me.x, y: me.y } : sm(i, v[0], v[1], v[2]);
       const job = JOB_KEYS[v[13]] || "archer";
       out[i] = { ch: m.ch, role: ROLE_K[v[4]], x: s.x, y: s.y, yaw: mine ? me.yaw : v[2], mv: mine ? me.mv : v[3], dash: mine ? me.dashT > 0 : !!v[10], imm: v[7] / 10, jail: !!v[5], frz: v[6] / 10, name: m.n || "봇" + i, bot: !!m.b,
-        team: v[12], job, hp: v[11], maxhp: JOBS[job].hp, dead: v[14] / 10, ak: mine ? me.ak | 0 : v[15], buff: !!v[16] }; // 내 공격 동작은 누르자마자
+        team: v[12], job, hp: v[11], maxhp: JOBS[job].hp, dead: v[14] / 10, ak: mine ? me.ak | 0 : v[15], buff: !!v[16], stun: (v[17] || 0) / 10 }; // 내 공격 동작은 누르자마자
     });
     return out;
   }
@@ -2654,7 +2708,7 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
       const pv = p.role === "p";
       el.classList.toggle("t0", pv && i !== myIdx && p.team === 0); el.classList.toggle("t1", pv && i !== myIdx && p.team === 1); el.classList.toggle("out", pv && p.dead > 0);
       if (pv) el.style.borderBottomColor = TEAM_COL[p.team];
-      const txt = (i === myIdx ? "나" : p.name) + (p.frz > 0 && (p.role === "z" || p.role === "c") ? " " + Math.ceil(p.frz) : "") + (pv && p.dead > 0 ? " 기절" : "");
+      const txt = (i === myIdx ? "나" : p.name) + (p.frz > 0 && (p.role === "z" || p.role === "c") ? " " + Math.ceil(p.frz) : "") + (pv && p.dead > 0 ? " 기절" : pv && p.stun > 0 ? " 멈춤" : "");
       if (el.firstChild.textContent !== txt) el.firstChild.textContent = txt;
       el.lastChild.hidden = !pv || p.dead > 0;
       if (pv) el.lastChild.firstChild.style.width = Math.max(0, Math.min(100, (p.hp / p.maxhp) * 100)) + "%";
@@ -2677,15 +2731,17 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
       const sc = d - dot * 1.5 + (foe ? 0 : 1);
       if (sc < bs) { bs = sc; best = p; }
     });
+    if (best && st.job === "sword") { const [ax, ay] = sideAim(me, best, 1); return { x: ax, y: ay }; } // 칼은 옆으로 지나가며
     return best ? { x: best.x, y: best.y } : { x: me.x + fx * J.range, y: me.y + fy * J.range };
   }
   function doAttack() {
     const st = myState();
-    if (!me || !st || !st.inRound || st.phase !== "play" || st.dead > 0 || st.role !== "p" || (me.acd || 0) > 0) return;
+    if (!me || !st || !st.inRound || st.phase !== "play" || st.dead > 0 || st.stun > 0 || st.role !== "p" || (me.acd || 0) > 0) return;
     const J = JOBS[st.job] || JOBS.archer, t = atkFace ? { x: me.x + Math.sin(me.yaw) * J.range, y: me.y + Math.cos(me.yaw) * J.range } : autoAim(st, J);
     if (role === "guest") {
       me.acd = J.cd; me.ak = (me.ak | 0) + 1; me.yaw = Math.atan2(t.x - me.x, t.y - me.y);
       net.send({ t: "atk", x: r2(t.x), y: r2(t.y), px: r2(me.x), py: r2(me.y), k: me.k | 0 });
+      if (st.job === "sword") { const [dx, dy] = unitTo(me.x, me.y, t.x, t.y), e = { x: me.x, y: me.y }; moveBy(e, dx * J.range, dy * J.range); me.lunge = { t: 0.18, vx: (e.x - me.x) / 0.18, vy: (e.y - me.y) / 0.18 }; } // 칼: 내 화면에서도 바로 달려 나가요
     } else if (!attack(me, t.x, t.y)) return;
     (st.job === "sword" || st.job === "chair" ? sfx.swing : st.job === "cheer" ? sfx.heal : sfx.shoot)();
   }
@@ -2783,7 +2839,10 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
   // ===== 메인 루프 =====
   let lastT = performance.now(), sendT = 0, lastList = null, r3Mode = "";
   function shotView(k, s) { // 날아가는 것 하나의 그릴 자리 (폭탄은 포물선)
-    if (k === "bomb") { const f = Math.min(1, s.t / s.ft); return { k, x: s.x0 + (s.tx - s.x0) * f, y: s.y0 + (s.ty - s.y0) * f, h: 0.6 + 3.2 * f * (1 - f) }; }
+    if (k === "bomb") { // 날아가는 동안은 포물선, 떨어진 뒤엔 바닥에서 깜빡이며 3×3칸 표시
+      const fly = s.fly || 0.35, f = Math.min(1, s.t / fly), down = s.t >= fly;
+      return { k, x: s.x0 + (s.tx - s.x0) * f, y: s.y0 + (s.ty - s.y0) * f, h: down ? 0.14 : 0.6 + 3.2 * f * (1 - f) * 0.7, down, left: s.ft - s.t, cx: Math.floor(s.tx) + 0.5, cy: Math.floor(s.ty) + 0.5 };
+    }
     return { k, x: s.x, y: s.y, h: 0.75, yaw: Math.atan2(s.vx, s.vy) };
   }
   function shotList(now) {
@@ -2793,7 +2852,7 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
     const age = Math.min(0.3, (now - snapAt) / 1000); // 받은 뒤 지난 시간만큼 더 날아간 자리
     for (const a of snap.S) {
       const k = SHOT_K[a[1]];
-      out.push(k === "bomb" ? shotView(k, { x0: a[2], y0: a[3], tx: a[4], ty: a[5], t: a[6] + age, ft: a[7] }) : shotView(k, { x: a[2] + a[4] * age, y: a[3] + a[5] * age, vx: a[4], vy: a[5] }));
+      out.push(k === "bomb" ? shotView(k, { x0: a[2], y0: a[3], tx: a[4], ty: a[5], t: a[6] + age, ft: a[7], fly: a[8] }) : shotView(k, { x: a[2] + a[4] * age, y: a[3] + a[5] * age, vx: a[4], vy: a[5] }));
     }
     return out;
   }
