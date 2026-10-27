@@ -200,6 +200,7 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
         <button type="button" class="mode cnr" data-mode="cnr" aria-pressed="false"><b>경찰과 도둑</b><small>경찰이 도둑을 잡아 감옥에. 도둑은 열쇠 발판으로 친구 구출</small></button>
         <button type="button" class="mode pvp" data-mode="pvp" aria-pressed="false"><b>점령전</b><small>레드 대 블루. 역할군 무기로 싸워 가운데 구역을 차지</small></button>
       </div>
+      <div id="homeJobBox" class="col" hidden><p class="label">내 역할군 (무기·직업)</p><div class="jobs" id="homeJobs"></div><p class="status" id="homeJobDesc"></p></div>
       <div class="play">
         <button type="button" class="btn" id="soloBtn">봇이랑 바로 하기</button>
         <button type="button" class="btn red" id="hostBtn">친구랑 방 만들기</button>
@@ -2402,9 +2403,9 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
     myJob = k; store.set("tag.job", k); jobLine();
     if (role === "guest" && net) net.send({ t: "jb", j: k });
     else if (G && G.players[0]) G.players[0].jobPick = k;
-    renderJobs($("jobs")); renderJobs($("deadJobs"));
+    renderJobs($("jobs")); renderJobs($("deadJobs")); renderJobs($("homeJobs"));
   }
-  const jobLine = () => { const J = JOBS[myJob]; $("jobDesc").textContent = J.name + ": " + J.desc + " (체력 " + J.hp + ")"; };
+  const jobLine = () => { const J = JOBS[myJob], t = J.name + ": " + J.desc + " (체력 " + J.hp + ")"; $("jobDesc").textContent = t; $("homeJobDesc").textContent = t; };
   function renderJobs(box) {
     const key = myJob;
     if (box.dataset.k === key && box.children.length) return;
@@ -2422,6 +2423,8 @@ body.side .toast { left: auto; right: 40px; bottom: auto; top: 50%; transform: t
   }
   function setMode(m) {
     curMode = m; store.set(MODE_KEY, m);
+    $("homeJobBox").hidden = m !== "pvp"; // 첫 화면에서도 점령전이면 역할군을 골라요 (봇이랑 바로 할 때)
+    if (m === "pvp") { renderJobs($("homeJobs")); jobLine(); }
     document.querySelectorAll(".mode").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
   }
   document.querySelectorAll("#home .mode").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
