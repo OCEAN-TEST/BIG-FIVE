@@ -5,7 +5,7 @@
 //   친구 ↔ 중계: 내용 그대로 (방장하고만 주고받아요)
 //   중계 → 친구: "bye" (방장이 나갔어요) / "drop" (내보냈어요) — 소켓 닫힘이 늦게 알려질 수 있어서 먼저 말해 줘요
 //   "ping"은 방을 깨우지 않고 중계가 바로 "pong"으로 답해요 (연결 유지용)
-// 운영자 페이지(/stats?k=열쇠): 지금 열린 방·인원 숫자만 모아서 보여 줘요 (이름·채팅은 안 모아요)
+// 운영자 페이지(/stats?k=열쇠): 지금 열린 방·인원 숫자만 모아서 보여 줘요 (이름·채팅은 안 모아요). 술래잡기(tag/) 방은 코드 앞에 T
 const ORIGIN = /^(https:\/\/ocean-test\.github\.io|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/i; // 게임 화면에서만 붙어요
 const KEY_HASH = "b2e2e39d4e9a4509061e14583b27738741a78579d6b1aac8d86bf0ec869ec235"; // 운영자 페이지 열쇠의 SHA-256 (열쇠 자체는 저장소에 없어요)
 const TXT = { "content-type": "text/plain; charset=utf-8" };
@@ -45,7 +45,8 @@ export class Room {
     if (!asHost && !host) return new Response("no room", { status: 404 }); // 방장이 없어요 (PeerJS 쪽 방일 수도)
     const [client, server] = Object.values(new WebSocketPair());
     if (asHost) {
-      const code = u.pathname.split("-").pop();
+      const name = u.pathname.split("/").pop(), num = name.split("-").pop();
+      const code = name.includes("-tag-") ? "T" + num : num; // 술래잡기 방은 앞에 T (분식집 방 코드와 안 겹치게)
       this.ctx.acceptWebSocket(server, ["host"]);
       server.serializeAttachment({ code });
       this.tell("open", code);
@@ -155,9 +156,10 @@ function draw(s) {
   if (!rooms.length) list.append(el("p", "empty", "지금 열린 방이 없어요."));
   rooms.forEach(([code, r]) => {
     const row = el("div", "room"), mins = Math.max(0, Math.round((s.now - r.t0) / 60000));
-    row.append(el("span", "code", code), el("div", "", "방장 포함 " + r.n + "명" + (r.w ? " · 관전 " + r.w + "명" : "") + " · " + (mins < 1 ? "방금" : mins + "분째") + " 열림"));
-    const a = el("a", "", "관전"); a.href = GAME + "?watch=" + encodeURIComponent(code) + "&mod"; a.target = "_blank"; a.rel = "noopener";
-    row.append(a); list.append(row);
+    const tag = code[0] === "T"; // 술래잡기 방 (관전 기능이 없어요)
+    row.append(el("span", "code", tag ? code.slice(1) : code), el("div", "", (tag ? "술래잡기 · " : "분식집 · ") + "방장 포함 " + r.n + "명" + (r.w ? " · 관전 " + r.w + "명" : "") + " · " + (mins < 1 ? "방금" : mins + "분째") + " 열림"));
+    if (!tag) { const a = el("a", "", "관전"); a.href = GAME + "?watch=" + encodeURIComponent(code) + "&mod"; a.target = "_blank"; a.rel = "noopener"; row.append(a); }
+    list.append(row);
   });
   $("upd").textContent = "마지막으로 불러온 때 " + new Date(s.now).toLocaleTimeString("ko-KR");
 }
